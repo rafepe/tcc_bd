@@ -1,0 +1,35 @@
+from django.contrib import admin
+from django.urls import path
+from django.views.generic.base import RedirectView
+from django.contrib.auth import views as auth_views
+
+from . import views
+
+favicon_view = RedirectView.as_view(url='/static/favicon.ico', permanent=True)
+
+urlpatterns = [
+    path('favicon.ico', favicon_view),
+
+    path('importar_csv/', views.importar_csv, name='importar_csv'),
+
+    path("projeto_create/", views.projeto_create.as_view(), name='projeto_create'),
+    path('projeto_menu/', views.projeto_menu.as_view(), name='projeto_menu'),
+    path("projeto_update/<int:pk>/", views.projeto_update.as_view(), name='projeto_update'),
+    path('projeto_delete/<int:pk>/', views.projeto_delete.as_view(), name='projeto_delete'),
+
+    path("equipamento_create/", views.equipamento_create.as_view(), name='equipamento_create'),
+    path('equipamento_menu/', views.equipamento_menu.as_view(), name='equipamento_menu'),
+    path("equipamento_update/<int:pk>/", views.equipamento_update.as_view(), name='equipamento_update'),
+    path('equipamento_delete/<int:pk>/', views.equipamento_delete.as_view(), name='equipamento_delete'),
+
+    path("pessoa_create/", views.pessoa_create.as_view(), name='pessoa_create'),
+    path('pessoa_menu/', views.pessoa_menu.as_view(), name='pessoa_menu'),
+    path("pessoa_update/<int:pk>/", views.pessoa_update.as_view(), name='pessoa_update'),
+    path('pessoa_delete/<int:pk>/', views.pessoa_delete.as_view(), name='pessoa_delete'),
+
+    path("salario_create/", views.salario_create.as_view(), name='salario_create'),
+    path('salario_menu/', views.salario_menu.as_view(), name='salario_menu'),
+    path("salario_update/<int:pk>/", views.salario_update.as_view(), name='salario_update'),
+    path('salario_delete/<int:pk>/', views.salario_delete.as_view(), name='salario_delete'),
+
+ ]

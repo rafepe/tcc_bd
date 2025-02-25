@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+{% load static %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% bootstrap_messages %}
+<html lang="pt-br">
+
+<head>
+    <title>
+        {% block titulo %}{% endblock %}
+    </title>
+</head>
+
+<body>
+
+    <div class="d-flex justify-content-center align-items-start">
+        <div class="text-center mx-2">
+            <a href="{% url 'projeto_menu' %}">
+                <p>Projetos</p>
+            </a>
+        </div>
+
+        <div class="text-center mx-2">
+            <a href="{% url 'equipamento_menu' %}">
+                <p>Equipamentos</p>
+            </a>
+        </div>
+
+
+        <div class="text-center mx-2">
+            <a href="{% url 'pessoa_menu' %}">
+                <p>Pessoas</p>
+            </a>
+        </div>
+
+        <div class="text-center mx-2">
+            <a href="{% url 'salario_menu' %}">
+                <p>Salários</p>
+            </a>
+        </div>
+
+
+    </div>
+
+<body>
+
+    {% block corpo %}{% endblock %}
+
+</body>
+<center>
+    <hr>
+    <h3>{% block rodape %}{% endblock %}</h3>
+    <h4>
+        <p>Última atualização: {% now "d/m/Y H:i:s" %}</p>
+        
+
+    </h4>
+</center>
+
+</html>
