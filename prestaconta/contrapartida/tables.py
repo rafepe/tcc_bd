@@ -1,11 +1,11 @@
-import locale
-import django_tables2 as tables
-from django_tables2.utils import A
-from django.utils.html import format_html
 from .models import projeto, equipamento, pessoa, salario
+from django_tables2.utils import A
+from django.db.models import Func, IntegerField, F
 from django.urls import reverse
 from django.utils.dateformat import DateFormat
-
+from django.utils.html import format_html
+import django_tables2 as tables
+import locale
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
@@ -85,10 +85,9 @@ class equipamento_table(tables.Table):
         url = reverse("equipamento_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
-
 class pessoa_table(tables.Table):
     nome = tables.LinkColumn("pessoa_update", args=[A("pk")])
-    ativo = tables.Column() 
+    ativo = tables.LinkColumn("pessoa_update", args=[A("pk")]) 
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
@@ -104,25 +103,27 @@ class pessoa_table(tables.Table):
         url = reverse("pessoa_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
+
 class salario_table(tables.Table):
-    pessoa = tables.Column(accessor='id_pessoa.nome', verbose_name="Pessoa")
-    referencia = tables.Column(verbose_name="Mês de Referência")
-    valor = tables.Column(verbose_name="Valor")
+    pessoa = tables.LinkColumn("salario_update", args=[A("pk")], accessor='id_pessoa.nome', verbose_name="Pessoa")
+    referencia = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
+    valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     excluir = tables.TemplateColumn("<a href='{% url 'salario_delete' record.id %}'>Excluir</a>", verbose_name="Excluir")
 
     class Meta:
         model = salario
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('pessoa', 'referencia', 'valor', 'excluir') 
+        fields = ('pessoa', 'referencia', 'valor', 'excluir')
 
     def render_valor(self, value):
-        # Formatar o valor como moeda
+        """ Formata o valor como moeda BRL """
         if value is not None:
             formatted_value = locale.currency(value, grouping=True)
             return format_html('<span>{}</span>', formatted_value)
         return '-'
 
     def render_excluir(self, record):
+        """ Renderiza o botão excluir """
         url = reverse("salario_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)

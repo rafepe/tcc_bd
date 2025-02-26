@@ -145,8 +145,6 @@ class equipamento_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida/equipamento_menu.html'
 
-
-
 class equipamento_create(CreateView):
     model = equipamento
     fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
@@ -160,7 +158,6 @@ class equipamento_create(CreateView):
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')
 
-
 class equipamento_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_equipamento"):
@@ -172,7 +169,6 @@ class equipamento_update(UpdateView):
     fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')   
-
 
 class equipamento_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
@@ -243,7 +239,7 @@ class pessoa_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('pessoa_menu')
     
-    
+  
 ###########
 # SALARIO #
 ###########
@@ -259,7 +255,6 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView
 from .models import salario
 
-
 class salario_menu(SingleTableView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.view_salario"):
@@ -272,6 +267,7 @@ class salario_menu(SingleTableView):
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida/salario_menu.html'
+
 
 
 class salario_create(CreateView):
