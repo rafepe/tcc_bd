@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% bootstrap_messages %}
+{% load render_table from django_tables2 %}
+
+{% block titulo %}Contrapartida Pesquisa{% endblock %}
+{% block corpo %}
+
+<body>
+    <div class="container">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+            <center>
+            <h1>Pesquisa</h1>
+            {% render_table table %}
+            <br>
+            <a href="{% url 'contrapartida_pesquisa_create' %}">
+                <input type="button" class="btn btn-primary" value="Incluir nova contrapartida">
+            </a>
+            </center>
+        </div>
+    </div>
+</body>
+{% endblock %}

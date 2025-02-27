@@ -4,6 +4,7 @@ from django.views.generic.base import RedirectView
 from django.contrib.auth import views as auth_views
 
 from . import views
+from .views import *
 
 favicon_view = RedirectView.as_view(url='/static/favicon.ico', permanent=True)
 
@@ -31,5 +32,12 @@ urlpatterns = [
     path('salario_menu/', views.salario_menu.as_view(), name='salario_menu'),
     path("salario_update/<int:pk>/", views.salario_update.as_view(), name='salario_update'),
     path('salario_delete/<int:pk>/', views.salario_delete.as_view(), name='salario_delete'),
+
+    path("projetos_semestre/", projetos_semestre.as_view(), name="projetos_semestre"),
+
+    path("contrapartida_pesquisa_create/", views.contrapartida_pesquisa_create.as_view(), name='contrapartida_pesquisa_create'),
+    path('contrapartida_pesquisa_menu/', views.contrapartida_pesquisa_menu.as_view(), name='contrapartida_pesquisa_menu'),
+    path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
+    path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
 
  ]

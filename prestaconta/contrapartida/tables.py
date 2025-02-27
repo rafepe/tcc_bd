@@ -1,4 +1,4 @@
-from .models import projeto, equipamento, pessoa, salario
+from .models import projeto, equipamento, pessoa, salario, contrapartida_pesquisa
 from django_tables2.utils import A
 from django.db.models import Func, IntegerField, F
 from django.urls import reverse
@@ -103,27 +103,39 @@ class pessoa_table(tables.Table):
         url = reverse("pessoa_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
-
 class salario_table(tables.Table):
     pessoa = tables.LinkColumn("salario_update", args=[A("pk")], accessor='id_pessoa.nome', verbose_name="Pessoa")
     referencia = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
+    horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     excluir = tables.TemplateColumn("<a href='{% url 'salario_delete' record.id %}'>Excluir</a>", verbose_name="Excluir")
 
     class Meta:
         model = salario
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('pessoa', 'referencia', 'valor', 'excluir')
+        fields = ('pessoa', 'referencia', 'valor', 'horas', 'excluir')
 
     def render_valor(self, value):
-        """ Formata o valor como moeda BRL """
         if value is not None:
             formatted_value = locale.currency(value, grouping=True)
             return format_html('<span>{}</span>', formatted_value)
         return '-'
 
     def render_excluir(self, record):
-        """ Renderiza o botão excluir """
         url = reverse("salario_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
+    
+
+class contrapartida_pesquisa_table(tables.Table):
+    projeto = tables.Column()
+    nome = tables.Column(verbose_name='Pesquisador')
+    referencia = tables.Column()
+    valor_hora = tables.Column()
+    horas_alocadas = tables.Column()
+
+    class Meta:
+        model = contrapartida_pesquisa
+        attrs = {"class": "table thead-light table-striped table-hover"}
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('projeto','nome','referencia','valor_hora','horas_alocadas')

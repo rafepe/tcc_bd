@@ -1,13 +1,14 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 import re
-
+from django.db.models import F, ExpressionWrapper, FloatField
 
 class projeto(models.Model):
     nome = models.CharField(max_length=255)
     data_inicio = models.DateField(verbose_name="Data início")
     data_fim = models.DateField(verbose_name="Data fim")
-    valor = models.FloatField()
+    valor = models.FloatField(verbose_name="Valor total")
+    contrapartida_prometida = models.FloatField(default=0)
 
     def __str__(self):
         return self.nome
@@ -50,6 +51,7 @@ class salario(models.Model):
         verbose_name="Mês de referência"
     )
     valor = models.FloatField(blank=True, null=True)
+    horas = models.IntegerField(default=160, null=False)
 
     class Meta:
         constraints = [
@@ -57,11 +59,21 @@ class salario(models.Model):
         ]
         ordering = ['id_pessoa']
 
+from django.db import models
 
-class contrapartidaPessoa(models.Model):
-    salario_bruto = models.ForeignKey(salario, on_delete=models.CASCADE)
-    horas_alocadas = models.FloatField(blank=True, null=True)
+class contrapartida_pesquisa(models.Model):
+    projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
+    nome = models.ForeignKey('Pessoa', on_delete=models.CASCADE, verbose_name='Nome')
+    referencia = models.ForeignKey('Salario', on_delete=models.CASCADE, verbose_name='Referência')
+    valor_hora = models.FloatField(verbose_name='Valor Hora')
+    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas')
 
+    class Meta:
+        unique_together = ('projeto', 'nome', 'referencia')
+        verbose_name = 'Contrapartida Pesquisa'
+        verbose_name_plural = 'Contrapartidas Pesquisas'
+
+"""
 class contrapartidaSO(models.Model):
     projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
     valor_financiado = models.FloatField(blank=True, null=True)
@@ -88,3 +100,4 @@ class projetoContrapartidaPesquisa(models.Model):
  
     class Meta:
         ordering = ['projeto']
+"""

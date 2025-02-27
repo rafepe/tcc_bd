@@ -1,19 +1,14 @@
-
-from .models import projeto, equipamento, pessoa, salario
-from .tables import projeto_table, equipamento_table, pessoa_table, salario_table
+from .models import *
+from .tables import *
+from datetime import datetime
 from django_tables2 import SingleTableView
+from django.db import IntegrityError
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from datetime import datetime  # Importando o módulo para manipulação de datas
-# Create your views here.
-
-import io
 import csv
-from django.shortcuts import render
-from django.http import HttpResponse
-from .models import pessoa, projeto  # Importando ambos os modelos
+import io
 
 def importar_csv(request):
     if request.method == 'POST' and request.FILES['csv_file']:
@@ -68,8 +63,6 @@ def importar_csv(request):
 
     return render(request, 'importar_csv.html')
 
-
-
 ###########
 # PROJETO #
 ###########
@@ -89,7 +82,7 @@ class projeto_menu(SingleTableView):
 
 class projeto_create(CreateView):
     model = projeto
-    fields = ['nome', 'data_inicio', 'data_fim', 'valor']
+    fields = ['nome','data_inicio', 'data_fim', 'valor','contrapartida_prometida']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_projeto"):
@@ -108,7 +101,7 @@ class projeto_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar projetos")
    
     model = projeto
-    fields = ['nome','data_inicio', 'data_fim', 'valor']
+    fields = ['nome','data_inicio', 'data_fim', 'valor','contrapartida_prometida']
     def get_success_url(self):
         return reverse_lazy('projeto_menu')   
 
@@ -125,12 +118,9 @@ class projeto_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('projeto_menu')
 
-
-
-
-###########
-# PROJETO #
-###########
+###############
+# EQUIPAMENTO #
+###############
 
 class equipamento_menu(SingleTableView):
     def dispatch(self, request, *args, **kwargs):
@@ -182,7 +172,6 @@ class equipamento_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')
-
 
 ##########
 # PESSOA #
@@ -244,16 +233,6 @@ class pessoa_delete(DeleteView):
 # SALARIO #
 ###########
    
-import django_tables2 as tables
-from .models import salario
-from django.shortcuts import render
-
-
-from django.db import IntegrityError
-from django.http import JsonResponse, HttpResponse
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
-from .models import salario
 
 class salario_menu(SingleTableView):
     def dispatch(self, request, *args, **kwargs):
@@ -267,8 +246,6 @@ class salario_menu(SingleTableView):
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida/salario_menu.html'
-
-
 
 class salario_create(CreateView):
     model = salario
@@ -316,3 +293,152 @@ class salario_delete(DeleteView):
         return reverse_lazy('salario_menu')
     
 
+#######################
+# PROJETOS SEMESTRAIS #
+#######################
+
+from django.views.generic import ListView
+from django.utils.timezone import now
+from django.shortcuts import render
+from datetime import datetime
+from .models import projeto
+
+def get_semestre_atual():
+    """Retorna o ano e o semestre atual"""
+    hoje = now().date()
+    ano = hoje.year
+    semestre = 1 if hoje.month <= 6 else 2
+    return ano, semestre
+
+class projetos_semestre(ListView):
+    model = projeto
+    template_name = "contrapartida/projetos_semestre.html"
+    context_object_name = "projetos"
+
+    def get_queryset(self):
+        """Filtra os projetos que se encerram no semestre selecionado"""
+        ano = self.request.GET.get("ano")
+        semestre = self.request.GET.get("semestre")
+
+        if not ano or not semestre:
+            ano, semestre = get_semestre_atual()
+
+        try:
+            ano = int(ano)
+            semestre = int(semestre)
+        except ValueError:
+            ano, semestre = get_semestre_atual()
+
+        # Definir intervalo do semestre
+        if semestre == 1:
+            data_inicio = datetime(ano, 1, 1)
+            data_fim = datetime(ano, 6, 30)
+        else:
+            data_inicio = datetime(ano, 7, 1)
+            data_fim = datetime(ano, 12, 31)
+
+        #print(projeto.objects.filter(data_fim__range=(data_inicio, data_fim)))
+        qs = projeto.objects.filter(data_fim__range=(data_inicio, data_fim))
+        print(qs.query)
+
+        return projeto.objects.filter(data_fim__range=(data_inicio, data_fim))
+
+    def get_context_data(self, **kwargs):
+        """Adiciona os filtros ao contexto"""
+        context = super().get_context_data(**kwargs)
+        context["ano_atual"], context["semestre_atual"] = get_semestre_atual()
+        context["ano_selecionado"] = self.request.GET.get("ano", context["ano_atual"])
+        context["semestre_selecionado"] = self.request.GET.get("semestre", context["semestre_atual"])
+        print(context)
+        return context
+
+##########################
+# CONTRAPARTIDA PESQUISA #
+##########################
+
+class contrapartida_pesquisa_menu(SingleTableView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_pesquisa"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para ver contrapartida")
+
+    model = contrapartida_pesquisa
+    table_class = contrapartida_pesquisa_table
+    template_name_suffix = '_menu'
+    table_pagination = {"per_page": 10}
+    template_name = 'contrapartida/contrapartida_pesquisa_menu.html'
+
+class contrapartida_pesquisa_create(CreateView):
+    model = contrapartida_pesquisa
+    fields = ['projeto', 'nome', 'referencia', 'horas_alocadas']
+    template_name = 'contrapartida/contrapartida_pesquisa_form.html'
+    success_url = reverse_lazy('contrapartida:contrapartida_pesquisa_menu')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Pegando todos os projetos disponíveis
+        context['projetos'] = projeto.objects.all()
+
+        # Pegando apenas os nomes das pessoas que possuem salários registrados
+        pessoas_com_salario = (
+            salario.objects.filter(id_pessoa__isnull=False)
+            .values_list('id_pessoa__nome', flat=True)
+            .distinct()
+        )
+        context['pessoas'] = list(pessoas_com_salario)  # Convertendo para lista para facilitar no template
+
+        # Obtendo a pessoa selecionada
+        pessoa_id = self.request.GET.get('pessoa')
+        referencia_id = self.request.GET.get('referencia')
+
+        if pessoa_id:
+            # Filtrando os salários pela pessoa e pela referência
+            salarios = salario.objects.filter(id_pessoa_id=pessoa_id).exclude(valor__isnull=True, horas__isnull=True)
+            
+            if referencia_id:
+                salarios = salarios.filter(id=referencia_id)  # Filtra pela referência também
+
+            context['salarios'] = salarios
+
+            if salarios.exists():
+                pessoa_nome = salarios.first().id_pessoa.nome
+                context['pessoa_nome'] = pessoa_nome
+            else:
+                context['pessoa_nome'] = "Pessoa não encontrada"
+
+        else:
+            context['salarios'] = []
+            context['pessoa_nome'] = None
+
+        return context
+
+
+class contrapartida_pesquisa_update(UpdateView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.update_contrapartida_pesquisa"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para atualizar contrapartida_pesquisas")
+   
+    model = contrapartida_pesquisa
+    fields = ['valor','horas']
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_pesquisa_menu')   
+
+class contrapartida_pesquisa_delete(DeleteView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.delete_contrapartida_pesquisa"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para excluir contrapartida_pesquisas")
+
+    model = contrapartida_pesquisa
+    fields = []
+    template_name_suffix = '_delete'
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_pesquisa_menu')
+       
+    
