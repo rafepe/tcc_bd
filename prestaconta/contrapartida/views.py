@@ -78,11 +78,12 @@ class projeto_menu(SingleTableView):
     table_class = projeto_table
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
-    template_name = 'contrapartida/projeto_menu.html'
+    template_name = 'projeto_menu.html'
 
 class projeto_create(CreateView):
     model = projeto
-    fields = ['nome','data_inicio', 'data_fim', 'valor','contrapartida_prometida']
+    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'tx_administrativa', 'contrapartida_prometida', 'ativo']
+
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_projeto"):
@@ -133,7 +134,7 @@ class equipamento_menu(SingleTableView):
     table_class = equipamento_table
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
-    template_name = 'contrapartida/equipamento_menu.html'
+    template_name = 'equipamento_menu.html'
 
 class equipamento_create(CreateView):
     model = equipamento
@@ -188,7 +189,7 @@ class pessoa_menu(SingleTableView):
     table_class = pessoa_table
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
-    template_name = 'contrapartida/pessoa_menu.html'
+    template_name = 'pessoa_menu.html'
 
 class pessoa_create(CreateView):
     model = pessoa
@@ -245,7 +246,7 @@ class salario_menu(SingleTableView):
     table_class = salario_table
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
-    template_name = 'contrapartida/salario_menu.html'
+    template_name = 'salario_menu.html'
 
 class salario_create(CreateView):
     model = salario
@@ -312,7 +313,7 @@ def get_semestre_atual():
 
 class projetos_semestre(ListView):
     model = projeto
-    template_name = "contrapartida/projetos_semestre.html"
+    template_name = "projetos_semestre.html"
     context_object_name = "projetos"
 
     def get_queryset(self):
@@ -367,12 +368,12 @@ class contrapartida_pesquisa_menu(SingleTableView):
     table_class = contrapartida_pesquisa_table
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
-    template_name = 'contrapartida/contrapartida_pesquisa_menu.html'
+    template_name = 'contrapartida_pesquisa_menu.html'
 
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
     fields = ['projeto', 'nome', 'referencia', 'horas_alocadas']
-    template_name = 'contrapartida/contrapartida_pesquisa_form.html'
+    template_name = 'contrapartida_pesquisa_form.html'
     success_url = reverse_lazy('contrapartida:contrapartida_pesquisa_menu')
 
     def get_context_data(self, **kwargs):

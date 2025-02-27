@@ -2,13 +2,21 @@ from django.core.exceptions import ValidationError
 from django.db import models
 import re
 from django.db.models import F, ExpressionWrapper, FloatField
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+
+
 
 class projeto(models.Model):
     nome = models.CharField(max_length=255)
+    peia = models.CharField(max_length=255, verbose_name="PEIA")
     data_inicio = models.DateField(verbose_name="Data início")
     data_fim = models.DateField(verbose_name="Data fim")
-    valor = models.FloatField(verbose_name="Valor total")
+    valor_total = models.FloatField(verbose_name="Valor total")
+    valor_financiado = models.FloatField(verbose_name="Valor financiado")
+    tx_administrativa = models.FloatField(verbose_name="Taxa FUNAPE")
     contrapartida_prometida = models.FloatField(default=0)
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
 
     def __str__(self):
         return self.nome
@@ -22,6 +30,7 @@ class equipamento(models.Model):
     quantidade_nos = models.IntegerField(default=1, verbose_name="Quantidade de Nós")
     cvc = models.FloatField(default=0, verbose_name="CVC - Custo de Verificação e Calibração")
     cma = models.FloatField(default=0, verbose_name="CMA - Custo de Manutenção Anual")
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
     
     def __str__(self):
         return self.nome
@@ -45,21 +54,26 @@ def validar_mes_ano(value):
         raise ValidationError('Formato inválido. Use MM/YYYY.')
 
 class salario(models.Model):
-    id_pessoa = models.ForeignKey(pessoa, on_delete=models.CASCADE, db_column='id_pessoa', verbose_name='Pessoa')
-    referencia = models.CharField(
-        max_length=7,  # Formato MM/YYYY
-        verbose_name="Mês de referência"
+    id_pessoa = models.ForeignKey(
+        pessoa, on_delete=models.CASCADE, db_column='id_pessoa', verbose_name='Pessoa'
+    )
+    mes = models.IntegerField(
+        verbose_name="Mês de referência",
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    ano = models.IntegerField(
+        verbose_name="Ano de referência",
+        validators=[MinValueValidator(2000), MaxValueValidator(2200)]
     )
     valor = models.FloatField(blank=True, null=True)
     horas = models.IntegerField(default=160, null=False)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['id', 'referencia'], name='unique_pessoa_referencia')
+            models.UniqueConstraint(fields=['id_pessoa', 'mes', 'ano'], name='unique_pessoa_referencia')
         ]
         ordering = ['id_pessoa']
 
-from django.db import models
 
 class contrapartida_pesquisa(models.Model):
     projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
