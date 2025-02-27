@@ -1,21 +1,15 @@
-# Diretório do ambiente virtual
 venv/
 .env
-
-# Arquivos de cache do Python
 __pycache__/
 *.py[cod]
 
-# Banco de dados SQLite
 *.sqlite3
 db.sqlite3
 
-# Arquivos de migração não essenciais
 */migrations/*.pyc
 */migrations/*.pyo
 */migrations/__pycache__/
 
-# Arquivos de logs e temporários
 logs/
 *.log
 *.out
@@ -23,9 +17,7 @@ logs/
 *.swp
 *.swo
 
-# Configurações do VSCode (se estiver usando)
 .vscode/
 
-# Dependências do sistema
 .DS_Store
 Thumbs.db
