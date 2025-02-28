@@ -4,34 +4,30 @@
 {% bootstrap_javascript %}
 {% bootstrap_messages %}
 
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="pt-br">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Prestação de Conta e Contrapartida</title>
 </head>
 
-<body>
-    <form method="POST" action="{% url 'index' %}">
+<body class="d-flex align-items-center justify-content-center vh-100 bg-light">
+
+    <form method="POST" action="{% url 'index' %}" class="p-4 border rounded shadow bg-white text-center" style="max-width: 350px; width: 100%;">
         {% csrf_token %}
-        <center>
-            <p style="width:300px;">Prestação de Conta e Contrapartida</p>
-            <div style="border-style: ridge; border-radius: 10px; width: 300px;">
-                <br>
-                <p>
-                    <input type="text" name="username" class="border-top-0" placeholder="Usuário"
-                        style="width:250px;">
-                </p>
-                <p>
-                    <input type="password" name="password" class="border-top-0" placeholder="Senha"
-                        style="width:250px;">
-                </p>
-                <p>
-                    <input type="submit" value="Acessar" class="btn btn-info">
-                </p>
-            </div>
-        </center>
+        <h4 class="mb-4 text-primary">Prestação de Conta e Contrapartida</h4>
+
+        <div class="mb-3">
+            <input type="text" name="username" class="form-control" placeholder="Usuário" required>
+        </div>
+        <div class="mb-3">
+            <input type="password" name="password" class="form-control" placeholder="Senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Acessar</button>
     </form>
+
 </body>
 
 </html>
