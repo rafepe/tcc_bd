@@ -16,5 +16,4 @@
 !/.gitignore
 !docker-compose.yml
 !requirements.txt
-
 !prestaconta\contrapartida\templates\index.html
