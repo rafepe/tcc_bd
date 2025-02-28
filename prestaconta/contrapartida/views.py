@@ -10,6 +10,24 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
 import io
 
+
+from django.contrib.auth import authenticate, login, logout
+def index(request):
+    usuario = request.POST.get('username')
+    senha = request.POST.get('password')
+    user = authenticate(username=usuario, password=senha)
+    if (user is not None):
+        login(request, user)
+        request.session['username'] = usuario
+        request.session['password'] = senha
+        request.session['usernamefull'] = user.get_full_name()
+
+        from django.shortcuts import redirect
+        return redirect('procedimento_menu')
+    else:       
+        return render(request, 'index.html')
+
+
 def importar_csv(request):
     if request.method == 'POST' and request.FILES['csv_file']:
         model_choice = request.POST.get('model_choice')  # Pegando a escolha do modelo
