@@ -1,11 +1,13 @@
 # Usando a imagem do Python slim
 FROM python:3.10-slim
 
-# Instalar pacotes necessários para configurar a localidade
+# Instalar pacotes necessários para configurar a localidade e o idioma
 RUN apt-get update && \
-    apt-get install -y locales && \
-    locale-gen pt_BR.UTF-8 && \
-    update-locale LANG=pt_BR.UTF-8
+    apt-get install -y --no-install-recommends \
+    locales \
+    && locale-gen pt_BR.UTF-8 \
+    && update-locale LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Definir as variáveis de ambiente de localidade
 ENV LANG=pt_BR.UTF-8
