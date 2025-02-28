@@ -9,7 +9,9 @@ from .views import *
 favicon_view = RedirectView.as_view(url='/static/favicon.ico', permanent=True)
 
 urlpatterns = [
+    path('', views.index, name='index'),
     path('favicon.ico', favicon_view),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('importar_csv/', views.importar_csv, name='importar_csv'),
 
