@@ -2,18 +2,18 @@
 *
 
 # Exceto arquivos e diretórios específicos
-!.github
-!prestaconta\contrapartida\templates
-!prestaconta\contrapartida\admin.py
-!prestaconta\contrapartida\models.py
-!prestaconta\contrapartida\tables.py
-!prestaconta\contrapartida\urls.py
-!prestaconta\contrapartida\views.py
-!prestaconta\prestaconta\settings.py
-!prestaconta\static
-!prestaconta\templates
+!.github/
+!prestaconta/contrapartida/templates/
+!prestaconta/contrapartida/admin.py
+!prestaconta/contrapartida/models.py
+!prestaconta/contrapartida/tables.py
+!prestaconta/contrapartida/urls.py
+!prestaconta/contrapartida/views.py
+!prestaconta/prestaconta/settings.py
+!prestaconta/static/
+!prestaconta/templates/
 !Dockerfile
 !/.gitignore
 !docker-compose.yml
 !requirements.txt
-!prestaconta\contrapartida\templates\index.html
+!prestaconta/contrapartida/templates/index.html
