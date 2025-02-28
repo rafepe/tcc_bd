@@ -23,4 +23,4 @@ COPY . .
 EXPOSE 8080
 
 # Comando para iniciar a aplicação
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8080"]
+CMD ["python", "prestaconta/manage.py", "runserver", "0.0.0.0:8080"]
