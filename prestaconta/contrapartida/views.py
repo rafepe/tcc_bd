@@ -7,6 +7,8 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.contrib import messages
+from django.shortcuts import redirect
 import csv
 import io
 
@@ -90,7 +92,8 @@ class projeto_menu(SingleTableView):
         if request.user.has_perm("contrapartida.view_projeto"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para ver projetos")
+            messages.error(request, "Você não tem permissão para ver projetos.")
+            return redirect(request.META.get("HTTP_REFERER", "index"))  
 
     model = projeto
     table_class = projeto_table
