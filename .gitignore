@@ -2,7 +2,6 @@
 *
 
 # Exceto arquivos e diretórios específicos
-!/.gitignore
 !.github
 !prestaconta\contrapartida\templates
 !prestaconta\contrapartida\admin.py
@@ -10,7 +9,10 @@
 !prestaconta\contrapartida\tables.py
 !prestaconta\contrapartida\urls.py
 !prestaconta\contrapartida\views.py
+!prestaconta\prestaconta\settings.py
+!prestaconta\static
 !prestaconta\templates
 !prestaconta\Dockerfile
+!/.gitignore
 !docker-compose.yml
 !requirements.txt
