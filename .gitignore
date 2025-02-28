@@ -12,7 +12,7 @@
 !prestaconta\prestaconta\settings.py
 !prestaconta\static
 !prestaconta\templates
-!prestaconta\Dockerfile
+!Dockerfile
 !/.gitignore
 !docker-compose.yml
 !requirements.txt
