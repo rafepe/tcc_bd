@@ -23,7 +23,7 @@ def index(request):
         request.session['usernamefull'] = user.get_full_name()
 
         from django.shortcuts import redirect
-        return redirect('procedimento_menu')
+        return redirect('projeto_menu')
     else:       
         return render(request, 'index.html')
 
