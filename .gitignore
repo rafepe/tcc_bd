@@ -1,23 +1,16 @@
-venv/
-.env
-__pycache__/
-*.py[cod]
+# Ignora tudo
+*
 
-*.sqlite3
-db.sqlite3
-
-*/migrations/*.pyc
-*/migrations/*.pyo
-*/migrations/__pycache__/
-
-logs/
-*.log
-*.out
-*.pid
-*.swp
-*.swo
-
-.vscode/
-
-.DS_Store
-Thumbs.db
+# Exceto arquivos e diretórios específicos
+!/.gitignore
+!.github
+!prestaconta\contrapartida\templates
+!prestaconta\contrapartida\admin.py
+!prestaconta\contrapartida\models.py
+!prestaconta\contrapartida\tables.py
+!prestaconta\contrapartida\urls.py
+!prestaconta\contrapartida\views.py
+!prestaconta\templates
+!prestaconta\Dockerfile
+!docker-compose.yml
+!requirements.txt
