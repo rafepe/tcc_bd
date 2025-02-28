@@ -6,17 +6,20 @@
 {% bootstrap_messages %}
 {% block titulo %}Import CSV{% endblock %}
 {% block corpo %}
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
-    <label for="model_choice">Escolha o modelo para importar:</label>
-    <select name="model_choice" id="model_choice">
-        <option value="pessoa">Pessoa</option>
-        <option value="projeto">Projeto</option>
-        <option value="equipamento">Equipamento</option>
-        <option value="salario">Salário</option>
-    </select>
-    
-    <input type="file" name="csv_file" />
-    <button type="submit">Importar CSV</button>
-</form>
+<center>
+    <br>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="model_choice">Escolha o modelo para importar:</label>
+        <select name="model_choice" id="model_choice">
+            <option value="pessoa">Pessoa</option>
+            <option value="projeto">Projeto</option>
+            <option value="equipamento">Equipamento</option>
+            <option value="salario">Salário</option>
+        </select>
+
+        <input type="file" name="csv_file" />
+        <button type="submit">Importar CSV</button>
+    </form>
+</center>
 {% endblock %}
