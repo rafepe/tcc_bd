@@ -24,9 +24,7 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         
         touch .env
-        echo "GROQ_API_KEY=$GROQ_API_KEY" > .env
-        echo "API_TOKEN=$API_TOKEN" > .env
-        rsync -avz --rsync-path="sudo rsync" -e 'ssh -o StrictHostKeyChecking=no' ./ $SSH_USER@$SSH_HOST:/home/ubuntu/tcc_bd/tcc_bd
+        rsync -avz --rsync-path="sudo rsync" -e 'ssh -o StrictHostKeyChecking=no' ./ $SSH_USER@$SSH_HOST:/home/ubuntu/tcc_bd/
 
     - name: Deploy Application
       env:
