@@ -1,7 +1,7 @@
 # Usando a imagem do Python slim
 FROM python:3.10-slim
 # Define o diretório de trabalho
-WORKDIR /app
+WORKDIR /tcc_bd
 # Copia os requisitos e instala as dependências
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
