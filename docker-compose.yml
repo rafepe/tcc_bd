@@ -1,0 +1,8 @@
+services:
+  tcc_bd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tcc_bd
+    ports:
+      - "8000:8000"
