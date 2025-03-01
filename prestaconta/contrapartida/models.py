@@ -8,16 +8,18 @@ from django.db import models
 
 
 class projeto(models.Model):
+    id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     peia = models.CharField(max_length=255, verbose_name="PEIA")
     data_inicio = models.DateField(verbose_name="Data início")
     data_fim = models.DateField(verbose_name="Data fim")
     valor_total = models.FloatField(verbose_name="Valor total")
     valor_financiado = models.FloatField(verbose_name="Valor financiado")
-    tx_administrativa = models.FloatField(verbose_name="Taxa FUNAPE")
-    contrapartida_prometida = models.FloatField(default=0)
+    valor_so_ptr = models.FloatField(verbose_name="Valor SO Plano de Trabalho")    
+    valor_funape = models.FloatField(verbose_name="Valor Funape")   
+    tx_adm_ue = models.DecimalField(max_digits=5, decimal_places=2, default=15.00, verbose_name="Tx Admin. Unidade Embrapii")
+    contrapartida = models.FloatField(default=0)
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
-
     def __str__(self):
         return self.nome
  

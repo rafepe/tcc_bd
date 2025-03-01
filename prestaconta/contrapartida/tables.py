@@ -13,7 +13,7 @@ class projeto_table(tables.Table):
     nome = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
-    valor = tables.LinkColumn("projeto_update", args=[A("pk")])
+    valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
@@ -42,7 +42,6 @@ class projeto_table(tables.Table):
             formatted_value = locale.currency(value, grouping=True)
             return format_html('<span>{}</span>', formatted_value)
         return '-'
-
 
     def render_excluir(self, record):
         url = reverse("projeto_delete", args=[record.pk])
@@ -125,7 +124,6 @@ class salario_table(tables.Table):
     def render_excluir(self, record):
         url = reverse("salario_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
-    
 
 class contrapartida_pesquisa_table(tables.Table):
     projeto = tables.Column()
