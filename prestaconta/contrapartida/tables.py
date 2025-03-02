@@ -1,4 +1,4 @@
-from .models import projeto, equipamento, pessoa, salario, contrapartida_pesquisa
+from .models import *
 from django_tables2.utils import A
 from django.db.models import Func, IntegerField, F
 from django.urls import reverse
@@ -6,6 +6,7 @@ from django.utils.dateformat import DateFormat
 from django.utils.html import format_html
 import django_tables2 as tables
 import locale
+from django.utils.html import format_html
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
@@ -105,20 +106,29 @@ class pessoa_table(tables.Table):
         url = reverse("pessoa_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
+
 class salario_table(tables.Table):
     pessoa = tables.LinkColumn("salario_update", args=[A("pk")], accessor='id_pessoa.nome', verbose_name="Pessoa")
     ano = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Ano de Referência")
     mes = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
+    valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
     excluir = tables.TemplateColumn("<a href='{% url 'salario_delete' record.id %}'>Excluir</a>", verbose_name="Excluir")
 
     class Meta:
         model = salario
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('pessoa', 'ano', 'mes', 'valor', 'horas', 'excluir')
+        fields = ('pessoa', 'ano', 'mes', 'valor', 'horas', 'valor_hora','excluir')
 
+    def render_valor_hora(self, record):
+        print(f"Calculando valor_hora para: {record}")  # Verificar se a função é chamada
+
+        if record.valor and record.horas and record.horas != 0:
+            return round(record.valor / record.horas, 2)
+        return "N/A"
+    
     def render_valor(self, value):
         if value is not None:
             formatted_value = locale.currency(value, grouping=True)
@@ -129,15 +139,18 @@ class salario_table(tables.Table):
         url = reverse("salario_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
+
+
+
 class contrapartida_pesquisa_table(tables.Table):
-    projeto = tables.Column()
-    nome = tables.Column(verbose_name='Pesquisador')
-    referencia = tables.Column()
-    valor_hora = tables.Column()
+    id_projeto = tables.Column()
+    id_salario = tables.Column()
     horas_alocadas = tables.Column()
+
 
     class Meta:
         model = contrapartida_pesquisa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('projeto','nome','referencia','valor_hora','horas_alocadas')
+        fields = ('id_projeto', 'id_salario', 'horas_alocadas')
+

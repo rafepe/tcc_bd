@@ -12,7 +12,9 @@ from django.utils.timezone import now
 from django.views.generic import ListView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
+from django.http import JsonResponse
 import io
+
     
 from django.contrib import messages
 
@@ -301,9 +303,12 @@ class salario_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'salario_menu.html'
 
+
+   
+
 class salario_create(CreateView):
     model = salario
-    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas']
+    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_salario"):
@@ -334,7 +339,7 @@ class salario_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar salarios")
    
     model = salario
-    fields = ['id_pessoa','ano', 'mes','valor', 'horas']
+    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
 
     def get_success_url(self):
         return reverse_lazy('salario_menu')   
@@ -423,52 +428,38 @@ class contrapartida_pesquisa_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida_pesquisa_menu.html'
 
+
+
+
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
-    fields = ['projeto', 'nome', 'referencia', 'horas_alocadas']
-    template_name = 'contrapartida_pesquisa_form.html'
-    success_url = reverse_lazy('contrapartida:contrapartida_pesquisa_menu')
+    fields = ['id_projeto', 'id_salario', 'horas_alocadas']
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Pegando todos os projetos disponíveis
-        context['projetos'] = projeto.objects.all()
-
-        # Pegando apenas os nomes das pessoas que possuem salários registrados
-        pessoas_com_salario = (
-            salario.objects.filter(id_pessoa__isnull=False)
-            .values_list('id_pessoa__nome', flat=True)
-            .distinct()
-        )
-        context['pessoas'] = list(pessoas_com_salario)  # Convertendo para lista para facilitar no template
-
-        # Obtendo a pessoa selecionada
-        pessoa_id = self.request.GET.get('pessoa')
-        referencia_id = self.request.GET.get('referencia')
-
-        if pessoa_id:
-            # Filtrando os salários pela pessoa e pela referência
-            salarios = salario.objects.filter(id_pessoa_id=pessoa_id).exclude(valor__isnull=True, horas__isnull=True)
-            
-            if referencia_id:
-                salarios = salarios.filter(id=referencia_id)  # Filtra pela referência também
-
-            context['salarios'] = salarios
-
-            if salarios.exists():
-                pessoa_nome = salarios.first().id_pessoa.nome
-                context['pessoa_nome'] = pessoa_nome
-            else:
-                context['pessoa_nome'] = "Pessoa não encontrada"
-
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.create_contrapartida_pesquisa"):
+            return super().dispatch(request, *args, **kwargs)
         else:
-            context['salarios'] = []
-            context['pessoa_nome'] = None
+            return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
 
-        return context
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except IntegrityError:
+            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
 
 
+    def form_invalid(self, form):
+        errors = form.errors.as_text()  # Converte os erros para texto
+        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_pesquisa_menu')
+
+
+
+
+'''
 class contrapartida_pesquisa_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_contrapartida_pesquisa"):
@@ -477,7 +468,7 @@ class contrapartida_pesquisa_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida_pesquisas")
    
     model = contrapartida_pesquisa
-    fields = ['valor','horas']
+    fields = ['id_projeto', 'id_pessoa', 'salario_ano', 'salario_mes', 'horas_alocadas']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')   
@@ -493,6 +484,6 @@ class contrapartida_pesquisa_delete(DeleteView):
     fields = []
     template_name_suffix = '_delete'
     def get_success_url(self):
-        return reverse_lazy('contrapartida_pesquisa_menu')
-       
+        return reverse_lazy('contrapartida_pesquisa_menu')     
     
+'''
