@@ -11,6 +11,7 @@ locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
 class projeto_table(tables.Table):
     nome = tables.LinkColumn("projeto_update", args=[A("pk")])
+    peia = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
     valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
@@ -20,7 +21,8 @@ class projeto_table(tables.Table):
         model = projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('nome','data_inicio', 'data_fim', 'valor_total')
+        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
+        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
@@ -36,7 +38,7 @@ class projeto_table(tables.Table):
             return format_html('<span>{}</span>', formatted_date)
         return '-'
 
-    def render_valor(self, value):
+    def render_valor_total(self, value):
         # Formatar o valor como moeda
         if value is not None:
             formatted_value = locale.currency(value, grouping=True)

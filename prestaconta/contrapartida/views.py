@@ -2,18 +2,18 @@ from .models import *
 from .tables import *
 from datetime import datetime
 from django_tables2 import SingleTableView
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils.timezone import now
+from django.views.generic import ListView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.contrib import messages
-from django.shortcuts import redirect
 import csv
 import io
 
-
-from django.contrib.auth import authenticate, login, logout
 def index(request):
     usuario = request.POST.get('username')
     senha = request.POST.get('password')
@@ -24,10 +24,13 @@ def index(request):
         request.session['password'] = senha
         request.session['usernamefull'] = user.get_full_name()
 
-        from django.shortcuts import redirect
         return redirect('projeto_menu')
     else:       
         return render(request, 'index.html')
+
+def meu_logout(request):
+    logout(request)
+    return redirect('logout')
 
 
 def importar_csv(request):
@@ -93,7 +96,7 @@ class projeto_menu(SingleTableView):
             return super().dispatch(request, *args, **kwargs)
         else:
             messages.error(request, "Você não tem permissão para ver projetos.")
-            return redirect(request.META.get("index"))  
+            return redirect('logout')
 
     model = projeto
     table_class = projeto_table
@@ -101,11 +104,6 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
-from django.http import HttpResponse
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
-from .models import projeto
-from django.contrib import messages
 
 class projeto_create(CreateView):
     model = projeto
@@ -140,10 +138,11 @@ class projeto_update(UpdateView):
         if request.user.has_perm("contrapartida.update_projeto"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para atualizar projetos")
+            messages.error(self.request, "Usuário sem permissão para atualizar projetos.")
+            return redirect('projeto_menu')
    
     model = projeto
-    fields = ['nome','data_inicio', 'data_fim', 'valor','contrapartida_prometida']
+    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'valor_so_ptr', 'valor_funape', 'tx_adm_ue', 'contrapartida', 'ativo']
     def get_success_url(self):
         return reverse_lazy('projeto_menu')   
 
@@ -152,7 +151,8 @@ class projeto_delete(DeleteView):
         if request.user.has_perm("contrapartida.delete_projeto"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para excluir projetos")
+            messages.error(self.request, "Usuário sem permissão para excluir projetos.")
+            return redirect('projeto_menu')
 
     model = projeto
     fields = ['nome','data_inicio', 'data_fim', 'valor']
@@ -169,7 +169,8 @@ class equipamento_menu(SingleTableView):
         if request.user.has_perm("contrapartida.view_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para ver equipamentos")
+            messages.error(self.request, "Usuário sem permissão para ver equipamentos.")
+            return redirect('projeto_menu')
 
     model = equipamento
     table_class = equipamento_table
@@ -185,7 +186,8 @@ class equipamento_create(CreateView):
         if request.user.has_perm("contrapartida.create_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para criar equipamentos")
+            messages.error(self.request, "Usuário sem permissão para criar equipamentos.")
+            return redirect('equipamento_menu')
 
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')
@@ -195,7 +197,8 @@ class equipamento_update(UpdateView):
         if request.user.has_perm("contrapartida.update_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para atualizar equipamentos")
+            messages.error(self.request, "Usuário sem permissão para atualizar equipamentos.")
+            return redirect('equipamento_menu')
    
     model = equipamento
     fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
@@ -207,7 +210,8 @@ class equipamento_delete(DeleteView):
         if request.user.has_perm("contrapartida.delete_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para excluir equipamentos")
+            messages.error(self.request, "Usuário sem permissão para excluir equipamentos.")
+            return redirect('equipamento_menu')
 
     model = equipamento
     fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
@@ -240,7 +244,8 @@ class pessoa_create(CreateView):
         if request.user.has_perm("contrapartida.create_pessoa"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para criar pessoas")
+            messages.error(self.request, "Usuário sem permissão para criar pessoas.")
+            return redirect('pessoa_menu')
 
     def get_success_url(self):
         return reverse_lazy('pessoa_menu')
@@ -250,7 +255,8 @@ class pessoa_update(UpdateView):
         if request.user.has_perm("contrapartida.update_pessoa"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para atualizar pessoas")
+            messages.error(self.request, "Usuário sem permissão para atualizar pessoas.")
+            return redirect('pessoa_menu')
    
     model = pessoa
     fields = ['nome', 'ativo']
@@ -262,7 +268,8 @@ class pessoa_delete(DeleteView):
         if request.user.has_perm("contrapartida.delete_pessoa"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para excluir pessoas")
+            messages.error(self.request, "Usuário sem permissão para excluir pessoas.")
+            return redirect('pessoa_menu')
 
     model = pessoa
     fields = ['nome', 'ativo']
@@ -281,7 +288,8 @@ class salario_menu(SingleTableView):
         if request.user.has_perm("contrapartida.view_salario"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para ver salários")
+            messages.error(self.request, "Usuário sem permissão para ver salários.")
+            return redirect('projeto_menu')
 
     model = salario
     table_class = salario_table
@@ -338,12 +346,6 @@ class salario_delete(DeleteView):
 #######################
 # PROJETOS SEMESTRAIS #
 #######################
-
-from django.views.generic import ListView
-from django.utils.timezone import now
-from django.shortcuts import render
-from datetime import datetime
-from .models import projeto
 
 def get_semestre_atual():
     """Retorna o ano e o semestre atual"""
