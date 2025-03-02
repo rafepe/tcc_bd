@@ -103,8 +103,9 @@ class projeto_menu(SingleTableView):
 
 class projeto_create(CreateView):
     model = projeto
-    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'tx_administrativa', 'contrapartida_prometida', 'ativo']
-
+    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 
+              'valor_financiado', 'valor_so_ptr', 'valor_funape',
+              'tx_adm_ue', 'contrapartida', 'ativo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_projeto"):

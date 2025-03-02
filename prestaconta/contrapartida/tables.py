@@ -20,7 +20,7 @@ class projeto_table(tables.Table):
         model = projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('nome','data_inicio', 'data_fim', 'valor')
+        fields = ('nome','data_inicio', 'data_fim', 'valor_total')
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
