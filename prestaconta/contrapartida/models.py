@@ -5,8 +5,6 @@ from django.db.models import F, ExpressionWrapper, FloatField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
-
-
 class projeto(models.Model):
     id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)

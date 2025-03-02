@@ -6,71 +6,73 @@
 {% bootstrap_messages %}
 <!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Cadastro de Projetos</title>
-</head>
-{% block corpo %}
-
-<body>
-    <div class="container">
+  </head>
+  {% block corpo %}
+    <body>
+      <div class="container">
         <div class="text-center">
-            <form method="POST" enctype="multipart/form-data" class="form">
-                {% csrf_token %}
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.nome placeholder='Digite aqui o
-                        Nome' %}</div>
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.peia placeholder='Digite aqui o
-                        PEIA' %}</div>
-                </div>
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6 col-xs-12">
-                        <label for="id_data_inicio" class="form-label">Data de Início</label>
-                        <input type="date" id="id_data_inicio" name="data_inicio" class="form-control"
-                            value="{{ form.data_inicio.value|date:'Y-m-d' }}">
-                    </div>
-                    <div class="col-md-4 col-sm-6 col-xs-12">
-                        <label for="id_data_fim" class="form-label">Data de Fim</label>
-                        <input type="date" id="id_data_fim" name="data_fim" class="form-control" required
-                            value="{{ form.data_fim.value|date:'Y-m-d' }}">
-                    </div>
-                </div>
-                <br>
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6 col-xs-12">
-                        {% bootstrap_field form.valor_total placeholder='Digite o valor total' %}
-                    </div>
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.valor_so_ptr placeholder='' %}
-                    </div>
-                </div>
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.valor_funape placeholder='' %}
-                    </div>
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.tx_adm_ue placeholder='' %}</div>
-                </div>
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6 col-xs-12">{% bootstrap_field form.contrapartida placeholder='' %}
-                    </div>
-                    <div class="col-md-4 col-sm-6 col-xs-12"></div>
-                </div>
-        </div>
-    </div>
-    <div class="row justify-content-center" style="line-height: 1;">
-        <div class="col-md-1 col-sm-1 col-xs-1">
-            {% bootstrap_field form.ativo placeholder='' %}
-        </div>
-    </div>
+          <form method="POST" enctype="multipart/form-data" class="form">
+            {% csrf_token %}
+            <div class="row justify-content-center" style="line-height: 1;">
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.nome placeholder='Digite aqui o Nome' %}
+              </div>
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.peia placeholder='Digite aqui o PEIA' %}
+              </div>
+            </div>
 
-    <div class="row justify-content-center">
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary mt-3">Salvar</button>
-        </div>
-    </div>
-    </form>
-    </div>
-    </div>
-</body>
+            <div class="row justify-content-center" style="line-height: 1;">
+                <div class="col-md-4 col-sm-6 col-xs-12">
+                  <label for="data_inicio" class="form-label">Data de Início</label>
+                  <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ form.data_inicio.value }}" />
+                </div>
+                <div class="col-md-4 col-sm-6 col-xs-12">
+                  <label for="data_fim" class="form-label">Data de Fim</label>
+                  <input type="date" id="data_fim" name="data_fim" class="form-control" required value="{{ form.data_fim.value }}" />
+                </div>
+              </div>
+              <br>
+           
+            <div class="row justify-content-center" style="line-height: 1;">
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.valor_total placeholder='Digite o valor total' %}
+              </div>
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.valor_so_ptr placeholder='' %}
+              </div>
+            </div>
+            <div class="row justify-content-center" style="line-height: 1;">
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.valor_funape placeholder='' %}
+              </div>
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.tx_adm_ue placeholder='' %}
+              </div>
+            </div>
+            <div class="row justify-content-center" style="line-height: 1;">
+              <div class="col-md-4 col-sm-6 col-xs-12">
+                {% bootstrap_field form.contrapartida placeholder='' %}
+              </div>
+              <div class="col-md-4 col-sm-6 col-xs-12"></div>
+            </div>
+            <div class="row justify-content-center" style="line-height: 1;">
+              <div class="col-md-1 col-sm-1 col-xs-1">
+                {% bootstrap_field form.ativo placeholder='' %}
+              </div>
+            </div>
 
+            <div class="row justify-content-center">
+              <div class="col-auto">
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </body>
+  {% endblock %}
 </html>
-{% endblock %}
