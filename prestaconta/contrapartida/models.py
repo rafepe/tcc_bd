@@ -1,7 +1,4 @@
-from django.core.exceptions import ValidationError
 from django.db import models
-import re
-from django.db.models import F, ExpressionWrapper, FloatField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
@@ -74,7 +71,7 @@ class salario(models.Model):
 
 
     def __str__(self):
-        return f"{self.id_pessoa} - {self.ano}/{self.mes} "
+        return f"{self.id_pessoa} - {self.ano}/{self.mes}"
 
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
