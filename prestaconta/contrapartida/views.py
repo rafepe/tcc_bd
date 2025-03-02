@@ -104,7 +104,6 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
-
 class projeto_create(CreateView):
     model = projeto
     fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'valor_so_ptr', 'valor_funape', 'tx_adm_ue', 'contrapartida', 'ativo']
@@ -131,7 +130,6 @@ class projeto_create(CreateView):
 
     def get_success_url(self):
         return reverse_lazy('projeto_menu')
-
 
 class projeto_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -177,10 +175,11 @@ class equipamento_menu(SingleTableView):
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
     template_name = 'equipamento_menu.html'
+    sequence = ('nome','valor_aquisicao', 'quantidade_nos', 'cvc', 'ativo') 
 
 class equipamento_create(CreateView):
     model = equipamento
-    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
+    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_equipamento"):
@@ -201,7 +200,7 @@ class equipamento_update(UpdateView):
             return redirect('equipamento_menu')
    
     model = equipamento
-    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma']
+    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo']
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')   
 

@@ -60,7 +60,8 @@ class equipamento_table(tables.Table):
         model = equipamento
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('nome','valor_aquisicao', 'quantidade_nos', 'cvc')
+        fields = ('nome','valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo')
+        sequence = ('nome','valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo') 
 
     def render_valor_aquisicao(self, value):
         if value is not None:
