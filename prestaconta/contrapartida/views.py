@@ -304,8 +304,6 @@ class salario_menu(SingleTableView):
     template_name = 'salario_menu.html'
 
 
-   
-
 class salario_create(CreateView):
     model = salario
     fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
@@ -458,8 +456,6 @@ class contrapartida_pesquisa_create(CreateView):
 
 
 
-
-'''
 class contrapartida_pesquisa_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_contrapartida_pesquisa"):
@@ -468,7 +464,7 @@ class contrapartida_pesquisa_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida_pesquisas")
    
     model = contrapartida_pesquisa
-    fields = ['id_projeto', 'id_pessoa', 'salario_ano', 'salario_mes', 'horas_alocadas']
+    fields =  ['id_projeto', 'id_salario', 'horas_alocadas']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')   
@@ -485,5 +481,3 @@ class contrapartida_pesquisa_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
-    
-'''

@@ -114,7 +114,7 @@ class salario_table(tables.Table):
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
-    excluir = tables.TemplateColumn("<a href='{% url 'salario_delete' record.id %}'>Excluir</a>", verbose_name="Excluir")
+    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
         model = salario
@@ -123,11 +123,9 @@ class salario_table(tables.Table):
         fields = ('pessoa', 'ano', 'mes', 'valor', 'horas', 'valor_hora','excluir')
 
     def render_valor_hora(self, record):
-        print(f"Calculando valor_hora para: {record}")  # Verificar se a função é chamada
-
         if record.valor and record.horas and record.horas != 0:
             return round(record.valor / record.horas, 2)
-        return "N/A"
+        return 0
     
     def render_valor(self, value):
         if value is not None:
@@ -141,13 +139,38 @@ class salario_table(tables.Table):
 
 
 
-
 class contrapartida_pesquisa_table(tables.Table):
-    id_projeto = tables.Column()
-    id_salario = tables.Column()
-    horas_alocadas = tables.Column()
+    id_projeto = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Projeto")
+    id_salario = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Salário")
+    horas_alocadas = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Horas Alocadas")
+    valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
+    valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
+    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
 
+    def render_valor_hora(self, record):
+        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
+            value = round(record.id_salario.valor/ record.id_salario.horas, 2)
+            formatted_value = locale.currency(value, grouping=True)
+            return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
+        return 0
+    
+    def render_valor_cp(self, record):
+        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
+            value = round(record.horas_alocadas * record.id_salario.valor/ record.id_salario.horas, 2)
+            formatted_value = locale.currency(value, grouping=True)
+            return format_html('<span>{}</span>', formatted_value) 
+        return 0
+
+
+
+
+
+    def render_excluir(self, record):
+        url = reverse("contrapartida_pesquisa_delete", args=[record.pk])
+        return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
+    
+    
     class Meta:
         model = contrapartida_pesquisa
         attrs = {"class": "table thead-light table-striped table-hover"}
