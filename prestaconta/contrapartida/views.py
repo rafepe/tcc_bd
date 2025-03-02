@@ -13,6 +13,8 @@ from django.views.generic import ListView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
 import io
+    
+from django.contrib import messages
 
 def index(request):
     usuario = request.POST.get('username')
@@ -115,18 +117,15 @@ class projeto_create(CreateView):
             messages.error(self.request, "Usuário sem permissão para criar projetos.")
             return redirect('projeto_menu')
  
-
     def form_valid(self, form):
-        # Se o formulário for válido, salva e exibe a mensagem de sucesso
         response = super().form_valid(form)
         messages.success(self.request, "Projeto criado com sucesso!")
         return response
 
     def form_invalid(self, form):
-        # Se o formulário for inválido, imprime os erros no terminal
-        print(form.errors)  # Exibe os erros no console
-        messages.error(self.request, "Erro ao salvar o projeto. Verifique os campos.")
-        return super().form_invalid(form)
+        print(form.errors)  # Exibe os erros no console do servidor
+        messages.error(self.request, "Erro ao salvar o projeto. Verifique os dados.")
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_success_url(self):
         return reverse_lazy('projeto_menu')
@@ -187,6 +186,12 @@ class equipamento_create(CreateView):
         else:
             messages.error(self.request, "Usuário sem permissão para criar equipamentos.")
             return redirect('equipamento_menu')
+        
+    def form_invalid(self, form):
+        # Se o formulário for inválido, imprime os erros no terminal
+        print(form.errors)  # Exibe os erros no console
+        messages.error(self.request, "Erro ao salvar o projeto. Verifique os campos.")
+        return super().form_invalid(form)        
 
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')
@@ -298,7 +303,7 @@ class salario_menu(SingleTableView):
 
 class salario_create(CreateView):
     model = salario
-    fields = ['id_pessoa', 'referencia', 'valor']
+    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_salario"):
@@ -308,9 +313,15 @@ class salario_create(CreateView):
 
     def form_valid(self, form):
         try:
-            return super().form_valid(form)  # Tenta salvar o salário
+            return super().form_valid(form)
         except IntegrityError:
             return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
+
+
+    def form_invalid(self, form):
+        errors = form.errors.as_text()  # Converte os erros para texto
+        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_success_url(self):
         return reverse_lazy('salario_menu')
@@ -323,7 +334,7 @@ class salario_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar salarios")
    
     model = salario
-    fields = ['id_pessoa','referencia','valor']
+    fields = ['id_pessoa','ano', 'mes','valor', 'horas']
 
     def get_success_url(self):
         return reverse_lazy('salario_menu')   

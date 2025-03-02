@@ -107,7 +107,8 @@ class pessoa_table(tables.Table):
 
 class salario_table(tables.Table):
     pessoa = tables.LinkColumn("salario_update", args=[A("pk")], accessor='id_pessoa.nome', verbose_name="Pessoa")
-    referencia = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
+    ano = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Ano de Referência")
+    mes = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     excluir = tables.TemplateColumn("<a href='{% url 'salario_delete' record.id %}'>Excluir</a>", verbose_name="Excluir")
@@ -116,7 +117,7 @@ class salario_table(tables.Table):
         model = salario
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('pessoa', 'referencia', 'valor', 'horas', 'excluir')
+        fields = ('pessoa', 'ano', 'mes', 'valor', 'horas', 'excluir')
 
     def render_valor(self, value):
         if value is not None:

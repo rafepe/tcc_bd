@@ -18,25 +18,30 @@
             <h1>Cadastrar/Atualizar Salário</h1>
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-4 col-sm-2">
+                        {% bootstrap_field form.id_pessoa placeholder='Valor do salário bruto' %}
+                    </div> 
+                    <div class="col-md-2 col-sm-2">
+                        {% bootstrap_field form.ano placeholder='' %}
+                    </div>
+                    <div class="col-md-2 col-sm-2">
+                        {% bootstrap_field form.mes placeholder='' %}
+                    </div>          
+                </div>
+                
 
                 <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-8 col-sm-12 col-xs-12">
-                        {% bootstrap_field form.id_pessoa placeholder='Digite aqui o Nome' %}
-                    </div>            
+    
+                      <div class="col-md-4 col-sm-4 col-xs-12">
+                        {% bootstrap_field form.valor placeholder='' %}
+                      </div>
+                      <div class="col-md-4 col-sm-4 col-xs-12">
+                        {% bootstrap_field form.horas placeholder='' %}
+                      </div>
                 </div>
 
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-8 col-sm-12 col-xs-12">
-                        {% bootstrap_field form.referencia placeholder='MM/YYYY' %}
-                    </div>           
-                </div>
-
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-8 col-sm-12 col-xs-12">
-                        {% bootstrap_field form.valor placeholder='Valor do salário bruto' %}
-                    </div>           
-                </div>
-
+       
 
 
               
