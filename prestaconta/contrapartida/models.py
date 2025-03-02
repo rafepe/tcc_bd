@@ -18,7 +18,7 @@ class projeto(models.Model):
     valor_so_ptr = models.FloatField(verbose_name="Valor SO Plano de Trabalho")    
     valor_funape = models.FloatField(verbose_name="Valor Funape")   
     tx_adm_ue = models.DecimalField(max_digits=5, decimal_places=2, default=15.00, verbose_name="Tx Admin. Unidade Embrapii")
-    contrapartida = models.FloatField(default=0)
+    contrapartida = models.FloatField(default=0, verbose_name='Contrapartida prometida')
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
     def __str__(self):
         return self.nome
@@ -75,7 +75,6 @@ class salario(models.Model):
             models.UniqueConstraint(fields=['id_pessoa', 'mes', 'ano'], name='unique_pessoa_referencia')
         ]
         ordering = ['id_pessoa']
-
 
 class contrapartida_pesquisa(models.Model):
     projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
