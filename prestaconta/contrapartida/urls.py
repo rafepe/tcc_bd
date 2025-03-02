@@ -39,7 +39,12 @@ urlpatterns = [
 
     path("contrapartida_pesquisa_create/", views.contrapartida_pesquisa_create.as_view(), name='contrapartida_pesquisa_create'),
     path('contrapartida_pesquisa_menu/', views.contrapartida_pesquisa_menu.as_view(), name='contrapartida_pesquisa_menu'),
-    path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
-    path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
+    #path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
+    #path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
 
- ]
+
+    # path('contrapartida_pesquisa_create/', views.contrapartida_pesquisa_create, name='contrapartida_pesquisa_create'),
+    # path('buscar_pessoas/', views.buscar_pessoas, name='buscar_pessoas'),
+    # path('buscar_salarios/', views.buscar_salarios, name='buscar_salarios'),
+]
+

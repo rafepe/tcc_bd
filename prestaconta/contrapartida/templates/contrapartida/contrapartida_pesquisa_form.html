@@ -5,69 +5,46 @@
 {% bootstrap_javascript %}
 {% bootstrap_messages %}
 
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="pt-br">
+
 <head>
-    <title>Cadastro de CP Pesquisa</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Contrapartida Pesquisa</title>
 </head>
 
 {% block corpo %}
 <body>
     <div class="container">
         <div class="text-center">
-            <h1>Cadastro de Contrapartida Pesquisa</h1>
+            <h1>Cadastrar/Atualizar Contrapartida Pesquisa</h1>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.id_projeto placeholder='' %}
+                    </div> 
+                    <div class="col-md-2 col-sm-4">
+                        {% bootstrap_field form.id_salario placeholder='' %}
+                    </div>
+                </div>
+
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.horas_alocadas placeholder='' %}
+                    </div>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                    </div>
+                </div>
+            </form>
         </div>
-
-        <form method="GET">
-            {% csrf_token %}
-            
-            <!-- Seleção do Projeto -->
-            <div class="mb-3">
-                <label for="projeto">Projeto:</label>
-                <select name="projeto" id="projeto" class="form-control">
-                    <option value="">Selecione um projeto</option>
-                    {% for projeto in projetos %}
-                        <option value="{{ projeto.id }}" {% if projeto.id == request.GET.projeto %}selected{% endif %}>{{ projeto.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Seleção da Pessoa -->
-            <div class="mb-3">
-                <label for="pessoa">Pessoa:</label>
-                <select name="pessoa" id="pessoa" class="form-control" onchange="this.form.submit()">
-                    <option value="">Selecione uma pessoa</option>
-                    {% for pessoa in pessoas %}
-                        <option value="{{ pessoa.id }}" {% if pessoa.id == request.GET.pessoa|default:'' %}selected{% endif %}>{{ pessoa }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            {% if salarios %}
-                <!-- Seleção da Referência Salarial -->
-                <div class="mb-3">
-                    <label for="referencia">Referência Salarial:</label>
-                    <select name="referencia" id="referencia" class="form-control">
-                        <option value="">Selecione uma referência</option>
-                        {% for salario in salarios %}
-                            <option value="{{ salario.id }}" {% if salario.id == request.GET.referencia %}selected{% endif %}>{{ salario.referencia }} - R$ {{ salario.valor }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Campo de Horas Alocadas -->
-                <div class="mb-3">
-                    <label for="horas_alocadas">Horas Alocadas:</label>
-                    <input type="number" name="horas_alocadas" id="horas_alocadas" class="form-control" step="0.01" required>
-                </div>
-
-                <!-- Botão de Envio -->
-                <button type="submit" class="btn btn-primary">Criar Contrapartida</button>
-            {% else %}
-                <p class="text-danger">Nenhum salário registrado para a pessoa selecionada.</p>
-            {% endif %}
-        </form>
     </div>
 </body>
-{% endblock %}
 </html>
+{% endblock %}

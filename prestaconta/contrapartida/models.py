@@ -72,17 +72,22 @@ class salario(models.Model):
         ]
         ordering = ['id_pessoa']
 
+
+    def __str__(self):
+        return f"{self.id_pessoa} - {self.ano}/{self.mes} "
+
 class contrapartida_pesquisa(models.Model):
-    projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
-    nome = models.ForeignKey('Pessoa', on_delete=models.CASCADE, verbose_name='Nome')
-    referencia = models.ForeignKey('Salario', on_delete=models.CASCADE, verbose_name='Referência')
-    valor_hora = models.FloatField(verbose_name='Valor Hora')
+    id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
+    id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas')
 
     class Meta:
-        unique_together = ('projeto', 'nome', 'referencia')
-        verbose_name = 'Contrapartida Pesquisa'
-        verbose_name_plural = 'Contrapartidas Pesquisas'
+        unique_together = ('id_projeto', 'id_salario')
+
+    def __str__(self):
+        return f"{self.id_projeto} - {self.id_salario}"
+
+
 
 """
 class contrapartidaSO(models.Model):
@@ -90,7 +95,16 @@ class contrapartidaSO(models.Model):
     valor_financiado = models.FloatField(blank=True, null=True)
     meses = models.IntegerField(blank=True, null=True)
     dao_funape = models.CharField(max_length=50, blank=True, null=True)
-    
+
+    mes_alocacao = models.IntegerField(
+    verbose_name="Mês de alocação",
+    validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+ano_alocacao = models.IntegerField(
+    verbose_name="Ano de alocação",
+    validators=[MinValueValidator(2000), MaxValueValidator(2200)]
+    )
+
     class Meta:
         ordering = ['projeto']
 
