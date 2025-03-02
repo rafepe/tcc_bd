@@ -26,7 +26,6 @@ class projeto(models.Model):
     class Meta:
         ordering = ['data_fim']
 
-
 class equipamento(models.Model):
     nome = models.CharField(max_length=255, verbose_name="Nome do Equipamento")
     valor_aquisicao = models.FloatField(verbose_name="Valor de Aquisição")
@@ -39,7 +38,7 @@ class equipamento(models.Model):
         return self.nome
  
     class Meta:
-        ordering = ['nome']
+        ordering = ['-ativo','nome']
 
 class pessoa(models.Model):
     id = models.AutoField(primary_key=True)
@@ -51,10 +50,6 @@ class pessoa(models.Model):
  
     class Meta:
         ordering = ['-ativo','nome']
-
-def validar_mes_ano(value):
-    if not re.match(r'^(0[1-9]|1[0-2])/\d{4}$', value):
-        raise ValidationError('Formato inválido. Use MM/YYYY.')
 
 class salario(models.Model):
     id_pessoa = models.ForeignKey(
@@ -68,7 +63,7 @@ class salario(models.Model):
         verbose_name="Ano de referência",
         validators=[MinValueValidator(2000), MaxValueValidator(2200)]
     )
-    valor = models.FloatField(blank=True, null=True)
+    valor = models.FloatField(blank=True, null=True, default=0)
     horas = models.IntegerField(default=160, null=False)
 
     class Meta:
