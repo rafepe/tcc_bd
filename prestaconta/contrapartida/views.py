@@ -93,7 +93,7 @@ class projeto_menu(SingleTableView):
             return super().dispatch(request, *args, **kwargs)
         else:
             messages.error(request, "Você não tem permissão para ver projetos.")
-            return redirect(request.META.get("HTTP_REFERER", "index"))  
+            return redirect(request.META.get("index"))  
 
     model = projeto
     table_class = projeto_table
