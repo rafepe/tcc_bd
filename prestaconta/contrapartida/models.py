@@ -5,24 +5,27 @@ from django.db.models import F, ExpressionWrapper, FloatField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+from django.db import models
+
 class projeto(models.Model):
-    id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     peia = models.CharField(max_length=255, verbose_name="PEIA")
     data_inicio = models.DateField(verbose_name="Data início")
     data_fim = models.DateField(verbose_name="Data fim")
-    valor_total = models.FloatField(verbose_name="Valor total")
-    valor_financiado = models.FloatField(verbose_name="Valor financiado")
-    valor_so_ptr = models.FloatField(verbose_name="Valor SO Plano de Trabalho")    
-    valor_funape = models.FloatField(verbose_name="Valor Funape")   
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor total")
+    valor_financiado = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor financiado")
+    valor_so_ptr = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor SO Plano de Trabalho")
+    valor_funape = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Funape")
     tx_adm_ue = models.DecimalField(max_digits=5, decimal_places=2, default=15.00, verbose_name="Tx Admin. Unidade Embrapii")
-    contrapartida = models.FloatField(default=0, verbose_name='Contrapartida prometida')
+    contrapartida = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name='Contrapartida prometida')
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
+
     def __str__(self):
         return self.nome
- 
+
     class Meta:
         ordering = ['data_fim']
+
 
 class equipamento(models.Model):
     nome = models.CharField(max_length=255, verbose_name="Nome do Equipamento")

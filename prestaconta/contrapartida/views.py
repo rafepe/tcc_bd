@@ -101,20 +101,39 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
+from django.http import HttpResponse
+from django.urls import reverse_lazy
+from django.views.generic.edit import CreateView
+from .models import projeto
+from django.contrib import messages
+
 class projeto_create(CreateView):
     model = projeto
-    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 
-              'valor_financiado', 'valor_so_ptr', 'valor_funape',
-              'tx_adm_ue', 'contrapartida', 'ativo']
+    fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'valor_so_ptr', 'valor_funape', 'tx_adm_ue', 'contrapartida', 'ativo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_projeto"):
             return super().dispatch(request, *args, **kwargs)
-        else:
-            return HttpResponse("Sem permissão para criar projetos")
+        else:          
+            messages.error(self.request, "Usuário sem permissão para criar projetos.")
+            return redirect('projeto_menu')
+ 
+
+    def form_valid(self, form):
+        # Se o formulário for válido, salva e exibe a mensagem de sucesso
+        response = super().form_valid(form)
+        messages.success(self.request, "Projeto criado com sucesso!")
+        return response
+
+    def form_invalid(self, form):
+        # Se o formulário for inválido, imprime os erros no terminal
+        print(form.errors)  # Exibe os erros no console
+        messages.error(self.request, "Erro ao salvar o projeto. Verifique os campos.")
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy('projeto_menu')
+
 
 class projeto_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
