@@ -84,7 +84,21 @@ class contrapartida_pesquisa(models.Model):
     def __str__(self):
         return f"{self.id_projeto} - {self.id_salario}"
 
-
+class contrapartida_equipamento(models.Model):
+    id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
+    mes = models.IntegerField(
+        verbose_name="Mês de referência",
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    ano = models.IntegerField(
+        verbose_name="Ano de referência",
+        validators=[MinValueValidator(2000), MaxValueValidator(2200)]
+    )    
+    id_equipamento = models.ForeignKey(equipamento, on_delete=models.CASCADE)
+    horas_alocadas = models.IntegerField(blank=True, null=True)
+    
+    class Meta:
+        ordering = ['-ano','-mes']
 
 """
 class contrapartidaSO(models.Model):
@@ -105,21 +119,7 @@ ano_alocacao = models.IntegerField(
     class Meta:
         ordering = ['projeto']
 
-class contrapartidaEquipamento(models.Model):
-    projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    equipamento = models.ForeignKey(equipamento, on_delete=models.CASCADE)
-    referencia = models.DateField(blank=True, null=True)
-    quantidade_hora = models.FloatField(blank=True, null=True)
-    
-    class Meta:
-        ordering = ['projeto']
 
-class projetoContrapartidaPesquisa(models.Model):
-    contrapartida_pesquisa = models.ForeignKey(contrapartidaPessoa, on_delete=models.CASCADE)
-    projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    referencia_alocacao = models.DateField(blank=True, null=True)
-    referencia_arrecadacao = models.DateField(blank=True, null=True)
- 
-    class Meta:
-        ordering = ['projeto']
+
+
 """
