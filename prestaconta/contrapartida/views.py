@@ -176,7 +176,7 @@ class equipamento_menu(SingleTableView):
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
     template_name = 'equipamento_menu.html'
-    sequence = ('nome','valor_aquisicao', 'quantidade_nos', 'cvc', 'ativo') 
+
 
 class equipamento_create(CreateView):
     model = equipamento
@@ -302,7 +302,6 @@ class salario_menu(SingleTableView):
     template_name_suffix = '_menu'
     table_pagination = {"per_page": 10}
     template_name = 'salario_menu.html'
-
 
 class salario_create(CreateView):
     model = salario
@@ -481,3 +480,78 @@ class contrapartida_pesquisa_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
+
+
+
+##############################
+# CONTRAPARTIDA EQUIPAMETNOS #
+##############################
+
+class contrapartida_equipamento_menu(SingleTableView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_equipamento"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para ver contrapartida")
+
+    model = contrapartida_equipamento
+    table_class = contrapartida_equipamento_table
+    template_name_suffix = '_menu'
+    table_pagination = {"per_page": 10}
+    template_name = 'contrapartida_equipamento_menu.html'
+
+
+
+
+class contrapartida_equipamento_create(CreateView):
+    model = contrapartida_equipamento
+    fields = ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.create_contrapartida_equipamento"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except IntegrityError:
+            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
+
+
+    def form_invalid(self, form):
+        errors = form.errors.as_text()  # Converte os erros para texto
+        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_equipamento_menu')
+
+
+
+class contrapartida_equipamento_update(UpdateView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.update_contrapartida_equipamento"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para atualizar contrapartida_equipamentos")
+   
+    model = contrapartida_equipamento
+    fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_equipamento_menu')   
+
+class contrapartida_equipamento_delete(DeleteView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.delete_contrapartida_equipamento"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para excluir contrapartida_equipamentos")
+
+    model = contrapartida_equipamento
+    fields = []
+    template_name_suffix = '_delete'
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_equipamento_menu')     

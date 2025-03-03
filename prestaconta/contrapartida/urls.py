@@ -42,9 +42,10 @@ urlpatterns = [
     path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
     path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
 
+    path("contrapartida_equipamento_create/", views.contrapartida_equipamento_create.as_view(), name='contrapartida_equipamento_create'),
+    path('contrapartida_equipamento_menu/', views.contrapartida_equipamento_menu.as_view(), name='contrapartida_equipamento_menu'),
+    path("contrapartida_equipamento_update/<int:pk>/", views.contrapartida_equipamento_update.as_view(), name='contrapartida_equipamento_update'),
+    path('contrapartida_equipamento_delete/<int:pk>/', views.contrapartida_equipamento_delete.as_view(), name='contrapartida_equipamento_delete'),
 
-    # path('contrapartida_pesquisa_create/', views.contrapartida_pesquisa_create, name='contrapartida_pesquisa_create'),
-    # path('buscar_pessoas/', views.buscar_pessoas, name='buscar_pessoas'),
-    # path('buscar_salarios/', views.buscar_salarios, name='buscar_salarios'),
 ]
 
