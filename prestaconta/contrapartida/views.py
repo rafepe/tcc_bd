@@ -58,7 +58,7 @@ def importar_csv(request):
         
         elif model_choice == 'projeto':
             for row in csv_reader:
-                id, nome, data_inicio_str, data_fim_str, valor_str = row 
+                id,nome,peia,data_inicio_str,data_fim_str,valor_total,valor_financiado,valor_so_ptr,valor_funape,tx_adm_ue,contrapartida,ativo = row
 
                 try:
                     data_inicio = datetime.strptime(data_inicio_str, "%d/%m/%Y").date()
@@ -69,21 +69,23 @@ def importar_csv(request):
                     data_fim = datetime.strptime(data_fim_str, "%d/%m/%Y").date()
                 except ValueError:
                     return HttpResponse(f"Formato de data inválido: {data_fim_str}", status=400)
-                valor = float(valor_str.replace(",", "."))
-                projeto.objects.create(id=id, nome=nome, data_inicio=data_inicio, data_fim=data_fim, valor=valor)
+                #valor_total = float(valor_total_str.replace(",", "."))
+                projeto.objects.create(id=id, nome=nome, peia=peia,data_inicio=data_inicio, data_fim=data_fim,
+                                        valor_total=valor_total, valor_financiado=valor_financiado, valor_so_ptr=valor_so_ptr,
+                                        valor_funape=valor_funape, tx_adm_ue=tx_adm_ue, contrapartida=contrapartida, ativo=ativo)
             return HttpResponse("Arquivo CSV importado para o modelo Projeto com sucesso!")
         
         elif model_choice == 'equipamento':
             for row in csv_reader:
-                id, nome, valor_aquisicao, quantidade_nos, cvc, cma = row
-                equipamento.objects.create(id=id, nome=nome, valor_aquisicao=valor_aquisicao, quantidade_nos=quantidade_nos, cvc=cvc, cma=cma)
+                id, nome, valor_aquisicao, quantidade_nos, cvc, cma, ativo = row
+                equipamento.objects.create(id=id, nome=nome, valor_aquisicao=valor_aquisicao, quantidade_nos=quantidade_nos, cvc=cvc, cma=cma, ativo=ativo)
             return HttpResponse("Arquivo CSV importado para o modelo Equipamento com sucesso!")
         
         elif model_choice == 'salario':
             for row in csv_reader:
-                id_pessoa, referencia, valor = row
-
-                salario.objects.create(id_pessoa_id=id_pessoa, referencia=referencia, valor=valor)
+                id,id_pessoa, mes, ano, valor, horas, anexo = row
+                salario.objects.create(id=id,id_pessoa_id=id_pessoa,
+                                        mes=mes, ano=ano, valor=valor, horas=horas, anexo=anexo)
 
             return HttpResponse("Arquivo CSV importado para o modelo Salário com sucesso!")
 

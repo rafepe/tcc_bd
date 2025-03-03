@@ -5,6 +5,7 @@ from django.db import models
 from django.db import models
 
 class projeto(models.Model):
+    id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     peia = models.CharField(max_length=255, verbose_name="PEIA")
     data_inicio = models.DateField(verbose_name="Data início")
@@ -24,6 +25,7 @@ class projeto(models.Model):
         ordering = ['data_fim']
 
 class equipamento(models.Model):
+    id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255, verbose_name="Nome do Equipamento")
     valor_aquisicao = models.FloatField(verbose_name="Valor de Aquisição")
     quantidade_nos = models.IntegerField(default=1, verbose_name="Quantidade de Nós")
@@ -49,6 +51,7 @@ class pessoa(models.Model):
         ordering = ['-ativo','nome']
 
 class salario(models.Model):
+    id = models.AutoField(primary_key=True)
     id_pessoa = models.ForeignKey(
         pessoa, on_delete=models.CASCADE, db_column='id_pessoa', verbose_name='Pessoa'
     )
@@ -62,6 +65,7 @@ class salario(models.Model):
     )
     valor = models.FloatField(blank=True, null=True, default=0)
     horas = models.IntegerField(default=160, null=False)
+    anexo = models.BooleanField(default=False, verbose_name='Anexo')
 
     class Meta:
         constraints = [
