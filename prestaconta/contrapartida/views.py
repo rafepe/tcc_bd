@@ -14,7 +14,7 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
 from django.http import JsonResponse
 import io
-
+import locale
     
 from django.contrib import messages
 
@@ -370,7 +370,7 @@ def get_semestre_atual():
 
 class projetos_semestre(ListView):
     model = projeto
-    template_name = "projetos_semestre.html"
+    template_name = "contrapartida/projetos_semestre.html"
     context_object_name = "projetos"
 
     def get_queryset(self):
@@ -397,7 +397,7 @@ class projetos_semestre(ListView):
 
         #print(projeto.objects.filter(data_fim__range=(data_inicio, data_fim)))
         qs = projeto.objects.filter(data_fim__range=(data_inicio, data_fim))
-        print(qs.query)
+        #print(qs.query)
 
         return projeto.objects.filter(data_fim__range=(data_inicio, data_fim))
 
@@ -407,7 +407,7 @@ class projetos_semestre(ListView):
         context["ano_atual"], context["semestre_atual"] = get_semestre_atual()
         context["ano_selecionado"] = self.request.GET.get("ano", context["ano_atual"])
         context["semestre_selecionado"] = self.request.GET.get("semestre", context["semestre_atual"])
-        print(context)
+        #print(context)
         return context
 
 ##########################
@@ -486,7 +486,7 @@ class contrapartida_pesquisa_delete(DeleteView):
 
 
 ##############################
-# CONTRAPARTIDA EQUIPAMETNOS #
+# CONTRAPARTIDA EQUIPAMENTOS #
 ##############################
 
 class contrapartida_equipamento_menu(SingleTableView):
@@ -557,3 +557,148 @@ class contrapartida_equipamento_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu')     
+
+##############################
+# CONTRAPARTIDA REALIZADA    #
+##############################
+class contrapartida_realizada_list(ListView):
+    model = projeto  # Define o modelo explicitamente
+    template_name = "contrapartida/contrapartida_realizada_list.html"
+    context_object_name = "projetos"
+    paginate_by = 10  # Paginação para melhor navegação
+
+    def get_queryset(self):
+        """Filtra os projetos por nome, data de fim ou por um dropdown"""
+        queryset = projeto.objects.all()
+        nome = self.request.GET.get("nome")
+        data_fim = self.request.GET.get("data_fim")
+
+        if nome:
+            queryset = queryset.filter(nome__icontains=nome)
+
+        if data_fim:
+            queryset = queryset.filter(data_fim=data_fim)
+
+        return queryset
+
+from django.shortcuts import render, get_object_or_404
+from datetime import datetime
+from collections import defaultdict
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
+
+
+def contrapartida_realizada_detalhes(request, projeto_id):
+    proj = get_object_or_404(projeto, id=projeto_id)
+
+    # Calcula número de meses do projeto
+    num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
+    vlr_cp_max=proj.valor_total-proj.valor_financiado
+    # Calcula Valor Mensal Devido
+    vlr_mensal_devido = (vlr_cp_max ) /num_meses  if num_meses else 0.0
+    # Dicionário para armazenar os totais por mês
+
+    # Formata os valores antes de enviar ao template
+    vlr_cp_max_formatado = locale.format_string('%.2f', vlr_cp_max, grouping=True)
+    vlr_mensal_devido_formatado = locale.format_string('%.2f', vlr_mensal_devido, grouping=True)
+
+    contrapartidas_por_mes = defaultdict(lambda: {
+        'equipamento': 0.0,
+        'pesquisa': 0.0,
+        'so': 0.0,
+        'total': 0.0,
+        'diferenca': 0.0
+    })
+    
+    # Processa contrapartida de pesquisa
+    for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
+        contrapartidas_por_mes[key]['pesquisa'] += value
+
+    # Processa contrapartida de equipamento
+    for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
+        key = f"{ce.ano}-{ce.mes:02d}"
+        if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100']:
+            value_valor_hora = (
+                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
+                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1200
+            ) / float(ce.id_equipamento.quantidade_nos)
+        else:
+            value_valor_hora = (
+                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
+                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1440
+            ) / float(ce.id_equipamento.quantidade_nos)
+        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
+        #print(ce.id_equipamento.nome, value)        
+        contrapartidas_por_mes[key]['equipamento'] += value
+
+    # Processa contrapartida de SO
+    #for so in contrapartidaSO.objects.filter(projeto=proj):
+    #    key = f"{so.ano_alocacao}-{so.mes_alocacao:02d}"
+    #    contrapartidas_por_mes[key]['so'] += float(so.valor_financiado or 0)
+
+    # Calcula total por mês e diferença
+    for key, valores in contrapartidas_por_mes.items():
+        valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so']
+        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido) 
+
+    # Ordena os meses do mais antigo para o mais recente
+    contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
+
+    context = {
+           'projeto': proj,
+           'num_meses': num_meses,
+           'vlr_cp_max': vlr_cp_max_formatado,  # Adicionado ao contexto
+           'vlr_mensal_devido': vlr_mensal_devido_formatado,  # Adicionado ao contexto
+           'contrapartidas_por_mes': contrapartidas_ordenadas,
+    }
+
+    return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
+
+
+
+
+def contrapartida_realizada_detalhes_old(request, projeto_id):
+    # Obtém o projeto pelo ID
+    proj = get_object_or_404(projeto, id=projeto_id)
+
+    # Calcula o número de meses do projeto
+    num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
+
+    # Dicionário para armazenar os totais por mês
+    contrapartidas_por_mes = defaultdict(lambda: {'total': 0, 'saldo': 0})
+
+    # Soma os valores de contrapartida_pesquisa
+    for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
+        contrapartidas_por_mes[key]['total'] += value  # Exemplo, pode mudar para outro cálculo
+
+
+
+    # Soma os valores de contrapartida_equipamento
+    for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
+        key = f"{ce.ano}-{ce.mes:02d}"
+        value_valor_hora = (((0.1 * float(ce.id_equipamento.valor_aquisicao)) + 
+        float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) /
+        (1200 if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100'] else 1440)) / float(ce.id_equipamento.quantidade_nos)
+        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
+        formatted_value = locale.currency(value, grouping=True)    
+        contrapartidas_por_mes[key]['total'] += formatted_value  or 0  # Evita None
+
+    # Soma os valores de contrapartidaSO
+ #   for so in contrapartidaSO.objects.filter(projeto=proj):
+ #      key = f"{so.ano_alocacao}-{so.mes_alocacao:02d}"
+ #       contrapartidas_por_mes[key]['total'] += so.valor_financiado or 0  # Evita None
+
+    # Calculando saldo (exemplo: saldo = valor total do projeto - total por mês)
+    for key, valores in contrapartidas_por_mes.items():
+        valores['saldo'] = float(proj.valor_total) - float(valores['total'])
+
+    context = {
+        'projeto': proj,
+        'num_meses': num_meses,
+        'contrapartidas_por_mes': dict(contrapartidas_por_mes),
+    }
+
+    return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)

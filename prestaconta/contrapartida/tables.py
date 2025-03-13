@@ -11,8 +11,8 @@ from django.utils.html import format_html
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
 class projeto_table(tables.Table):
-    nome = tables.LinkColumn("projeto_update", args=[A("pk")])
-    peia = tables.LinkColumn("projeto_update", args=[A("pk")])
+    nome = tables.LinkColumn("projeto_update",orderable=True, args=[A("pk")])
+    peia = tables.LinkColumn("projeto_update",orderable=True ,args=[A("pk")])
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
     valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
@@ -84,7 +84,10 @@ class equipamento_table(tables.Table):
         return '-'
 
     def render_valor_hora(self, record):
-        value = ( (0.1*record.valor_aquisicao) + record.cvc + record.cma ) / 1440
+        if record.nome in ['DGX-1','DGX-A100','DGX-H100']:
+          value = (( (0.1*record.valor_aquisicao) + record.cvc + record.cma ) / 1200) / record.quantidade_nos
+        else:
+          value = ( ( (0.1*record.valor_aquisicao) + record.cvc + record.cma ) / 1440 ) / record.quantidade_nos
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$   
     
@@ -187,15 +190,23 @@ class contrapartida_equipamento_table(tables.Table):
 
 
     def render_valor_hora(self, record):
-        value = ( (0.1*record.id_equipamento.valor_aquisicao) + 
-        record.id_equipamento.cvc + record.id_equipamento.cma ) / 1440
+        if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
+          value = (( (0.1*record.id_equipamento.valor_aquisicao) + 
+          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1200) / record.id_equipamento.quantidade_nos
+        else:
+          value = ( (0.1*record.id_equipamento.valor_aquisicao) + 
+          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1440 / record.id_equipamento.quantidade_nos
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
 
     
     def render_valor_cp(self, record):
-        value_valor_hora = ( (0.1*record.id_equipamento.valor_aquisicao) + 
-        record.id_equipamento.cvc + record.id_equipamento.cma ) / 1440
+        if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
+          value_valor_hora = (( (0.1*record.id_equipamento.valor_aquisicao) + 
+          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1200) / record.id_equipamento.quantidade_nos
+        else:
+          value_valor_hora = ( ( (0.1*record.id_equipamento.valor_aquisicao) + 
+          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1440  ) / record.id_equipamento.quantidade_nos
         value = round(record.horas_alocadas * value_valor_hora , 2)
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
