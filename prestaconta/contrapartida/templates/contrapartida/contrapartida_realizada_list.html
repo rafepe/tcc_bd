@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block corpo %}
+<h2>Lista de Projetos</h2>
+
+<!-- Formulário de Filtro -->
+<form method="GET">
+    <label for="nome">Nome do Projeto:</label>
+    <input type="text" name="nome" value="{{ request.GET.nome|default_if_none:'' }}">
+
+    <label for="data_fim">Data de Fim:</label>
+    <input type="date" name="data_fim" value="{{ request.GET.data_fim|default_if_none:'' }}">
+
+    <button type="submit">Filtrar</button>
+</form>
+
+<!-- Tabela de Projetos -->
+<table>
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Data de Início</th>
+            <th>Data de Fim</th>
+            <th>Valor Total</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for projeto in projetos %}
+        <tr>
+            <td>{{ projeto.nome }}</td>
+            <td>{{ projeto.data_inicio }}</td>
+            <td>{{ projeto.data_fim }}</td>
+            <td>{{ projeto.valor_total }}</td>
+            <td>
+                <a href="{% url 'contrapartida_realizada_detalhes' projeto.id %}">Ver Detalhes</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">Nenhum projeto encontrado.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginação -->
+{% if is_paginated %}
+<div>
+    {% if page_obj.has_previous %}
+        <a href="?page=1">Primeira</a>
+        <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+    {% endif %}
+
+    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
