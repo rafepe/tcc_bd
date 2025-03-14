@@ -110,6 +110,31 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        f_nome = self.request.GET.get('nome', '').strip()
+        mes_fim = self.request.GET.get('mes', '').strip()
+        ano_fim = self.request.GET.get('ano','').strip()
+        if f_nome:
+            queryset = queryset.filter(nome__icontains=f_nome)
+        if mes_fim:
+            queryset = queryset.filter(data_fim__month=int(mes_fim))
+        if ano_fim:
+            queryset = queryset.filter(data_fim__year=int(ano_fim))         
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")
+        }
+        return context
+
+
+
+
 class projeto_create(CreateView):
     model = projeto
     fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'valor_so_ptr', 'valor_funape', 'tx_adm_ue', 'contrapartida', 'ativo']
@@ -305,6 +330,34 @@ class salario_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'salario_menu.html'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        pessoa = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes','').strip()
+        if pessoa:
+            queryset = queryset.filter(id_pessoa__name=pessoa)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+      
+            "nome": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")
+        }
+        
+        return context
+
+
+
+
 class salario_create(CreateView):
     model = salario
     fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
@@ -427,6 +480,27 @@ class contrapartida_pesquisa_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida_pesquisa_menu.html'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        nome = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes','').strip()
+        if nome:
+            queryset = queryset.filter(id_projeto__nome__icontains=nome)
+        if ano:
+            queryset = queryset.filter(id_salario__ano=ano)
+        if mes:
+            queryset = queryset.filter(id_salario__mes=mes)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "data_fim": self.request.GET.get("data_fim", ""),
+        }
+        return context
 
 
 
@@ -651,54 +725,6 @@ def contrapartida_realizada_detalhes(request, projeto_id):
            'vlr_cp_max': vlr_cp_max_formatado,  # Adicionado ao contexto
            'vlr_mensal_devido': vlr_mensal_devido_formatado,  # Adicionado ao contexto
            'contrapartidas_por_mes': contrapartidas_ordenadas,
-    }
-
-    return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
-
-
-
-
-def contrapartida_realizada_detalhes_old(request, projeto_id):
-    # Obtém o projeto pelo ID
-    proj = get_object_or_404(projeto, id=projeto_id)
-
-    # Calcula o número de meses do projeto
-    num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
-
-    # Dicionário para armazenar os totais por mês
-    contrapartidas_por_mes = defaultdict(lambda: {'total': 0, 'saldo': 0})
-
-    # Soma os valores de contrapartida_pesquisa
-    for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
-        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
-        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
-        contrapartidas_por_mes[key]['total'] += value  # Exemplo, pode mudar para outro cálculo
-
-
-
-    # Soma os valores de contrapartida_equipamento
-    for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
-        key = f"{ce.ano}-{ce.mes:02d}"
-        value_valor_hora = (((0.1 * float(ce.id_equipamento.valor_aquisicao)) + 
-        float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) /
-        (1200 if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100'] else 1440)) / float(ce.id_equipamento.quantidade_nos)
-        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
-        formatted_value = locale.currency(value, grouping=True)    
-        contrapartidas_por_mes[key]['total'] += formatted_value  or 0  # Evita None
-
-    # Soma os valores de contrapartidaSO
- #   for so in contrapartidaSO.objects.filter(projeto=proj):
- #      key = f"{so.ano_alocacao}-{so.mes_alocacao:02d}"
- #       contrapartidas_por_mes[key]['total'] += so.valor_financiado or 0  # Evita None
-
-    # Calculando saldo (exemplo: saldo = valor total do projeto - total por mês)
-    for key, valores in contrapartidas_por_mes.items():
-        valores['saldo'] = float(proj.valor_total) - float(valores['total'])
-
-    context = {
-        'projeto': proj,
-        'num_meses': num_meses,
-        'contrapartidas_por_mes': dict(contrapartidas_por_mes),
     }
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)

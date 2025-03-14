@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block corpo %}
+<h2>Detalhes do Projeto: {{ projeto.nome }}</h2>
+
+<p><strong>Data de Início:</strong> {{ projeto.data_inicio }}</p>
+<p><strong>Data de Fim:</strong> {{ projeto.data_fim }}</p>
+<p><strong>Valor Total Contrapartida:</strong> R$ {{ vlr_cp_max  }}</p>
+<p><strong>Número de meses:</strong> {{ num_meses }}</p>
+<p><strong>Valor Mensal Devido :</strong> R$ {{ vlr_mensal_devido}} </p>
+
+<h3>Contrapartidas por Mês</h3>
+
+<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+    <thead>
+        <tr>
+            <th>Mês</th>
+            <th>Equipamento</th>
+            <th>Pesquisa</th>
+            <th>SO</th>
+            <th>Total</th>
+            <th>Diferença</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for mes, valores in contrapartidas_por_mes.items %}
+        <tr>
+            <td>{{ mes }}</td>
+            <td>R$ {{ valores.equipamento|floatformat:2 }}</td>
+            <td>R$ {{ valores.pesquisa|floatformat:2 }}</td>
+            <td>R$ {{ valores.so|floatformat:2 }}</td>
+            <td>R$ {{ valores.total|floatformat:2 }}</td>
+            <td>R$ {{ valores.diferenca|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">Nenhuma contrapartida encontrada.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
