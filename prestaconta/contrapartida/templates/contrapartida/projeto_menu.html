@@ -13,13 +13,13 @@
     <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
 
     <label for="ano">Ano Fim:</label>
-    <input type="int" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> <!-- Tamanho reduzido -->
+    <input type="int" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;">
 
-    <label for="mes">Mes Fim:</label>
-    <input type="int" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;"> <!-- Tamanho reduzido -->
+    <label for="mes">Mês Fim:</label>
+    <input type="int" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;"> 
 
     <button type="submit">Filtrar</button>
-    <a href="{% url 'contrapartida_pesquisa_menu' %}">Limpar Filtros</a> <!-- Substitua pelo nome correto da URL -->
+    <a href="{% url 'projeto_menu' %}">Limpar Filtros</a> 
 </form>
 
 
