@@ -5,9 +5,6 @@ prestaconta/contrapartida/apps.py
 prestaconta/contrapartida/migrations/
 prestaconta/contrapartida/tests.py
 prestaconta/nohup.out
-prestaconta/prestaconta/__init__.py
-prestaconta/prestaconta/asgi.py
-prestaconta/prestaconta/wsgi.py
 prestaconta/static/db.sqlite3
 
 # Ignore arquivos de cache do Python
