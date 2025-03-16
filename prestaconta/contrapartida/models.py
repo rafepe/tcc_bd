@@ -24,6 +24,10 @@ class projeto(models.Model):
     class Meta:
         ordering = ['data_fim']
 
+    @property
+    def contrapartida_max(self):
+        return self.valor_total - self.valor_financiado
+
 class equipamento(models.Model):
     id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255, verbose_name="Nome do Equipamento")

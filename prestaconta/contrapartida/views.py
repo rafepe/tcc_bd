@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
 from django.views.generic import ListView
@@ -14,9 +14,9 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
 from django.http import JsonResponse
 import io
-import locale
-    
-from django.contrib import messages
+import locale    
+from collections import defaultdict
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
 
 def index(request):
     usuario = request.POST.get('username')
@@ -336,7 +336,7 @@ class salario_menu(SingleTableView):
         ano = self.request.GET.get('ano', '').strip()
         mes = self.request.GET.get('mes','').strip()
         if pessoa:
-            queryset = queryset.filter(id_pessoa__name=pessoa)
+            queryset = queryset.filter(id_pessoa__nome__icontains=pessoa)
         if ano:
             queryset = queryset.filter(ano=ano)
         if mes:
@@ -525,9 +525,47 @@ class contrapartida_pesquisa_create(CreateView):
         errors = form.errors.as_text()  # Converte os erros para texto
         messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
         return self.render_to_response(self.get_context_data(form=form))
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        horas_utilizadas = 0
+        horas_mensais = 0
+
+        # Captura o ID do salário selecionado no dropdown (se houver)
+        id_salario = self.request.GET.get("id_salario") or self.request.POST.get("id_salario")
+        print(id_salario,'dropdown')
+        if id_salario:
+            try:
+                salario_obj = salario.objects.get(id=id_salario)
+                pessoa_id = salario_obj.id_pessoa
+                mes_ref = salario_obj.mes
+                ano_ref = salario_obj.ano
+                horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
+
+                # Filtra todas as contrapartidas já cadastradas com o mesmo salário
+                horas_usadas = contrapartida_pesquisa.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+                horas_utilizadas = sum(horas_usadas)  # Soma as horas já utilizadas
+
+            except salario.DoesNotExist:
+                messages.error(self.request, "Salário não encontrado")
+
+        # Adicionando ao contexto
+        context["horas_utilizadas"] = horas_utilizadas
+        context["horas_mensais"] = horas_mensais
+        context["horas_restantes"] = horas_mensais - horas_utilizadas
+
+        return context
+
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')
+    
 
 
 
@@ -540,6 +578,77 @@ class contrapartida_pesquisa_update(UpdateView):
    
     model = contrapartida_pesquisa
     fields =  ['id_projeto', 'id_salario', 'horas_alocadas']
+
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        horas_utilizadas = 0
+        horas_mensais = 0
+
+        id_pesquisa = context["form"].instance.pk if "form" in context and context["form"].instance.pk else None
+       
+        if id_pesquisa:
+            try:
+                contrapartida = contrapartida_pesquisa.objects.get(id=id_pesquisa)
+                salario_id=contrapartida.id_salario_id
+                salario_obj=salario.objects.get(id =salario_id)  
+
+                pessoa_id = salario_obj.id_pessoa
+                mes_ref = salario_obj.mes
+                ano_ref = salario_obj.ano
+                horas_mensais = salario_obj.horas
+
+                horas_usadas = contrapartida_pesquisa.objects.filter(
+                   id_salario__id_pessoa=pessoa_id,
+                   id_salario__mes=mes_ref,
+                   id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+                horas_utilizadas = sum(horas_usadas)  # Somamos direto os valores
+
+            except contrapartida_pesquisa.DoesNotExist:
+                   messages.error(self.request, "Contrapartida não encontrada")
+            except salario.DoesNotExist:
+                   messages.error(self.request, "Salário não encontrado")
+
+    # Adicionando ao contexto
+        context["horas_utilizadas"] = horas_utilizadas
+        context["horas_mensais"] = horas_mensais
+        context["horas_restantes"] = horas_mensais - horas_utilizadas
+
+        return context
+
+    def get_context_data_old(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if "form" in context and context["form"].instance.pk:
+          id_pesquisa = context["form"].instance.pk  # Pega o ID real    
+        else:
+          id_pesquisa = None
+        horas_utilizadas = 0
+        horas_mensais = 0
+        id_salario=contrapartida_pesquisa.objects.get(id =id_pesquisa).id_salario_id
+        if id_salario:
+            try:
+
+                salario_obj = salario.objects.get(id =id_salario)
+                pessoa_id=salario_obj.id_pessoa
+                mes_ref=salario_obj.mes
+                ano_ref=salario_obj.ano
+                horas_mensais = salario_obj.horas 
+                   
+                horas_usadas= contrapartida_pesquisa.objects.filter(id_salario__id_pessoa=pessoa_id,id_salario__mes=mes_ref,id_salario__ano=ano_ref)
+                for registro in horas_usadas:
+                    horas_utilizadas+=registro.horas_alocadas
+
+            except salario.DoesNotExist:
+                messages.error(self.request, "Salário não encontrado")
+
+        # Adicionando ao contexto
+        context["horas_utilizadas"] = horas_utilizadas
+        context["horas_mensais"] = horas_mensais
+        context["horas_restantes"] = horas_mensais - horas_utilizadas
+
+        return context
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')   
@@ -576,6 +685,28 @@ class contrapartida_equipamento_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'contrapartida_equipamento_menu.html'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        nome = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes','').strip()
+        if nome:
+            queryset = queryset.filter(id_projeto__nome__icontains=nome)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", ""),
+        }
+        return context
 
 
 
@@ -641,24 +772,34 @@ class contrapartida_realizada_list(ListView):
     context_object_name = "projetos"
     paginate_by = 10  # Paginação para melhor navegação
 
+
     def get_queryset(self):
-        """Filtra os projetos por nome, data de fim ou por um dropdown"""
-        queryset = projeto.objects.all()
-        nome = self.request.GET.get("nome")
-        data_fim = self.request.GET.get("data_fim")
-
-        if nome:
-            queryset = queryset.filter(nome__icontains=nome)
-
-        if data_fim:
-            queryset = queryset.filter(data_fim=data_fim)
-
+        queryset = super().get_queryset()
+        f_nome = self.request.GET.get('nome', '').strip()
+        mes_fim = self.request.GET.get('mes', '').strip()
+        ano_fim = self.request.GET.get('ano','').strip()
+       ## vlr_total=self.request.GET.get('valor_total')
+       ## vlr_financiado =self.request.GET.get('valor_financiado')
+       ## vlr_cp_max=vlr_total-vlr_financiado
+       ## vlr_cp_max_formatado = locale.format_string('%.2f', vlr_cp_max, grouping=True)
+        if f_nome:
+            queryset = queryset.filter(nome__icontains=f_nome)
+        if mes_fim:
+            queryset = queryset.filter(data_fim__month=int(mes_fim))
+        if ano_fim:
+            queryset = queryset.filter(data_fim__year=int(ano_fim))         
         return queryset
 
-from django.shortcuts import render, get_object_or_404
-from datetime import datetime
-from collections import defaultdict
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "data_fim": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")           
+        }
+        return context
+
+
 
 
 def contrapartida_realizada_detalhes(request, projeto_id):
@@ -666,13 +807,13 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     # Calcula número de meses do projeto
     num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
-    vlr_cp_max=proj.valor_total-proj.valor_financiado
+    
     # Calcula Valor Mensal Devido
-    vlr_mensal_devido = (vlr_cp_max ) /num_meses  if num_meses else 0.0
+    vlr_mensal_devido = (proj.contrapartida_max ) /num_meses  if num_meses else 0.0
     # Dicionário para armazenar os totais por mês
 
     # Formata os valores antes de enviar ao template
-    vlr_cp_max_formatado = locale.format_string('%.2f', vlr_cp_max, grouping=True)
+    vlr_cp_max_formatado = locale.format_string('%.2f', proj.contrapartida_max, grouping=True)
     vlr_mensal_devido_formatado = locale.format_string('%.2f', vlr_mensal_devido, grouping=True)
 
     contrapartidas_por_mes = defaultdict(lambda: {
@@ -722,7 +863,6 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     context = {
            'projeto': proj,
            'num_meses': num_meses,
-           'vlr_cp_max': vlr_cp_max_formatado,  # Adicionado ao contexto
            'vlr_mensal_devido': vlr_mensal_devido_formatado,  # Adicionado ao contexto
            'contrapartidas_por_mes': contrapartidas_ordenadas,
     }
