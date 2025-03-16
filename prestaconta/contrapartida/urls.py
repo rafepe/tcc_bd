@@ -14,6 +14,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('importar_csv/', views.importar_csv, name='importar_csv'),
+    path('download_database/', views.download_database, name='download_database'),
 
     path("projeto_create/", views.projeto_create.as_view(), name='projeto_create'),
     path('projeto_menu/', views.projeto_menu.as_view(), name='projeto_menu'),

@@ -5,7 +5,7 @@ from django_tables2 import SingleTableView
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
@@ -17,6 +17,8 @@ import io
 import locale    
 from collections import defaultdict
 from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
+import os
+from django.conf import settings
 
 def index(request):
     usuario = request.POST.get('username')
@@ -868,3 +870,10 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     }
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
+
+def download_database(request):
+    """View para download do arquivo do banco de dados"""
+    file_path = os.path.join(settings.BASE_DIR, 'db.sqlite3')
+    response = FileResponse(open(file_path, 'rb'))
+    response['Content-Disposition'] = 'attachment; filename="db.sqlite3"'
+    return response

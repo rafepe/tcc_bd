@@ -8,6 +8,7 @@
 
 {% block titulo %}Contrapartida Pesquisa{% endblock %}
 {% block corpo %}
+<center>
 <!-- Formulário de Filtro -->
 <form method="GET">
     <label for="id_nome">Nome do Projeto:</label>
@@ -22,7 +23,7 @@
     <button type="submit">Filtrar</button>
     <a href="{% url 'contrapartida_pesquisa_menu' %}">Limpar Filtros</a> 
 </form>
-
+</center>
 
 <body>
     <div class="container">

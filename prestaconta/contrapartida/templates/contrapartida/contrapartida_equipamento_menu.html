@@ -8,6 +8,7 @@
 
 {% block titulo %}Contrapartida Equipamento{% endblock %}
 {% block corpo %}
+<center>
 <form method="GET">
     <label for="id_nome">Nome do Projeto:</label>
     <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
@@ -21,7 +22,7 @@
     <button type="submit">Filtrar</button>
     <a href="{% url 'contrapartida_equipamento_menu' %}">Limpar Filtros</a> 
 </form>
-
+</center>
 
 
 <body>

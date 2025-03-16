@@ -8,6 +8,7 @@
 
 {% block titulo %}Salário{% endblock %}
 {% block corpo %}
+<center>
 <form method="GET">
     <label for="id_pesoa">Nome</label>
     <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
@@ -21,7 +22,7 @@
     <button type="submit">Filtrar</button>
     <a href="{% url 'salario_menu' %}">Limpar Filtros</a> <!-- Substitua pelo nome correto da URL -->
 </form>
-
+</center>
 
 
 
