@@ -16,35 +16,60 @@
 
 {% block corpo %}
 <body>
-    <div class="container">
-        <div class="text-center">
-            <h1>Cadastrar/Atualizar Contrapartida Pesquisa</h1>
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
+    <script>
+        function reloadWithSalary() {
+            let form = document.getElementById("contrapartida-form");
+            form.action = window.location.pathname;  
+            form.method = "GET";  
+            form.submit();  
+        }
+    </script>
 
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6">
-                        {% bootstrap_field form.id_projeto placeholder='' %}
-                    </div> 
-                    <div class="col-md-2 col-sm-4">
-                        {% bootstrap_field form.id_salario placeholder='' %}
-                    </div>
-                </div>
+    <form id="contrapartida-form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+    
 
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6">
-                        {% bootstrap_field form.horas_alocadas placeholder='' %}
-                    </div>
-                </div>
+        <div class="row justify-content-center" style="line-height: 1;">   
 
-                <div class="row justify-content-center">
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-primary mt-3">Salvar</button>
-                    </div>
-                </div>
-            </form>
+            <div class="col-md-4 col-sm-6">
+                <label>Salário:</label>
+                <select name="id_salario" class="form-control form-control-lg" onchange="reloadWithSalary()">
+                    <option value="">Selecione um salário</option>
+                    {% for salario in form.id_salario.field.queryset %}
+                        <option value="{{ salario.id }}"
+                        {% if request.GET.id_salario == salario.id|stringformat:"s" or form.instance.id_salario.id == salario.id %}
+                            selected
+                        {% endif %}>
+                        {{ salario }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                {% bootstrap_field form.id_projeto placeholder='' %}
+            </div>
         </div>
-    </div>
+ 
+        <div class="row justify-content-center" style="line-height: 1;">
+            
+            <div class="col-md-2 col-sm-6">
+                {% bootstrap_field form.horas_alocadas placeholder='' %}
+            </div>           
+            
+            <div class="col-md-2 col-sm-6">
+                <label>Horas restantes:</label>
+                <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
+            </div>
+        </div>
+    
+        
+        <div class="row justify-content-center">
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+            </div>
+        </div>
+    </form>
 </body>
 </html>
 {% endblock %}
