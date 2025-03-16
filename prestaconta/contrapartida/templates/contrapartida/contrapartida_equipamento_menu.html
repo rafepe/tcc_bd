@@ -8,6 +8,21 @@
 
 {% block titulo %}Contrapartida Equipamento{% endblock %}
 {% block corpo %}
+<form method="GET">
+    <label for="id_nome">Nome do Projeto:</label>
+    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+
+    <label for="id_ano">Ano:</label>
+    <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> 
+
+    <label for="id_mes">Mês Referencia:</label>
+    <input type="number" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
+
+    <button type="submit">Filtrar</button>
+    <a href="{% url 'contrapartida_equipamento_menu' %}">Limpar Filtros</a> 
+</form>
+
+
 
 <body>
     <div class="container">
