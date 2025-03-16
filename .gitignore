@@ -1,15 +1,38 @@
-.env
-*.pyc
 /venv/
-.DS_Store
 prestaconta/contrapartida/__init__.py
 prestaconta/contrapartida/admin.py
 prestaconta/contrapartida/apps.py
 prestaconta/contrapartida/migrations/
 prestaconta/contrapartida/tests.py
-prestaconta/manage.py
 prestaconta/nohup.out
 prestaconta/prestaconta/__init__.py
 prestaconta/prestaconta/asgi.py
 prestaconta/prestaconta/wsgi.py
 prestaconta/static/db.sqlite3
+
+# Ignore arquivos de cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore arquivos temporários e de log
+*.log
+*.tmp
+*.swp
+
+# Ignore configurações e credenciais locais (se houver)
+.env
+*.local
+
+# Ignore arquivos gerados pelo sistema operacional
+.DS_Store
+Thumbs.db
+
+# Ignore arquivos estáticos gerados
+static/
+media/
+
+# Ignore migrações compiladas
+contrapartida/migrations/__pycache__/
+prestaconta/__pycache__/
