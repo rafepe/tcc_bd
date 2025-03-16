@@ -6,6 +6,7 @@ prestaconta/contrapartida/migrations/
 prestaconta/contrapartida/tests.py
 prestaconta/nohup.out
 prestaconta/static/db.sqlite3
+/ignore/
 
 # Ignore arquivos de cache do Python
 __pycache__/
