@@ -15,61 +15,67 @@
 </head>
 
 {% block corpo %}
+
 <body>
-    <script>
-        function reloadWithSalary() {
-            let form = document.getElementById("contrapartida-form");
-            form.action = window.location.pathname;  
-            form.method = "GET";  
-            form.submit();  
-        }
-    </script>
+    <div class="container">
+        <div class="text-center">
+            {% if contrapartida_pesquisa.id %}
+            <h1>Atualizar Contrapartida Pesquisa</h1>
+            {% else %}
+            <h1>Cadastrar Contrapartida Pesquisa</h1>
+            {% endif %}
+            <form id="contrapartida-form" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.id_projeto placeholder='' %}
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.id_salario placeholder='' %}
+                    </div>
+                </div>
+                {% if contrapartida_pesquisa.id %}
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.horas_alocadas placeholder='' %}
+                    </div>
+                    <div class="col-md-2 col-sm-6">
+                        <label>Horas restantes:</label>
+                        <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
+                    </div>
+                </div>
 
-    <form id="contrapartida-form" method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-    
+                <div class="row justify-content-center">
+                    <div class="col-auto">
+                        <button type="submit" name="action" value="update"
+                            class="btn btn-warning mt-3">Atualizar</button>
+                        <button type="submit" name="action" value="save_exit" class="btn btn-primary mt-3">Salvar e
+                            Voltar</button>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'contrapartida_pesquisa_delete' contrapartida_pesquisa.id %}"
+                            class="btn btn-danger mt-3">
+                            Excluir
+                        </a>
+                    </div>
+                </div>
 
-        <div class="row justify-content-center" style="line-height: 1;">   
+                {% else %}
 
-            <div class="col-md-4 col-sm-6">
-                <label>Salário:</label>
-                <select name="id_salario" class="form-control form-control-lg" onchange="reloadWithSalary()">
-                    <option value="">Selecione um salário</option>
-                    {% for salario in form.id_salario.field.queryset %}
-                        <option value="{{ salario.id }}"
-                        {% if request.GET.id_salario == salario.id|stringformat:"s" or form.instance.id_salario.id == salario.id %}
-                            selected
-                        {% endif %}>
-                        {{ salario }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="row justify-content-center">
+                    <div class="col-auto">
 
-            <div class="col-md-4 col-sm-6">
-                {% bootstrap_field form.id_projeto placeholder='' %}
-            </div>
+                        <button type="submit" class="btn btn-primary mt-3">Salvar e Continuar</button>
+                    </div>
+                </div>
+
+
+                {% endif %}
+
+            </form>
         </div>
- 
-        <div class="row justify-content-center" style="line-height: 1;">
-            
-            <div class="col-md-2 col-sm-6">
-                {% bootstrap_field form.horas_alocadas placeholder='' %}
-            </div>           
-            
-            <div class="col-md-2 col-sm-6">
-                <label>Horas restantes:</label>
-                <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
-            </div>
-        </div>
-    
-        
-        <div class="row justify-content-center">
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
-            </div>
-        </div>
-    </form>
+    </div>
 </body>
+
 </html>
 {% endblock %}

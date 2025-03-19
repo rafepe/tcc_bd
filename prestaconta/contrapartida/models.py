@@ -84,7 +84,7 @@ class salario(models.Model):
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
-    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0)
+    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
 
     class Meta:
         unique_together = ('id_projeto', 'id_salario')

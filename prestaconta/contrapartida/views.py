@@ -528,7 +528,7 @@ class contrapartida_pesquisa_create(CreateView):
         messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
         return self.render_to_response(self.get_context_data(form=form))
     
-    def get_context_data(self, **kwargs):
+    def criar_contrapartida_pesquisa(request):
         context = super().get_context_data(**kwargs)
 
         horas_utilizadas = 0
@@ -536,7 +536,6 @@ class contrapartida_pesquisa_create(CreateView):
 
         # Captura o ID do salário selecionado no dropdown (se houver)
         id_salario = self.request.GET.get("id_salario") or self.request.POST.get("id_salario")
-        print(id_salario,'dropdown')
         if id_salario:
             try:
                 salario_obj = salario.objects.get(id=id_salario)
@@ -562,11 +561,12 @@ class contrapartida_pesquisa_create(CreateView):
         context["horas_mensais"] = horas_mensais
         context["horas_restantes"] = horas_mensais - horas_utilizadas
 
-        return context
-
-
+        return render(request, "\contrapartida\contrapartida_pesquisa_form.html", {
+            "salarios": id_salario,
+            "horas_restantes": horas_restantes,
+        })  
     def get_success_url(self):
-        return reverse_lazy('contrapartida_pesquisa_menu')
+        return reverse_lazy("contrapartida_pesquisa_update", kwargs={"pk": self.object.pk})
     
 
 
@@ -618,39 +618,17 @@ class contrapartida_pesquisa_update(UpdateView):
         context["horas_mensais"] = horas_mensais
         context["horas_restantes"] = horas_mensais - horas_utilizadas
 
-        return context
+        return context    
+    def form_valid(self, form):
+        self.object = form.save()
 
-    def get_context_data_old(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if "form" in context and context["form"].instance.pk:
-          id_pesquisa = context["form"].instance.pk  # Pega o ID real    
-        else:
-          id_pesquisa = None
-        horas_utilizadas = 0
-        horas_mensais = 0
-        id_salario=contrapartida_pesquisa.objects.get(id =id_pesquisa).id_salario_id
-        if id_salario:
-            try:
+        action = self.request.POST.get("action")
+        if action == "update":
+            return redirect("contrapartida_pesquisa_update", pk=self.object.pk)
+        elif action == "save_exit":
+            return redirect("contrapartida_pesquisa_menu")
 
-                salario_obj = salario.objects.get(id =id_salario)
-                pessoa_id=salario_obj.id_pessoa
-                mes_ref=salario_obj.mes
-                ano_ref=salario_obj.ano
-                horas_mensais = salario_obj.horas 
-                   
-                horas_usadas= contrapartida_pesquisa.objects.filter(id_salario__id_pessoa=pessoa_id,id_salario__mes=mes_ref,id_salario__ano=ano_ref)
-                for registro in horas_usadas:
-                    horas_utilizadas+=registro.horas_alocadas
-
-            except salario.DoesNotExist:
-                messages.error(self.request, "Salário não encontrado")
-
-        # Adicionando ao contexto
-        context["horas_utilizadas"] = horas_utilizadas
-        context["horas_mensais"] = horas_mensais
-        context["horas_restantes"] = horas_mensais - horas_utilizadas
-
-        return context
+        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')   
@@ -810,9 +788,6 @@ class contrapartida_equipamento_update(UpdateView):
         horas_usadas=contrapartida_equipamento.objects.filter(id=cp_equipamento_obj.id,ano=cp_equipamento_obj.ano,mes=cp_equipamento_obj.mes)
         for registro in horas_usadas:
             horas_utilizadas+=registro.horas_alocadas
-
-
-        print(horas_mensais,horas_utilizadas)
         
         if horas_mensais!=0:
           context["horas_utilizadas"] = horas_utilizadas
