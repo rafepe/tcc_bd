@@ -1,68 +1,76 @@
 {% extends "base.html" %}
 
 {% block corpo %}
-<h2>Lista de Projetos</h2>
 
-<!-- Formulário de Filtro -->
-<form method="GET">
-    <label for="id_nome">Nome do Projeto:</label>
-    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+<div class="container">
+    <div class="text-center">
 
-    <label for="ano">Ano Fim:</label>
-    <input type="int" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;">
 
-    <label for="mes">Mês Fim:</label>
-    <input type="int" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;"> 
 
-    
-    <button type="submit">Filtrar</button>
-    <a href="{% url 'contrapartida_realizada_list' %}">Limpar Filtros</a> 
-</form>
+        <!-- Formulário de Filtro -->
+        <center>
+            <form method="GET">
+                <label for="id_nome">Nome do Projeto:</label>
+                <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
 
-<!-- Tabela de Projetos -->
-<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th>Data de Início</th>
-            <th>Data de Fim</th>
-            <th>Total Contrapartida </th>
-            <th>Detalhar</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for projeto in projetos %}
-        <tr>
-            <td>{{ projeto.nome }}</td>
-            <td>{{ projeto.data_inicio }}</td>
-            <td>{{ projeto.data_fim }}</td>
-            <td>R$ {{ projeto.contrapartida_max}}</td>
-            <td>
-                <a href="{% url 'contrapartida_realizada_detalhes' projeto.id %}">Ver Detalhes</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="5">Nenhum projeto encontrado.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                <label for="ano">Ano Fim:</label>
+                <input type="int" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;">
 
-<!-- Paginação -->
-{% if is_paginated %}
-<div>
-    {% if page_obj.has_previous %}
-        <a href="?page=1">Primeira</a>
-        <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
-    {% endif %}
+                <label for="mes">Mês Fim:</label>
+                <input type="int" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
 
-    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
 
-    {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
-    {% endif %}
+                <button type="submit">Filtrar</button>
+                <a href="{% url 'contrapartida_realizada_list' %}">Limpar Filtros</a>
+            </form>
+        </center>
+        <h1>Contrapartida Realizada</h1>
+        <!-- Tabela de Projetos -->
+        <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Data de Início</th>
+                    <th>Data de Fim</th>
+                    <th>Total Contrapartida </th>
+                    <th>Detalhar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for projeto in projetos %}
+                <tr>
+                    <td>{{ projeto.nome }}</td>
+                    <td>{{ projeto.data_inicio }}</td>
+                    <td>{{ projeto.data_fim }}</td>
+                    <td>R$ {{ projeto.contrapartida_max}}</td>
+                    <td>
+                        <a href="{% url 'contrapartida_realizada_detalhes' projeto.id %}">Ver Detalhes</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">Nenhum projeto encontrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Paginação -->
+        {% if is_paginated %}
+        <div>
+            {% if page_obj.has_previous %}
+            <a href="?page=1">Primeira</a>
+            <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endif %}
 {% endblock %}
