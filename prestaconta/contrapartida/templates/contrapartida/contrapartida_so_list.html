@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% bootstrap_messages %}
+
+
+{% block corpo %}
+
+<body>
+    <div class="container">
+        <div class="text-center">
+
+            <center>
+                <!-- Filtros -->
+                <form method="GET" class="mb-4">
+                    <label for="id_nome">Nome do Projeto:</label>
+                    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+
+                    <label for="id_ano">Ano:</label>
+                    <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;">
+
+                    <label for="id_mes">Mês Referencia:</label>
+                    <input type="number" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
+                    <button type="submit">Filtrar</button>
+                    <a href="{% url 'contrapartida_so_list' %}">Limpar Filtros</a>
+                </form>
+            </center>
+            <h1>Contrapartida SO</h1>
+            <!-- Tabela -->
+            <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Valor Total</th>
+                        <th>Valor Financiado</th>
+                        <th>SO da Ue Permitido</th>
+                        <th>SO no PTR</th>
+                        <th>Contrapartida UE de S.O</th>
+                        <th>Contrapartida Mensal de SO</th>
+                        <th>Número de Meses</th>
+                        <th>Data de Início</th>
+                        <th>Taxa Funape</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for projeto in projetos %}
+                    <tr>
+                        <td>{{ projeto.nome }}</td>
+                        <td>{{ projeto.valor_total }}</td>
+                        <td>{{ projeto.valor_financiado}}</td>
+                        <td>{{ projeto.so_da_ue|floatformat:2 }}</td>
+                        <td>{{ projeto.so_no_ptr|floatformat:2 }}</td>
+                        <td>{{ projeto.cp_ue_so|floatformat:2 }}</td>
+                        <td>{{ projeto.cp_mensal_so|floatformat:2 }}</td>
+                        <td>{{ projeto.num_meses }}</td>
+                        <td>{{ projeto.data_inicio }}</td>
+                        <td>{{ projeto.valor_funape }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Paginação -->
+            {% if is_paginated %}
+            <div>
+                {% if page_obj.has_previous %}
+                <a href="?page=1">Primeira</a>
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    </div>
+    </div>
+</body>
+
+</html>
+{% endblock %}

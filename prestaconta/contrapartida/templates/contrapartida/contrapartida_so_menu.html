@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% bootstrap_messages %}
+{% load render_table from django_tables2 %}
+
+{% block titulo %}Contrapartida Equipamento{% endblock %}
+{% block corpo %}
+<center>
+<form method="GET">
+    <label for="id_nome">Nome do Projeto:</label>
+    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+
+    <label for="id_ano">Ano:</label>
+    <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> 
+
+    <label for="id_mes">Mês Referencia:</label>
+    <input type="number" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
+
+    <button type="submit">Filtrar</button>
+    <a href="{% url 'contrapartida_so_menu' %}">Limpar Filtros</a> 
+</form>
+</center>
+
+
+<body>
+    <div class="container">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+            <center>
+            <h1>Contrapartida SO</h1>
+            {% render_table table %}
+            <br>
+            <a href="{% url 'contrapartida_so_create' %}">
+                <input type="button" class="btn btn-primary" value="Incluir nova contrapartida">
+            </a>
+            </center>
+        </div>
+    </div>
+</body>
+{% endblock %}
