@@ -18,7 +18,11 @@
 <body>
     <div class="container">
         <div class="text-center">
-            <h1>Cadastrar/Atualizar Contrapartida Equipamento</h1>
+            {% if contrapartida_equipamento.id %}
+            <h1>Atualizar Contrapartida Equipamento</h1>
+            {% else %}
+            <h1>Cadastrar Contrapartida Equipamento</h1>
+            {% endif %}
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
