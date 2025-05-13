@@ -242,8 +242,6 @@ class contrapartida_so_table(tables.Table):
     ano_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano")
     mes_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês")
     valor =tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor Alocado")
- 
-    
     
 
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
@@ -284,3 +282,24 @@ class contrapartida_so_table(tables.Table):
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
+
+class contrapartida_so_proj_table(tables.Table):
+    ano= tables.Column(verbose_name="Ano Referencia")
+    mes = tables.Column(verbose_name="Mês Referencia")
+    valor = tables.Column(verbose_name="Valor Alocado")
+    id_projeto = tables.Column(verbose_name="Projeto")
+    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+
+
+    def render_excluir(self, record):
+        url = reverse("contrapartida_so_delete", args=[record.pk])
+        return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
+
+
+    def render_id_projeto(self, record):
+        return format_html('<a href="{0}">{1}</a>', reverse('projeto_detail', args=[record.id_projeto.pk]), record.id_projeto.nome)
+
+    class Meta:
+        model = contrapartida_so_proj
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ("id_projeto", "ano_alocacao", "mes_alocacao", "valor", "excluir")

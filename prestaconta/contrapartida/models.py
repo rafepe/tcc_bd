@@ -1,8 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
+from django.utils import timezone
 
-from django.db import models
 
 class projeto(models.Model):
     id = models.AutoField(primary_key=True)
@@ -129,5 +128,17 @@ class contrapartida_so(models.Model):
         ordering = ['id_projeto']
 
 
+class contrapartida_so_proj(models.Model):
+    id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE, related_name='Projeto')
+    ano = models.IntegerField(verbose_name="Ano Referencia")
+    mes = models.IntegerField(verbose_name="Mês Referencia")
+    valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor")
+    data_criacao = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"Contrapartida {self.id_projeto.nome} - {self.ano}/{self.mes}"
 
+    class Meta:
+        verbose_name = "Contrapartida SO"
+        verbose_name_plural = "Contrapartidas SO"
+        #db_table = 'contrapartida_so_proj'

@@ -9,14 +9,14 @@ from django.http import HttpResponse, FileResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 import csv
 from django.http import JsonResponse
 import io
 import locale    
 from collections import defaultdict
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_proj
 import os
 from django.conf import settings
 
@@ -698,17 +698,17 @@ class contrapartida_equipamento_create(CreateView):
         if request.user.has_perm("contrapartida.create_contrapartida_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
+            return HttpResponse("Sem permissão para criar cp equipamento", status=403)
 
     def form_valid(self, form):
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
+            return HttpResponse("Erro: contrapartida equipamento invalida.")
         
     def form_invalid(self, form):
         errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        messages.error(self.request, f"Erro ao salvar o a contra partida equipamento: {errors}")
         return self.render_to_response(self.get_context_data(form=form))
     
     def criar_contrapartida_equipamento(request):
@@ -874,70 +874,63 @@ class contrapartida_so_list(ListView):
         
         return context
 
-
-class contrapartida_so_menu(SingleTableView):
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.view_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
-            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
-            return redirect('projeto_menu')
-
-    model = contrapartida_so
-    table_class = contrapartida_so_table
-    template_name_suffix = '_menu'
-    table_pagination = {"per_page": 10}
-    template_name = 'contrapartida_so_menu.html'
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        projeto = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if projeto:
-            queryset = queryset.filter(id_pessoa__nome__icontains=projeto)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)
-
-        return queryset
+class contrapartida_so_menu(TemplateView):
+    template_name = 'contrapartida/contrapartida_so_menu.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-      
-            "projeto": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")
-        }
-        
+
+        # Obtendo o ID do projeto
+        id_projeto = self.kwargs.get('id_projeto')
+        proj = get_object_or_404(projeto, id=id_projeto)
+
+        # Cálculos base para contrapartida
+        so_da_ue = round(proj.valor_total * proj.tx_adm_ue / 100, 2) - proj.valor_funape
+        so_no_ptr = proj.valor_so_ptr
+        num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (
+                    proj.data_fim.month - proj.data_inicio.month)
+        if num_meses == 0:
+            num_meses = 1  # Para evitar divisão por zero
+
+        # Cálculos da contrapartida
+        cp_ue_so = so_da_ue - so_no_ptr
+        cp_mensal_so = round(cp_ue_so / num_meses, 2)
+
+
+
+        # Adicionando os valores ao contexto
+        context['projeto'] = proj
+        context['so_da_ue'] = so_da_ue
+        context['so_no_ptr'] = so_no_ptr
+        context['cp_ue_so'] = cp_ue_so
+        context['cp_mensal_so'] = cp_mensal_so
+        context['num_meses'] = num_meses
+
+        # Adicionando contrapartidas relacionadas ao projeto
+        context['contrapartidas'] = contrapartida_so_proj.objects.filter(id_projeto=proj)
+
         return context
 
 class contrapartida_so_create(CreateView):
-    model = contrapartida_so
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+    model = contrapartida_so_proj
+    fields = ['id_projeto','ano', 'mes', 'valor']
+    template_name = 'contrapartida/contrapartida_so_form.html'
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.create_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
-            return HttpResponse("Sem permissão para criar contrapartida SO", status=403)
+        self.projeto = get_object_or_404(projeto, id=kwargs.get('id_projeto'))
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        try:
-            return super().form_valid(form)
-        except IntegrityError:
-            return HttpResponse("Erro: O contrapartida So para esta mes já existe.")
-
-
-    def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
-        return self.render_to_response(self.get_context_data(form=form))
+        form.instance.id_projeto = self.projeto
+        return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu')
+        return reverse_lazy('contrapartida_so_menu', kwargs={'id_projeto': self.projeto.id})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['projeto'] = self.projeto
+        return context
 
 class contrapartida_so_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -946,7 +939,7 @@ class contrapartida_so_update(UpdateView):
         else:
             return HttpResponse("Sem permissão para atualizar contrapartida SO")
    
-    model = contrapartida_so
+    model = contrapartida_so_menu
     fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
 
     def get_success_url(self):
@@ -959,7 +952,7 @@ class contrapartida_so_delete(DeleteView):
         else:
             return HttpResponse("Sem permissão para excluir contrapartida SO")
 
-    model = contrapartida_so
+    model = contrapartida_so_menu
     fields = []
     template_name_suffix = '_delete'
     def get_success_url(self):
@@ -1002,9 +995,6 @@ class contrapartida_realizada_list(ListView):
             "ano": self.request.GET.get("ano", "")           
         }
         return context
-
-
-
 
 def contrapartida_realizada_detalhes(request, projeto_id):
     proj = get_object_or_404(projeto, id=projeto_id)
