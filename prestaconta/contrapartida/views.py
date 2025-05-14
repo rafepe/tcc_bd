@@ -19,6 +19,9 @@ from collections import defaultdict
 from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
 import os
 from django.conf import settings
+from PyPDF2 import PdfReader
+import re
+import calendar
 
 def index(request):
     usuario = request.POST.get('username')
@@ -37,7 +40,6 @@ def index(request):
 def meu_logout(request):
     logout(request)
     return redirect('logout')
-
 
 def importar_csv(request):
     if request.method == 'POST' and request.FILES['csv_file']:
@@ -134,9 +136,6 @@ class projeto_menu(SingleTableView):
         }
         return context
 
-
-
-
 class projeto_create(CreateView):
     model = projeto
     fields = ['nome', 'peia', 'data_inicio', 'data_fim', 'valor_total', 'valor_financiado', 'valor_so_ptr', 'valor_funape', 'tx_adm_ue', 'contrapartida', 'ativo']
@@ -206,7 +205,6 @@ class equipamento_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'equipamento_menu.html'
 
-
 class equipamento_create(CreateView):
     model = equipamento
     fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo']
@@ -273,7 +271,7 @@ class pessoa_menu(SingleTableView):
 
 class pessoa_create(CreateView):
     model = pessoa
-    fields = ['nome', 'ativo']
+    fields = ['nome', 'ativo', 'cpf', 'email']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_pessoa"):
@@ -294,7 +292,7 @@ class pessoa_update(UpdateView):
             return redirect('pessoa_menu')
    
     model = pessoa
-    fields = ['nome', 'ativo']
+    fields = ['nome', 'ativo', 'cpf', 'email']  
     def get_success_url(self):
         return reverse_lazy('pessoa_menu')   
 
@@ -316,7 +314,6 @@ class pessoa_delete(DeleteView):
 ###########
 # SALARIO #
 ###########
-   
 
 class salario_menu(SingleTableView):
     def dispatch(self, request, *args, **kwargs):
@@ -347,22 +344,12 @@ class salario_menu(SingleTableView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-      
-            "nome": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")
-        }
-        
+        context = super().get_context_data(**kwargs)        
         return context
-
-
-
 
 class salario_create(CreateView):
     model = salario
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_salario"):
@@ -372,31 +359,36 @@ class salario_create(CreateView):
 
     def form_valid(self, form):
         try:
+            messages.success(self.request, "Salário salvo com sucesso!")
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
-
-
-    def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
-        return self.render_to_response(self.get_context_data(form=form))
+            messages.error(self.request, "Erro: Já existe um salário para esta pessoa e referência (ano/mês).")
+            return self.form_invalid(form)
 
     def get_success_url(self):
-        return reverse_lazy('salario_menu')
+        return self.request.path
 
 class salario_update(UpdateView):
+    model = salario
+    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo']
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_salario"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para atualizar salarios")
-   
-    model = salario
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+            return HttpResponse("Sem permissão para atualizar salários")
+
+    def form_valid(self, form):
+        # Remove o arquivo antigo se um novo for enviado
+        old_instance = self.get_object()
+        if old_instance.anexo and form.cleaned_data.get('anexo') != old_instance.anexo:
+            if os.path.isfile(old_instance.anexo.path):
+                os.remove(old_instance.anexo.path)
+        messages.success(self.request, "Salário atualizado com sucesso!")
+        return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('salario_menu')   
+        return self.request.path
 
 class salario_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
@@ -410,7 +402,7 @@ class salario_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('salario_menu')
-    
+   
 
 #######################
 # PROJETOS SEMESTRAIS #
@@ -504,8 +496,6 @@ class contrapartida_pesquisa_menu(SingleTableView):
         }
         return context
 
-
-
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
     fields = ['id_projeto', 'id_salario', 'horas_alocadas']
@@ -520,7 +510,7 @@ class contrapartida_pesquisa_create(CreateView):
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
+            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")
 
 
     def form_invalid(self, form):
@@ -560,16 +550,12 @@ class contrapartida_pesquisa_create(CreateView):
         # Adicionando ao contexto
         context["horas_utilizadas"] = horas_utilizadas
         context["horas_mensais"] = horas_mensais
-        context["horas_restantes"] = horas_mensais - horas_utilizadas
+        context["horas_restantes"] = (horas_mensais or 0) - (horas_utilizadas or 0)
 
         return context
 
-
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')
-    
-
-
 
 class contrapartida_pesquisa_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -669,7 +655,6 @@ class contrapartida_pesquisa_delete(DeleteView):
         return reverse_lazy('contrapartida_pesquisa_menu')     
 
 
-
 ##############################
 # CONTRAPARTIDA EQUIPAMENTOS #
 ##############################
@@ -710,8 +695,6 @@ class contrapartida_equipamento_menu(SingleTableView):
         }
         return context
 
-
-
 class contrapartida_equipamento_create(CreateView):
     model = contrapartida_equipamento
     fields = ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
@@ -736,8 +719,6 @@ class contrapartida_equipamento_create(CreateView):
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu')
-
-
 
 class contrapartida_equipamento_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -800,9 +781,6 @@ class contrapartida_realizada_list(ListView):
             "ano": self.request.GET.get("ano", "")           
         }
         return context
-
-
-
 
 def contrapartida_realizada_detalhes(request, projeto_id):
     proj = get_object_or_404(projeto, id=projeto_id)
@@ -871,9 +849,75 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
 
+##############################
+# DOWNLOAD DO BANCO DE DADOS #
+##############################
 def download_database(request):
     """View para download do arquivo do banco de dados"""
     file_path = os.path.join(settings.BASE_DIR, 'db.sqlite3')
     response = FileResponse(open(file_path, 'rb'))
     response['Content-Disposition'] = 'attachment; filename="db.sqlite3"'
     return response
+
+##########################
+# UPLOAD DE CONTRACHEQUE #
+##########################
+def upload_contracheque(request):
+    if request.method == 'POST' and 'pdf_files' in request.FILES:
+        pdf_files = request.FILES.getlist('pdf_files')  # Obtém todos os arquivos enviados
+        for pdf_file in pdf_files:
+            reader = PdfReader(pdf_file)
+            text = ''
+            for page in reader.pages:
+                text += page.extract_text()
+
+            try:
+                # Extração de dados do contracheque
+                nome_linha = text.splitlines()[9]
+                nome = re.match(r"^[A-Za-zÀ-ú ]+", nome_linha).group(0).strip()
+                print(nome)
+
+                cpf_linha = text.splitlines()[11]
+                cpf = re.search(r"(\d{11})$", cpf_linha).group(1)
+                print(cpf)
+
+                salario_bruto_linha = text.splitlines()[-5]
+                valores = re.findall(r"(\d{1,3}(?:\.\d{3})*,\d{2})", salario_bruto_linha)
+                salario_bruto = float(valores[2].replace('.', '').replace(',', '.'))
+
+                mes_referencia_linha = text.splitlines()[14]
+                mes_abreviado, ano = mes_referencia_linha.split()
+                ano = int(ano)
+                meses_pt = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+                mes = meses_pt.index(mes_abreviado.upper()) + 1
+
+                try:
+                    # Tenta inserir os dados no banco de dados
+                    pessoa_obj, created = pessoa.objects.get_or_create(nome=nome, cpf=cpf, ativo=True)
+                    salario_obj, salario_created = salario.objects.get_or_create(
+                        id_pessoa=pessoa_obj,
+                        mes=mes,
+                        ano=ano,
+                        defaults={
+                            'valor': salario_bruto,
+                            'horas': 160,
+                            'anexo': pdf_file,
+                        }
+                    )
+                    if not salario_created:  # Se já existe, tenta atualizar o anexo
+                        if not salario_obj.anexo:
+                            salario_obj.anexo = pdf_file
+                            salario_obj.save()
+                            messages.success(request, f"Arquivo de contracheque atualizado para {nome}.")
+                        else:
+                            messages.warning(request, f"Contracheque já cadastrado para {nome} ({mes}/{ano}).")
+                    else:
+                        messages.success(request, f"Salário inserido com sucesso para {nome}.")
+                except Exception as e:
+                    messages.error(request, f"Erro ao processar o arquivo para {nome}: {str(e)}")
+            except (IndexError, AttributeError, ValueError) as e:
+                messages.error(request, f"Erro ao extrair informações do arquivo {pdf_file.name}: {str(e)}")
+
+        return redirect('upload_contracheque')
+
+    return render(request, 'upload.html')
