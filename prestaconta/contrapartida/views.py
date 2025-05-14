@@ -1,7 +1,7 @@
 from .models import *
 from .tables import *
 from datetime import datetime
-from django_tables2 import SingleTableView
+from django_tables2 import SingleTableView,RequestConfig
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
@@ -16,7 +16,7 @@ from django.http import JsonResponse
 import io
 import locale    
 from collections import defaultdict
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_proj
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so,contrapartida_so_projeto
 import os
 from django.conf import settings
 
@@ -814,9 +814,9 @@ class contrapartida_equipamento_delete(DeleteView):
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
-class contrapartida_so_list(ListView):
+class contrapartida_so_menu(ListView):
     model = projeto  # Define o modelo explicitamente
-    template_name = "contrapartida/contrapartida_so_list.html"
+    template_name = "contrapartida/contrapartida_so_menu.html"
     context_object_name = "projetos"
     paginate_by = 10
 
@@ -849,7 +849,7 @@ class contrapartida_so_list(ListView):
             # Realizando os cálculos necessários para a Contrapartida SO
             so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
             so_no_ptr = projeto.valor_so_ptr
-            num_meses = (projeto.data_fim.year - projeto.data_inicio.year) * 12 + (projeto.data_fim.month - projeto.data_inicio.month)
+            num_meses = projeto.num_mes
         
             if num_meses == 0:
                 num_meses = 1  # Evita divisão por zero
@@ -874,8 +874,8 @@ class contrapartida_so_list(ListView):
         
         return context
 
-class contrapartida_so_menu(TemplateView):
-    template_name = 'contrapartida/contrapartida_so_menu.html'
+class contrapartida_so_proj(TemplateView):
+    template_name = 'contrapartida/contrapartida_so_proj.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -895,7 +895,9 @@ class contrapartida_so_menu(TemplateView):
         # Cálculos da contrapartida
         cp_ue_so = so_da_ue - so_no_ptr
         cp_mensal_so = round(cp_ue_so / num_meses, 2)
-
+        cp_so_proj=contrapartida_so_projeto.objects.filter(id_projeto=proj)
+        tabela = contrapartida_so_proj_table(cp_so_proj)
+        RequestConfig(self.request).configure(tabela)
 
 
         # Adicionando os valores ao contexto
@@ -907,13 +909,13 @@ class contrapartida_so_menu(TemplateView):
         context['num_meses'] = num_meses
 
         # Adicionando contrapartidas relacionadas ao projeto
-        context['contrapartidas'] = contrapartida_so_proj.objects.filter(id_projeto=proj)
-
+        context['contrapartidas'] = contrapartida_so_projeto.objects.filter(id_projeto=proj)
+        context['tabela_proj'] = tabela
         return context
 
 class contrapartida_so_create(CreateView):
-    model = contrapartida_so_proj
-    fields = ['id_projeto','ano', 'mes', 'valor']
+    model = contrapartida_so_projeto
+    fields = ['ano', 'mes', 'valor']
     template_name = 'contrapartida/contrapartida_so_form.html'
 
     def dispatch(self, request, *args, **kwargs):
@@ -925,7 +927,7 @@ class contrapartida_so_create(CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu', kwargs={'id_projeto': self.projeto.id})
+        return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.projeto.id})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -939,8 +941,8 @@ class contrapartida_so_update(UpdateView):
         else:
             return HttpResponse("Sem permissão para atualizar contrapartida SO")
    
-    model = contrapartida_so_menu
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+    model = contrapartida_so_projeto
+    fields = ['id_pessoa','ano', 'mes', 'valor']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_menu')   
@@ -952,11 +954,16 @@ class contrapartida_so_delete(DeleteView):
         else:
             return HttpResponse("Sem permissão para excluir contrapartida SO")
 
-    model = contrapartida_so_menu
+    def get_object(self, queryset=None):
+        self.object = super().get_object(queryset)
+        self.projeto = self.object.id_projeto
+        return self.object
+
+    model = contrapartida_so_projeto
     fields = []
-    template_name_suffix = '_delete'
+    template_name = 'contrapartida/contrapartida_so_delete.html'
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu')
+        return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
 
 
 
@@ -989,9 +996,12 @@ class contrapartida_realizada_list(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        for projeto in context["projetos"]:
+            projeto.mensal_devido = (projeto.contrapartida_max  /projeto.num_mes  if projeto.num_mes else projeto.contrapartida_max)
+
         context["filtros"] = {
             "nome": self.request.GET.get("nome", ""),
-            "data_fim": self.request.GET.get("mes", ""),
+            "mes": self.request.GET.get("mes", ""),
             "ano": self.request.GET.get("ano", "")           
         }
         return context
@@ -999,16 +1009,8 @@ class contrapartida_realizada_list(ListView):
 def contrapartida_realizada_detalhes(request, projeto_id):
     proj = get_object_or_404(projeto, id=projeto_id)
 
-    # Calcula número de meses do projeto
-    num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
-    
-    # Calcula Valor Mensal Devido
-    vlr_mensal_devido = (proj.contrapartida_max ) /num_meses  if num_meses else 0.0
-    # Dicionário para armazenar os totais por mês
 
-    # Formata os valores antes de enviar ao template
-    vlr_cp_max_formatado = locale.format_string('%.2f', proj.contrapartida_max, grouping=True)
-    vlr_mensal_devido_formatado = locale.format_string('%.2f', vlr_mensal_devido, grouping=True)
+    vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
 
     contrapartidas_por_mes = defaultdict(lambda: {
         'equipamento': 0.0,
@@ -1017,7 +1019,8 @@ def contrapartida_realizada_detalhes(request, projeto_id):
         'total': 0.0,
         'diferenca': 0.0
     })
-    
+    saldo=0.0
+    contrapartidas_ordenadas = {}
     # Processa contrapartida de pesquisa
     for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
         key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
@@ -1042,22 +1045,24 @@ def contrapartida_realizada_detalhes(request, projeto_id):
         contrapartidas_por_mes[key]['equipamento'] += value
 
     # Processa contrapartida de SO
-    #for so in contrapartidaSO.objects.filter(projeto=proj):
-    #    key = f"{so.ano_alocacao}-{so.mes_alocacao:02d}"
-    #    contrapartidas_por_mes[key]['so'] += float(so.valor_financiado or 0)
+    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
+        key = f"{so.ano}-{so.mes:02d}"
+        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
 
     # Calcula total por mês e diferença
-    for key, valores in contrapartidas_por_mes.items():
+    for key, valores in sorted(contrapartidas_por_mes.items()):
         valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so']
-        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido) 
+        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
+        saldo += valores['diferenca']
+        valores['saldo'] = saldo
+        contrapartidas_ordenadas[key] = valores
 
     # Ordena os meses do mais antigo para o mais recente
-    contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
+    #contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
 
     context = {
            'projeto': proj,
-           'num_meses': num_meses,
-           'vlr_mensal_devido': vlr_mensal_devido_formatado,  # Adicionado ao contexto
+           'mensal_devido': vlr_mensal_devido,
            'contrapartidas_por_mes': contrapartidas_ordenadas,
     }
 

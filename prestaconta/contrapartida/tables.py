@@ -230,7 +230,7 @@ class contrapartida_equipamento_table(tables.Table):
         fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
         sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
 
-
+## inutil
 class contrapartida_so_table(tables.Table):
     id_projeto = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Projeto")
     so_da_ue  = tables.Column(empty_values=(), verbose_name="SO da Ue Permitido", orderable=False)
@@ -273,9 +273,9 @@ class contrapartida_so_table(tables.Table):
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
 
-    def render_excluir(self, record):
-        url = reverse("contrapartida_so_delete", args=[record.pk])
-        return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)    
+    # def render_excluir(self, record):
+    #     url = reverse("contrapartida_so_delete", args=[record.pk])
+    #     return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
     
     class Meta:
         model = contrapartida_so
@@ -285,9 +285,9 @@ class contrapartida_so_table(tables.Table):
 
 class contrapartida_so_proj_table(tables.Table):
     ano= tables.Column(verbose_name="Ano Referencia")
+    #id_projeto = tables.Column(verbose_name="Projeto")
     mes = tables.Column(verbose_name="Mês Referencia")
     valor = tables.Column(verbose_name="Valor Alocado")
-    id_projeto = tables.Column(verbose_name="Projeto")
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
 
@@ -296,10 +296,8 @@ class contrapartida_so_proj_table(tables.Table):
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
 
-    def render_id_projeto(self, record):
-        return format_html('<a href="{0}">{1}</a>', reverse('projeto_detail', args=[record.id_projeto.pk]), record.id_projeto.nome)
-
     class Meta:
-        model = contrapartida_so_proj
+        model = contrapartida_so_projeto
         template_name = "django_tables2/bootstrap4.html"
-        fields = ("id_projeto", "ano_alocacao", "mes_alocacao", "valor", "excluir")
+        fields = ("ano", "mes", "valor","excluir")
+        ordering = ['ano', 'mes']

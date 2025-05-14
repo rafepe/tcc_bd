@@ -23,13 +23,15 @@
             {% else %}
             <h1>Cadastrar Contrapartida SO</h1>
             {% endif %}
+
+            <h2>{{projeto.nome}}</h2>
+             <br>
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
+
                 <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6">
-                        {% bootstrap_field form.id_projeto placeholder='' %}
-                    </div>
+
                     <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.ano placeholder='' %}
                     </div>

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+{% bootstrap_messages %}
+{% load render_table from django_tables2 %}
+
+{% block titulo %}Contrapartida SO do projeto{% endblock %}
+{% block corpo %}
+
+<body>
+
+<div class="container">
+<div class="text-center">
+<h1>Contrapartida SO Projeto</h1>
+<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+    <thead>
+        <tr>
+            <th>Projeto</th>
+            <th>Valor Total</th>
+            <th> Financiado</th>
+            <th> UE Permitido</th>
+            <th>SO no PTR</th>
+            <th> UE de S.O</th>
+            <th> Mensal de SO</th>
+            <th>Número de Meses</th>
+            <th>Data de Início</th>
+            <th>Taxa Funape</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ projeto.nome }}</td>
+            <td>R$ {{ projeto.valor_total|floatformat:2 }}</td>
+            <td>R$ {{ projeto.valor_financiado|floatformat:2 }}</td>
+            <td>R$ {{ so_da_ue|floatformat:2 }}</td>
+            <td>R$ {{ so_no_ptr|floatformat:2 }}</td>
+            <td>R$ {{ cp_ue_so|floatformat:2 }}</td>
+            <td>R$ {{ cp_mensal_so|floatformat:2 }}</td>
+            <td>{{ num_meses }}</td>
+            <td>{{ projeto.data_inicio|date:"d/m/Y" }}</td>
+            <td>R$ {{ projeto.valor_funape|floatformat:2 }}</td>
+        </tr>
+    </tbody>
+</table>
+    <hr>
+  <h3>Contrapartidas Cadastradas</h3>
+     <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+    <thead>
+        <tr>
+            <th>Ano-mês Referência</th>
+            <th>Valor</th>
+            <th>Data de Inserção</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for contrapartida in contrapartidas %}
+        <tr>
+            <td>{{ contrapartida.ano }}-{{ contrapartida.mes|add:"00"|slice:":2" }}</td>
+            <td>R$ {{ contrapartida.valor|floatformat:2 }}</td>
+            <td>{{ contrapartida.data_criacao|date:"d/m/Y" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+    <h3>Historico Contrapartida SO</h3>
+   {% render_table tabela_proj %}
+
+        <hr>
+
+        <td>
+            <a href="{% url 'contrapartida_so_create' projeto.id %}">
+                 <input type="button" class="btn btn-primary" value="Incluir nova contrapartida">
+            </a>
+        </td>
+
+
+</div>
+</div>
+</body>
+{% endblock %}

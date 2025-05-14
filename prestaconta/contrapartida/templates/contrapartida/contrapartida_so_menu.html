@@ -4,77 +4,89 @@
 {% bootstrap_css %}
 {% bootstrap_javascript %}
 {% bootstrap_messages %}
-{% load render_table from django_tables2 %}
 
-{% block titulo %}Contrapartida SO do projeto{% endblock %}
+
 {% block corpo %}
 
 <body>
+    <div class="container">
+        <div class="text-center">
 
-<div class="container">
-<div class="text-center">
-<h1>Contrapartida SO Projeto</h1>
-<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
-    <thead>
-        <tr>
-            <th>Projeto</th>
-            <th>Valor Total</th>
-            <th> Financiado</th>
-            <th> UE Permitido</th>
-            <th>SO no PTR</th>
-            <th> UE de S.O</th>
-            <th> Mensal de SO</th>
-            <th>Número de Meses</th>
-            <th>Data de Início</th>
-            <th>Taxa Funape</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>{{ projeto.nome }}</td>
-            <td>R$ {{ projeto.valor_total|floatformat:2 }}</td>
-            <td>R$ {{ projeto.valor_financiado|floatformat:2 }}</td>
-            <td>R$ {{ so_da_ue|floatformat:2 }}</td>
-            <td>R$ {{ so_no_ptr|floatformat:2 }}</td>
-            <td>R$ {{ cp_ue_so|floatformat:2 }}</td>
-            <td>R$ {{ cp_mensal_so|floatformat:2 }}</td>
-            <td>{{ num_meses }}</td>
-            <td>{{ projeto.data_inicio|date:"d/m/Y" }}</td>
-            <td>R$ {{ projeto.valor_funape|floatformat:2 }}</td>
-        </tr>
-    </tbody>
-</table>
-    <hr>
-  <h3>Contrapartidas Cadastradas</h3>
-     <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
-    <thead>
-        <tr>
-            <th>Ano e Mês de Referência</th>
-            <th>Valor</th>
-            <th>Data de Inserção</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for contrapartida in contrapartidas %}
-        <tr>
-            <td>{{ contrapartida.ano }}-{{ contrapartida.mes|add:"00"|slice:":2" }}</td>
-            <td>R$ {{ contrapartida.valor|floatformat:2 }}</td>
-            <td>{{ contrapartida.data_criacao|date:"d/m/Y" }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            <center>
+                <!-- Filtros -->
+                <form method="GET" class="mb-4">
+                    <label for="id_nome">Nome do Projeto:</label>
+                    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
 
-        <hr>
+                    <label for="id_ano">Ano:</label>
+                    <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;">
 
-        <td>
-            <a href="{% url 'contrapartida_so_create' projeto.id %}">
-                 <input type="button" class="btn btn-primary" value="Incluir nova contrapartida">
-            </a>
-        </td>
+                    <label for="id_mes">Mês Referencia:</label>
+                    <input type="number" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
+                    <button type="submit">Filtrar</button>
+                    <a href="{% url 'contrapartida_so_menu' %}">Limpar Filtros</a>
+                </form>
+            </center>
+            <h1>Contrapartida SO</h1>
+            <!-- Tabela -->
+            <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+                <thead>
+                    <tr>
+                        <th>Projeto</th>
+                        <th>Valor Total</th>
+                        <th>Valor Financiado</th>
+                        <th>SO da Ue Permitido</th>
+                        <th>SO no PTR</th>
+                        <th>Contrapartida UE de S.O</th>
+                        <th>Contrapartida Mensal de SO</th>
+                        <th>Número de Meses</th>
+                        <th>Data de Início</th>
+                        <th>Taxa Funape</th>
+                        <th>Detalhar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for projeto in projetos %}
+                    <tr>
+                        <td>{{ projeto.nome }}</td>
+                        <td>{{ projeto.valor_total }}</td>
+                        <td>{{ projeto.valor_financiado}}</td>
+                        <td>{{ projeto.so_da_ue|floatformat:2 }}</td>
+                        <td>{{ projeto.so_no_ptr|floatformat:2 }}</td>
+                        <td>{{ projeto.cp_ue_so|floatformat:2 }}</td>
+                        <td>{{ projeto.cp_mensal_so|floatformat:2 }}</td>
+                        <td>{{ projeto.num_meses }}</td>
+                        <td>{{ projeto.data_inicio }}</td>
+                        <td>{{ projeto.valor_funape }}</td>
+                        <td>
+                        <a href="{% url 'contrapartida_so_projeto' projeto.id %}">Ver Detalhes</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
+            <!-- Paginação -->
+            {% if is_paginated %}
+            <div>
+                {% if page_obj.has_previous %}
+                <a href="?page=1">Primeira</a>
+                <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
 
-</div>
-</div>
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    </div>
+    </div>
 </body>
+
+</html>
 {% endblock %}
