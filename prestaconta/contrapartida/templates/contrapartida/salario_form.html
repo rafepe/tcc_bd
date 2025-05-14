@@ -16,6 +16,7 @@
     <div class="container">
         <div class="text-center">
             <h1>Cadastrar/Atualizar Salário</h1>
+
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 
@@ -31,22 +32,21 @@
                     </div>          
                 </div>
                 
-
                 <div class="row justify-content-center" style="line-height: 1;">
-    
-                      <div class="col-md-4 col-sm-4 col-xs-12">
+                    <div class="col-md-4 col-sm-4 col-xs-12">
                         {% bootstrap_field form.valor placeholder='' %}
-                      </div>
-                      <div class="col-md-4 col-sm-4 col-xs-12">
+                    </div>
+                    <div class="col-md-4 col-sm-4 col-xs-12">
                         {% bootstrap_field form.horas placeholder='' %}
-                      </div>
+                    </div>
                 </div>
 
-       
+                <div class="row justify-content-center" style="line-height: 1;">
+                    <div class="col-md-8 col-sm-8 col-xs-12">
+                        {% bootstrap_field form.anexo %}
+                    </div>
+                </div>
 
-
-              
-                
                 <div class="row justify-content-center">
                     <div class="col-auto">
                         <button type="submit" class="btn btn-primary mt-3">Salvar</button>
