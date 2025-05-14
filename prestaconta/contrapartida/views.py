@@ -207,7 +207,7 @@ class equipamento_menu(SingleTableView):
 
 class equipamento_create(CreateView):
     model = equipamento
-    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo']
+    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma','horas_mensais', 'ativo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_equipamento"):
@@ -234,7 +234,7 @@ class equipamento_update(UpdateView):
             return redirect('equipamento_menu')
    
     model = equipamento
-    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma', 'ativo']
+    fields = ['nome', 'valor_aquisicao', 'quantidade_nos', 'cvc', 'cma','horas_mensais', 'ativo']
     def get_success_url(self):
         return reverse_lazy('equipamento_menu')   
 
@@ -518,7 +518,7 @@ class contrapartida_pesquisa_create(CreateView):
         messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
         return self.render_to_response(self.get_context_data(form=form))
     
-    def get_context_data(self, **kwargs):
+    def criar_contrapartida_pesquisa(request):
         context = super().get_context_data(**kwargs)
 
         horas_utilizadas = 0
@@ -526,7 +526,6 @@ class contrapartida_pesquisa_create(CreateView):
 
         # Captura o ID do salário selecionado no dropdown (se houver)
         id_salario = self.request.GET.get("id_salario") or self.request.POST.get("id_salario")
-        print(id_salario,'dropdown')
         if id_salario:
             try:
                 salario_obj = salario.objects.get(id=id_salario)
@@ -556,6 +555,12 @@ class contrapartida_pesquisa_create(CreateView):
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')
+
+ 
+    def get_success_url(self):
+        return reverse_lazy("contrapartida_pesquisa_update", kwargs={"pk": self.object.pk})
+    
+
 
 class contrapartida_pesquisa_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -604,39 +609,17 @@ class contrapartida_pesquisa_update(UpdateView):
         context["horas_mensais"] = horas_mensais
         context["horas_restantes"] = horas_mensais - horas_utilizadas
 
-        return context
+        return context    
+    def form_valid(self, form):
+        self.object = form.save()
 
-    def get_context_data_old(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if "form" in context and context["form"].instance.pk:
-          id_pesquisa = context["form"].instance.pk  # Pega o ID real    
-        else:
-          id_pesquisa = None
-        horas_utilizadas = 0
-        horas_mensais = 0
-        id_salario=contrapartida_pesquisa.objects.get(id =id_pesquisa).id_salario_id
-        if id_salario:
-            try:
+        action = self.request.POST.get("action")
+        if action == "update":
+            return redirect("contrapartida_pesquisa_update", pk=self.object.pk)
+        elif action == "save_exit":
+            return redirect("contrapartida_pesquisa_menu")
 
-                salario_obj = salario.objects.get(id =id_salario)
-                pessoa_id=salario_obj.id_pessoa
-                mes_ref=salario_obj.mes
-                ano_ref=salario_obj.ano
-                horas_mensais = salario_obj.horas 
-                   
-                horas_usadas= contrapartida_pesquisa.objects.filter(id_salario__id_pessoa=pessoa_id,id_salario__mes=mes_ref,id_salario__ano=ano_ref)
-                for registro in horas_usadas:
-                    horas_utilizadas+=registro.horas_alocadas
-
-            except salario.DoesNotExist:
-                messages.error(self.request, "Salário não encontrado")
-
-        # Adicionando ao contexto
-        context["horas_utilizadas"] = horas_utilizadas
-        context["horas_mensais"] = horas_mensais
-        context["horas_restantes"] = horas_mensais - horas_utilizadas
-
-        return context
+        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')   
@@ -674,15 +657,15 @@ class contrapartida_equipamento_menu(SingleTableView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        nome = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if nome:
-            queryset = queryset.filter(id_projeto__nome__icontains=nome)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)
+        v_nome = self.request.GET.get('nome', '').strip()
+        v_ano = self.request.GET.get('ano', '').strip()
+        v_mes = self.request.GET.get('mes','').strip()
+        if v_nome:
+            queryset = queryset.filter(id_projeto__nome__icontains=v_nome)
+        if v_ano:
+            queryset = queryset.filter(ano=v_ano)
+        if v_mes:
+            queryset = queryset.filter(mes=v_mes)
 
         return queryset
 
@@ -710,15 +693,45 @@ class contrapartida_equipamento_create(CreateView):
             return super().form_valid(form)
         except IntegrityError:
             return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
-
-
+        
     def form_invalid(self, form):
         errors = form.errors.as_text()  # Converte os erros para texto
         messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
         return self.render_to_response(self.get_context_data(form=form))
+    
+    def criar_contrapartida_equipamento(request):
+        equipamentos = equipamento.objects.all()
+        horas_restantes = None
+
+        id_equipamento = request.GET.get("id_equipamento")
+        mes = request.GET.get("mes")
+        ano = request.GET.get("ano")
+
+        if id_equipamento and mes and ano:
+            try:
+                equipamento_obj = equipamento.objects.get(id=id_equipamento)
+                horas_mensais = equipamento_obj.horas_mensais
+
+                horas_usadas = contrapartida_equipamento.objects.filter(
+                    id_equipamento=id_equipamento, mes=mes
+                ).values_list('horas_mensais', flat=True)
+            
+                horas_utilizadas=sum(horas_usadas)
+           
+
+                horas_restantes = max(0, horas_mensais - horas_utilizadas)
+
+            except equipamento.DoesNotExist:
+                horas_restantes = "Equipamento não encontrado"
+
+        return render(request, "\contrapartida\contrapartida_equipamento_form.html", {
+            "equipamentos": equipamentos,
+            "horas_restantes": horas_restantes,
+        })
+
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_equipamento_menu')
+        return reverse_lazy("contrapartida_equipamento_update", kwargs={"pk": self.object.pk})
 
 class contrapartida_equipamento_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -731,7 +744,47 @@ class contrapartida_equipamento_update(UpdateView):
     fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_equipamento_menu')   
+        return reverse_lazy('contrapartida_equipamento_menu') 
+    
+    def form_valid(self, form):
+        self.object = form.save()
+
+        action = self.request.POST.get("action")
+        if action == "update":
+            return redirect("contrapartida_equipamento_update", pk=self.object.pk)
+        elif action == "save_exit":
+            return redirect("contrapartida_equipamento_menu")
+
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        horas_utilizadas = 0
+        horas_mensais = 0
+        if "form" in context and context["form"].instance.pk:
+          id_cp_equipamento = context["form"].instance.pk  # Pega o ID real    
+        else:
+          id_cp_equipamento = None
+        
+        cp_equipamento_obj=contrapartida_equipamento.objects.get(id=id_cp_equipamento)
+        equipamento_id=cp_equipamento_obj.id_equipamento_id
+        equipamento_obj=equipamento.objects.get(id=equipamento_id)
+        horas_mensais=equipamento_obj.horas_mensais
+
+        horas_usadas=contrapartida_equipamento.objects.filter(id=cp_equipamento_obj.id,ano=cp_equipamento_obj.ano,mes=cp_equipamento_obj.mes)
+        for registro in horas_usadas:
+            horas_utilizadas+=registro.horas_alocadas
+        
+        if horas_mensais!=0:
+          context["horas_utilizadas"] = horas_utilizadas
+          context["horas_mensais"] = horas_mensais
+          context["horas_restantes"] = horas_mensais - horas_utilizadas
+        else:
+          context["horas_restantes"] = 'sem limite definido' 
+         
+        return context
+
+
 
 class contrapartida_equipamento_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
@@ -741,10 +794,164 @@ class contrapartida_equipamento_delete(DeleteView):
             return HttpResponse("Sem permissão para excluir contrapartida_equipamentos")
 
     model = contrapartida_equipamento
+    template_name_suffix = '_delete'
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_equipamento_menu')
+##############################
+# CONTRAPARTIDA SO           #
+##############################
+class contrapartida_so_list(ListView):
+    model = projeto  # Define o modelo explicitamente
+    template_name = "contrapartida/contrapartida_so_list.html"
+    context_object_name = "projetos"
+    paginate_by = 10
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
+            return redirect('projeto_menu')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        projeto = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes', '').strip()
+        if projeto:
+            queryset = queryset.filter(nome__icontains=projeto)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        contrapartida_so = []
+        
+        # Iterar sobre os projetos na queryset para acessar os campos
+        for projeto in context['projetos']:
+            # Realizando os cálculos necessários para a Contrapartida SO
+            so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
+            so_no_ptr = projeto.valor_so_ptr
+            num_meses = (projeto.data_fim.year - projeto.data_inicio.year) * 12 + (projeto.data_fim.month - projeto.data_inicio.month)
+        
+            if num_meses == 0:
+                num_meses = 1  # Evita divisão por zero
+
+            cp_ue_so = so_da_ue - so_no_ptr
+            cp_mensal_so = round(cp_ue_so / num_meses, 2)
+
+            # Atribuindo os cálculos diretamente ao objeto projeto
+            projeto.so_da_ue =  so_da_ue
+            projeto.so_no_ptr =  so_no_ptr
+            projeto.cp_ue_so =   cp_ue_so
+            projeto.cp_mensal_so = cp_mensal_so
+            projeto.num_meses =   num_meses
+
+   
+        # Filtros para manter a consistência da UI
+            context["filtros"] = {
+            "projeto": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")
+            }
+        
+        return context
+
+
+class contrapartida_so_menu(SingleTableView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
+            return redirect('projeto_menu')
+
+    model = contrapartida_so
+    table_class = contrapartida_so_table
+    template_name_suffix = '_menu'
+    table_pagination = {"per_page": 10}
+    template_name = 'contrapartida_so_menu.html'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        projeto = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes','').strip()
+        if projeto:
+            queryset = queryset.filter(id_pessoa__nome__icontains=projeto)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+      
+            "projeto": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")
+        }
+        
+        return context
+
+class contrapartida_so_create(CreateView):
+    model = contrapartida_so
+    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.create_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para criar contrapartida SO", status=403)
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except IntegrityError:
+            return HttpResponse("Erro: O contrapartida So para esta mes já existe.")
+
+
+    def form_invalid(self, form):
+        errors = form.errors.as_text()  # Converte os erros para texto
+        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_so_menu')
+
+class contrapartida_so_update(UpdateView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.update_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para atualizar contrapartida SO")
+   
+    model = contrapartida_so
+    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_so_menu')   
+
+class contrapartida_so_delete(DeleteView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.delete_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para excluir contrapartida SO")
+
+    model = contrapartida_so
     fields = []
     template_name_suffix = '_delete'
     def get_success_url(self):
-        return reverse_lazy('contrapartida_equipamento_menu')     
+        return reverse_lazy('contrapartida_so_menu')
+
+
 
 ##############################
 # CONTRAPARTIDA REALIZADA    #
@@ -824,7 +1031,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
                  float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1440
             ) / float(ce.id_equipamento.quantidade_nos)
         value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
-        #print(ce.id_equipamento.nome, value)        
+               
         contrapartidas_por_mes[key]['equipamento'] += value
 
     # Processa contrapartida de SO

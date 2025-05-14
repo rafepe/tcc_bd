@@ -38,7 +38,7 @@ class equipamento(models.Model):
     cvc = models.FloatField(default=0, verbose_name="CVC - Custo de Verificação e Calibração")
     cma = models.FloatField(default=0, verbose_name="CMA - Custo de Manutenção Anual")
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
-    
+    horas_mensais = models.IntegerField(default=0, verbose_name="Horas Mensais")
     def __str__(self):
         return self.nome
  
@@ -98,7 +98,7 @@ def delete_anexo_file(sender, instance, **kwargs):
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
-    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas')
+    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
 
     class Meta:
         unique_together = ('id_projeto', 'id_salario')
@@ -117,7 +117,7 @@ class contrapartida_equipamento(models.Model):
         validators=[MinValueValidator(2000), MaxValueValidator(2200)]
     )    
     id_equipamento = models.ForeignKey(equipamento, on_delete=models.CASCADE)
-    horas_alocadas = models.IntegerField(blank=True, null=True)
+    horas_alocadas = models.IntegerField(blank=True, null=True, default=0)
     
     class Meta:
         ordering = ['-ano','-mes']
@@ -142,26 +142,3 @@ class contrapartida_so(models.Model):
     def __str__(self):
         return f"Contrapartida SO - {self.id_projeto.nome}"
 
-"""
-class contrapartidaSO(models.Model):
-    projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    valor_financiado = models.FloatField(blank=True, null=True)
-    meses = models.IntegerField(blank=True, null=True)
-    dao_funape = models.CharField(max_length=50, blank=True, null=True)
-
-    mes_alocacao = models.IntegerField(
-    verbose_name="Mês de alocação",
-    validators=[MinValueValidator(1), MaxValueValidator(12)]
-    )
-ano_alocacao = models.IntegerField(
-    verbose_name="Ano de alocação",
-    validators=[MinValueValidator(2000), MaxValueValidator(2200)]
-    )
-
-    class Meta:
-        ordering = ['projeto']
-
-
-
-
-"""

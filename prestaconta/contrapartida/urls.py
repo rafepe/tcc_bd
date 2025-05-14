@@ -45,10 +45,17 @@ urlpatterns = [
     path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
     path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
 
-    path("contrapartida_equipamento_create/", views.contrapartida_equipamento_create.as_view(), name='contrapartida_equipamento_create'),
+    path("contrapartida_equipamento_create/", views.contrapartida_equipamento_create.as_view(), name='contrapartida_equipamento_create'),    
     path('contrapartida_equipamento_menu/', views.contrapartida_equipamento_menu.as_view(), name='contrapartida_equipamento_menu'),
     path("contrapartida_equipamento_update/<int:pk>/", views.contrapartida_equipamento_update.as_view(), name='contrapartida_equipamento_update'),
     path('contrapartida_equipamento_delete/<int:pk>/', views.contrapartida_equipamento_delete.as_view(), name='contrapartida_equipamento_delete'),
+
+    path("contrapartida_so_create/", views.contrapartida_so_create.as_view(), name='contrapartida_so_create'),
+    path('contrapartida_so_list/', views.contrapartida_so_list.as_view(), name='contrapartida_so_list'),    
+    path('contrapartida_so_menu/', views.contrapartida_so_menu.as_view(), name='contrapartida_so_menu'),
+    path("contrapartida_so_update/<int:pk>/", views.contrapartida_so_update.as_view(), name='contrapartida_so_update'),
+    path('contrapartida_so_delete/<int:pk>/', views.contrapartida_so_delete.as_view(), name='ccontrapartida_so_delete'),
+
 
     path("contrapartida_realizada_list/", views.contrapartida_realizada_list.as_view(), name='contrapartida_realizada_list'),
     path('contrapartida_realizada_detalhes/<int:projeto_id>/', contrapartida_realizada_detalhes, name='contrapartida_realizada_detalhes'),
