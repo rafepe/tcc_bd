@@ -15,31 +15,34 @@
 </head>
 
 {% block corpo %}
-
 <body>
     <div class="container">
         <div class="text-center">
-            {% if contrapartida_pesquisa.id %}
-            <h1>Atualizar Contrapartida Pesquisa</h1>
-            {% else %}
-            <h1>Cadastrar Contrapartida Pesquisa</h1>
-            {% endif %}
-            <form id="contrapartida-form" method="POST" enctype="multipart/form-data">
+            <h1>Cadastrar/Atualizar Contrapartida Pesquisa</h1>
+
+
+            
+            <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+
                 <div class="row justify-content-center" style="line-height: 1;">
                     <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.id_projeto placeholder='' %}
-                    </div>
-                    <div class="col-md-4 col-sm-6">
+                    </div> 
+                    <div class="col-md-2 col-sm-4">
                         {% bootstrap_field form.id_salario placeholder='' %}
                     </div>
                 </div>
-                {% if contrapartida_pesquisa.id %}
+
                 <div class="row justify-content-center" style="line-height: 1;">
                     <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.horas_alocadas placeholder='' %}
                     </div>
-                    <div class="col-md-2 col-sm-6">
+                    <!--div class="col-md-2 col-sm-4">
+                        <label>Horas já utilizadas:</label>
+                        <input type="text" class="form-control" value="{{ horas_utilizadas }}" readonly>
+                    </div-->
+                    <div class="col-md-2 col-sm-4">
                         <label>Horas restantes:</label>
                         <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
                     </div>
@@ -47,35 +50,12 @@
 
                 <div class="row justify-content-center">
                     <div class="col-auto">
-                        <button type="submit" name="action" value="update"
-                            class="btn btn-warning mt-3">Atualizar</button>
-                        <button type="submit" name="action" value="save_exit" class="btn btn-primary mt-3">Salvar e
-                            Voltar</button>
-                    </div>
-                    <div class="col-auto">
-                        <a href="{% url 'contrapartida_pesquisa_delete' contrapartida_pesquisa.id %}"
-                            class="btn btn-danger mt-3">
-                            Excluir
-                        </a>
+                        <button type="submit" class="btn btn-primary mt-3">Salvar</button>
                     </div>
                 </div>
-
-                {% else %}
-
-                <div class="row justify-content-center">
-                    <div class="col-auto">
-
-                        <button type="submit" class="btn btn-primary mt-3">Salvar e Continuar</button>
-                    </div>
-                </div>
-
-
-                {% endif %}
-
             </form>
         </div>
     </div>
 </body>
-
 </html>
 {% endblock %}

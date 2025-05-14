@@ -55,8 +55,9 @@ class equipamento_table(tables.Table):
     valor_aquisicao = tables.LinkColumn("equipamento_update", args=[A("pk")])
     quantidade_nos = tables.LinkColumn("equipamento_update", args=[A("pk")], verbose_name="Qtde Nós")
     cvc = tables.LinkColumn("equipamento_update", args=[A("pk")], verbose_name="CVC")
-    cma = tables.LinkColumn("equipamento_update", args=[A("pk")], verbose_name="CMA")
+    cma = tables.LinkColumn("equipamento_update", args=[A("pk")], verbose_name="CMA")    
     valor_hora = tables.Column(empty_values=())
+    horas_mensais = tables.LinkColumn("equipamento_update", args=[A("pk")], verbose_name="Horas Mensais")
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     class Meta:
         model = equipamento
@@ -193,24 +194,29 @@ class contrapartida_equipamento_table(tables.Table):
 
 
     def render_valor_hora(self, record):
+        valor_aquisicao = record.id_equipamento.valor_aquisicao or 0
+        cvc = record.id_equipamento.cvc or 0
+        cma = record.id_equipamento.cma or 0
+        quantidade_nos = record.id_equipamento.quantidade_nos or 1 
         if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value = (( (0.1*record.id_equipamento.valor_aquisicao) + 
-          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1200) / record.id_equipamento.quantidade_nos
+          value = (( (0.1*valor_aquisicao) +  cvc + cma )  /  1200) / quantidade_nos
         else:
-          value = ( (0.1*record.id_equipamento.valor_aquisicao) + 
-          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1440 / record.id_equipamento.quantidade_nos
+          value = ( (0.1*valor_aquisicao) +  cvc + cma )  /  1440 / quantidade_nos
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
 
     
     def render_valor_cp(self, record):
+        valor_aquisicao = record.id_equipamento.valor_aquisicao or 0
+        cvc = record.id_equipamento.cvc or 0
+        cma = record.id_equipamento.cma or 0
+        quantidade_nos = record.id_equipamento.quantidade_nos or 1  # Evita divisão por zero
+        horas_alocadas = record.horas_alocadas or 0 
         if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value_valor_hora = (( (0.1*record.id_equipamento.valor_aquisicao) + 
-          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1200) / record.id_equipamento.quantidade_nos
+          value_valor_hora = (( (0.1*valor_aquisicao) + cvc + cma )  /  1200) / quantidade_nos
         else:
-          value_valor_hora = ( ( (0.1*record.id_equipamento.valor_aquisicao) + 
-          record.id_equipamento.cvc + record.id_equipamento.cma )  /  1440  ) / record.id_equipamento.quantidade_nos
-        value = round(record.horas_alocadas * value_valor_hora , 2)
+          value_valor_hora = ( ( (0.1*valor_aquisicao) + cvc + cma )  /  1440  ) /  quantidade_nos
+        value = round(horas_alocadas * value_valor_hora , 2)
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
 
@@ -226,3 +232,59 @@ class contrapartida_equipamento_table(tables.Table):
         template_name = "django_tables2/bootstrap4.html"
         fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
         sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
+
+
+class contrapartida_so_table(tables.Table):
+    id_projeto = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Projeto")
+    so_da_ue  = tables.Column(empty_values=(), verbose_name="SO da Ue Permitido", orderable=False)
+    so_no_ptr=  tables.Column(empty_values=(), verbose_name="SO no PTR", orderable=False)
+    cp_ue_so = tables.Column(empty_values=(), verbose_name="Contrapartida UE de S.O", orderable=False)
+    cp_mensal_so = tables.Column(empty_values=(), verbose_name="Contrapartida Mensal de SO", orderable=False)
+    num_meses=tables.Column(empty_values=(), verbose_name="Numero de Meses", orderable=False)
+    dt_inicio=tables.Column(empty_values=(), verbose_name="Data Inicio", orderable=False)
+    ano_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano")
+    mes_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês")
+    valor =tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor Alocado")
+ 
+    
+    
+
+    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+    
+
+    def render_so_da_ue(self, record):
+        value=round(record.id_projeto.valor_total * record.id_projeto.tx_adm_ue,2)-record.valor_funape
+        formatted_value = locale.currency(value, grouping=True)
+        return format_html('<span>{}</span>', formatted_value) 
+    
+    def render_so_no_ptr(self, record):
+        value=record.id_projeto_valor_so_ptr
+        formatted_value = locale.currency(value, grouping=True)
+        return format_html('<span>{}</span>', formatted_value) 
+    
+    def render_num_meses(self, record):
+        data_inicio = record.id_projeto.data_inicio
+        data_fim = record.id_projeto.data_fim
+        num_meses = data_fim.month - data_inicio.month + ((data_fim.year - data_inicio.year) * 12)
+        return num_meses
+    
+    def render_cp_ue_so(self, record):
+        value = record.so_da_ue - record.so_no_ptr
+        formatted_value = locale.currency(value, grouping=True)
+        return format_html('<span>{}</span>', formatted_value) 
+     
+    def render_cp_mensal_so(self, record):
+        value = round(record.cp_ue_so/record.num_meses,2)
+        formatted_value = locale.currency(value, grouping=True)
+        return format_html('<span>{}</span>', formatted_value) 
+
+    def render_excluir(self, record):
+        url = reverse("contrapartida_so_delete", args=[record.pk])
+        return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)    
+    
+    class Meta:
+        model = contrapartida_so
+        attrs = {"class": "table thead-light table-striped table-hover"}
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
+
