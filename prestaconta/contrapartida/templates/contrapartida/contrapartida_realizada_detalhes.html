@@ -1,14 +1,33 @@
 {% extends "base.html" %}
 
 {% block corpo %}
+<div class="text-center">
 <h2>Detalhes do Projeto: {{ projeto.nome }}</h2>
 
-<p><strong>Data de Início:</strong> {{ projeto.data_inicio }}</p>
-<p><strong>Data de Fim:</strong> {{ projeto.data_fim }}</p>
-<p><strong>Valor Total Contrapartida:</strong> R$ {{ projeto.contrapartida_max  }}</p>
-<p><strong>Número de meses:</strong> {{ num_meses }}</p>
-<p><strong>Valor Mensal Devido :</strong> R$ {{ vlr_mensal_devido}} </p>
+<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+    <thead>
+        <tr>
+            <th>Projeto</th>
+            <th>Valor Total Contrapartida</th>
+            <th>Número de Meses</th>
+            <th>Valor Mensal Devido</th>
+            <th>Data de Início</th>
+            <th>Data de Fim</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ projeto.nome }}</td>
+            <td>R$ {{ projeto.contrapartida_max|floatformat:2 }}</td>
+            <td>{{ projeto.num_mes }}</td>
+            <td>R$ {{ mensal_devido|floatformat:2 }}</td>
+            <td>{{ projeto.data_inicio|date:"d/m/Y" }}</td>
+            <td>{{ projeto.data_fim|date:"d/m/Y" }}</td>
+        </tr>
+    </tbody>
+</table>
 
+<br>
 <h3>Contrapartidas por Mês</h3>
 
 <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
@@ -20,6 +39,7 @@
             <th>SO</th>
             <th>Total</th>
             <th>Diferença</th>
+            <th>Saldo</th>
         </tr>
     </thead>
     <tbody>
@@ -31,6 +51,7 @@
             <td>R$ {{ valores.so|floatformat:2 }}</td>
             <td>R$ {{ valores.total|floatformat:2 }}</td>
             <td>R$ {{ valores.diferenca|floatformat:2 }}</td>
+            <td>RS {{ valores.saldo|floatformat:2}}</td>
         </tr>
         {% empty %}
         <tr>
@@ -39,4 +60,5 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

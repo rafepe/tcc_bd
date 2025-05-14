@@ -20,6 +20,12 @@ class projeto(models.Model):
     def __str__(self):
         return self.nome
 
+    @property
+    def num_mes(self):
+        if self.data_inicio and self.data_fim:
+            return (self.data_fim.year - self.data_inicio.year) * 12 + (self.data_fim.month - self.data_inicio.month)
+        return 0
+
     class Meta:
         ordering = ['data_fim']
 
@@ -128,7 +134,7 @@ class contrapartida_so(models.Model):
         ordering = ['id_projeto']
 
 
-class contrapartida_so_proj(models.Model):
+class contrapartida_so_projeto(models.Model):
     id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE, related_name='Projeto')
     ano = models.IntegerField(verbose_name="Ano Referencia")
     mes = models.IntegerField(verbose_name="Mês Referencia")
@@ -141,4 +147,5 @@ class contrapartida_so_proj(models.Model):
     class Meta:
         verbose_name = "Contrapartida SO"
         verbose_name_plural = "Contrapartidas SO"
+        ordering = ['ano','mes']
         #db_table = 'contrapartida_so_proj'
