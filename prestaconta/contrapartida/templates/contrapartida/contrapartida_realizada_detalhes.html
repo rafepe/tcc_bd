@@ -51,7 +51,7 @@
             <td>R$ {{ valores.so|floatformat:2 }}</td>
             <td>R$ {{ valores.total|floatformat:2 }}</td>
             <td>R$ {{ valores.diferenca|floatformat:2 }}</td>
-            <td>RS {{ valores.saldo|floatformat:2}}</td>
+            <td>R$ {{ valores.saldo|floatformat:2}}</td>
         </tr>
         {% empty %}
         <tr>
@@ -60,5 +60,78 @@
         {% endfor %}
     </tbody>
 </table>
+<br>
+
+<h3>Contrapartidas pivotada</h3>
+<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th>Tipo</th>
+            {% for data in ano_mes %}
+                <th>{{ data }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for linha in dados_tabela %}
+            {% if linha.tipo == "Total" %}
+                <tr style="border-top: 3px solid black;">
+            {% else %}
+                <tr>
+            {% endif %}
+                <td>{{ linha.tipo }}</td>
+                {% for valor in linha.valores %}
+                    {% if linha.tipo in " Saldo" %}
+                        <td style="font-weight: bold; background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %};">
+                            {{ valor|floatformat:2 }}
+                        </td>
+                    {% else %}
+                        <td>{{ valor|floatformat:2 }}</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+    <br>
+<h3>Contrapartidas pivotada</h3>
+
+<div style="overflow-x: auto; max-width: 100%;">
+  <div style="min-width: 100%; max-width: 100%; overflow-x: auto;">
+    <table border="1" cellpadding="10" cellspacing="0"
+           style="min-width: calc(7 * 150px); width: max-content; border-collapse: collapse; text-align: center;">
+      <thead>
+        <tr>
+          <th style="position: sticky; left: 0; background-color: #f9f9f9; z-index: 2;">Tipo</th>
+          {% for data in ano_mes %}
+            <th style="min-width: 300px;">{{ data }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in dados_tabela %}
+          {% if linha.tipo == "Total" %}
+            <tr style="border-top: 3px solid #ccc;">
+          {% else %}
+            <tr>
+          {% endif %}
+            <td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;">{{ linha.tipo }}</td>
+            {% for valor in linha.valores %}
+              {% if linha.tipo in "Saldo" %}
+                <td style="font-weight: bold; background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %}; color: {% if valor < 0 %}#721c24{% else %}#155724{% endif %}; min-width: 150px;">
+                  {{ valor|floatformat:2 }}
+                </td>
+              {% else %}
+                <td style="min-width: 150px;">{{ valor|floatformat:2 }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 </div>
 {% endblock %}

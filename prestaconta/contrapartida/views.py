@@ -1013,14 +1013,23 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
 
     contrapartidas_por_mes = defaultdict(lambda: {
-        'equipamento': 0.0,
-        'pesquisa': 0.0,
         'so': 0.0,
+        'pesquisa': 0.0,
+        'equipamento': 0.0,
+        'prospeccao':0.0,
         'total': 0.0,
         'diferenca': 0.0
     })
     saldo=0.0
     contrapartidas_ordenadas = {}
+
+    tipos_contrapartida = ['SO','Pesquisa','Equipamento','Prospeccao','Total', 'Diferenca', 'Saldo']
+
+    # Processa contrapartida de SO
+    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
+        key = f"{so.ano}-{so.mes:02d}"
+        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
+
     # Processa contrapartida de pesquisa
     for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
         key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
@@ -1044,10 +1053,8 @@ def contrapartida_realizada_detalhes(request, projeto_id):
                
         contrapartidas_por_mes[key]['equipamento'] += value
 
-    # Processa contrapartida de SO
-    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
-        key = f"{so.ano}-{so.mes:02d}"
-        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
+    # Calcula contrapartida prospeccao
+    #contrapartidas_por_mes[key]['prospeccao'] += float(so.valor or 0)
 
     # Calcula total por mês e diferença
     for key, valores in sorted(contrapartidas_por_mes.items()):
@@ -1060,13 +1067,48 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     # Ordena os meses do mais antigo para o mais recente
     #contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
 
+    ## Inicio do pivot
+
+    ano_mes = sorted(contrapartidas_ordenadas.keys(), key=lambda x: datetime.strptime(x, "%Y-%m"))
+
+    # Estrutura: {'SO': {'2024-07': 0.0, ...}, 'Pesquisa': {...}, ...}
+    dados_transpostos = defaultdict(dict)
+
+
+
+    for data in ano_mes:
+        valores = contrapartidas_ordenadas[data]
+        dados_transpostos['SO'][data] = valores['so']
+        dados_transpostos['Pesquisa'][data] = valores['pesquisa']
+        dados_transpostos['Equipamento'][data] = valores['equipamento']
+        dados_transpostos['Prospeccao'][data] = valores['prospeccao']
+        dados_transpostos['Total'][data] = valores['total']
+        dados_transpostos['Diferenca'][data] = valores['diferenca']
+        dados_transpostos['Saldo'][data] = valores['saldo']
+
+    dados_tabela = []
+
+    for tipo in tipos_contrapartida:
+        linha = {
+            "tipo": tipo,
+            "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
+        }
+        dados_tabela.append(linha)
+
+
     context = {
            'projeto': proj,
            'mensal_devido': vlr_mensal_devido,
            'contrapartidas_por_mes': contrapartidas_ordenadas,
+           "ano_mes": ano_mes,  # lista de '2024-07', '2024-08', ...
+           "dados_tabela": dados_tabela  # lista de dicionários com tipo + valores ordenados
     }
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
+
+
+
+
 
 def download_database(request):
     """View para download do arquivo do banco de dados"""
