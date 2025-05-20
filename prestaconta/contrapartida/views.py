@@ -1,9 +1,12 @@
 from .models import *
 from .tables import *
+from collections import defaultdict
 from datetime import datetime
 from django_tables2 import SingleTableView
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.http import HttpResponse, FileResponse
 from django.shortcuts import redirect, render , get_object_or_404
@@ -11,17 +14,13 @@ from django.urls import reverse_lazy
 from django.utils.timezone import now
 from django.views.generic import ListView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from PyPDF2 import PdfReader
+import calendar
 import csv
-from django.http import JsonResponse
 import io
 import locale    
-from collections import defaultdict
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento #, contrapartidaSO
 import os
-from django.conf import settings
-from PyPDF2 import PdfReader
 import re
-import calendar
 
 def index(request):
     usuario = request.POST.get('username')
@@ -550,13 +549,12 @@ class contrapartida_pesquisa_create(CreateView):
         context["horas_utilizadas"] = horas_utilizadas
         context["horas_mensais"] = horas_mensais
         context["horas_restantes"] = (horas_mensais or 0) - (horas_utilizadas or 0)
-
         return context
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')
 
- 
+
     def get_success_url(self):
         return reverse_lazy("contrapartida_pesquisa_update", kwargs={"pk": self.object.pk})
     
@@ -1120,6 +1118,7 @@ def upload_contracheque(request):
                             messages.warning(request, f"Contracheque já cadastrado para {nome} ({mes}/{ano}).")
                     else:
                         messages.success(request, f"Salário inserido com sucesso para {nome}.")
+                        return redirect(reverse_lazy('salario_menu') + f'?nome={nome.rstrip()}&mes={mes}&ano={ano}')
                 except Exception as e:
                     messages.error(request, f"Erro ao processar o arquivo para {nome}: {str(e)}")
             except (IndexError, AttributeError, ValueError) as e:
@@ -1128,3 +1127,46 @@ def upload_contracheque(request):
         return redirect('upload_contracheque')
 
     return render(request, 'upload.html')
+
+def verifica_contracheque(request):
+    pessoas = pessoa.objects.all()
+    context = {}
+
+    if request.method == 'POST':
+        pessoa_id = request.POST.get('pessoa_id')
+        pessoa_obj = pessoa.objects.get(id=pessoa_id)
+        # Filtrar salários da pessoa que não possuem anexo ou cujo anexo é 0
+        salarios_sem_anexo = salario.objects.filter(
+            id_pessoa=pessoa_obj
+        ).exclude(anexo__isnull=False, anexo__gt='0')
+
+        # Preparar informações para o e-mail
+        meses_sem_anexo = [
+            f"{calendar.month_name[s.mes]} de {s.ano}" for s in salarios_sem_anexo
+        ]
+        email_conteudo = (
+            f"Olá {pessoa_obj.nome},\n\n"
+            "Identificamos que você não possui contracheques anexados para os seguintes meses:\n\n"
+            + "\n".join(meses_sem_anexo)
+            + "\n\nPor favor, envie os contracheques pendentes o mais rápido possível.\n\n"
+            "Atenciosamente,"
+        )
+
+        # Enviar e-mail se solicitado
+        if 'enviar_email' in request.POST:
+            send_mail(
+                subject="Pendência de Contracheques",
+                message=email_conteudo,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[pessoa_obj.email],
+            )
+            messages.success(request, f"E-mail enviado para {pessoa_obj.nome} com sucesso!")
+
+        context = {
+            'pessoa_selecionada': pessoa_obj,
+            'salarios_sem_anexo': salarios_sem_anexo,
+            'email_conteudo': email_conteudo,
+        }
+
+    context['pessoas'] = pessoas
+    return render(request, 'verifica_contracheque.html', context)
