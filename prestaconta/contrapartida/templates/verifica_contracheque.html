@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block titulo %}Verificar Salários sem Contracheque{% endblock %}
+
+{% block corpo %}
+<center>
+<h1>Verificar Salários sem Contracheque</h1>
+
+<form method="POST">
+    {% csrf_token %}
+    <label for="pessoa_id">Selecione uma pessoa:</label>
+    <select name="pessoa_id" id="pessoa_id" required>
+        <option value="">-- Selecione --</option>
+        {% for pessoa in pessoas %}
+        <option value="{{ pessoa.id }}">{{ pessoa.nome }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Verificar</button>
+</form>
+
+{% if pessoa_selecionada %}
+    <h2>Salários sem anexo para {{ pessoa_selecionada.nome }}</h2>
+    {% if salarios_sem_anexo %}
+    <div style="text-align: center;">
+        <ul style="display: inline-block; text-align: left;">
+            {% for salario in salarios_sem_anexo %}
+            <li>
+                <a href="{% url 'salario_update' salario.id %}" target="_blank">
+                   {{ salario.mes }}/{{ salario.ano }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="pessoa_id" value="{{ pessoa_selecionada.id }}">
+            <button type="submit" name="enviar_email">Enviar E-mail</button>
+        </form>
+        <h3>Pré-visualização do E-mail:</h3>
+        <pre id="email-conteudo">{{ email_conteudo }}</pre>
+        <button onclick="copiarEmail()">Copiar Corpo do E-mail</button>
+    {% else %}
+        <p>Todos os salários possuem contracheque anexado.</p>
+    {% endif %}
+{% endif %}
+
+<script>
+    function copiarEmail() {
+        const emailConteudo = document.getElementById('email-conteudo').innerText;
+        navigator.clipboard.writeText(emailConteudo).then(() => {
+            alert('Corpo do e-mail copiado para a área de transferência!');
+        }).catch(err => {
+            alert('Erro ao copiar o texto: ' + err);
+        });
+    }
+</script>
+</center>
+{% endblock %}

@@ -3,6 +3,12 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+import os
+
+
 class projeto(models.Model):
     id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)
@@ -51,13 +57,15 @@ class equipamento(models.Model):
 class pessoa(models.Model):
     id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255)
+    cpf = models.CharField(max_length=11, unique=True, null=True, blank=True, default=None, verbose_name='CPF')
+    email = models.EmailField(unique=False, null=True, blank=True, default=None, verbose_name='E-mail')
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
    
     def __str__(self):
         return self.nome
  
     class Meta:
-        ordering = ['-ativo','nome']
+        ordering = ['-ativo', 'nome']
 
 class salario(models.Model):
     id = models.AutoField(primary_key=True)
@@ -74,17 +82,27 @@ class salario(models.Model):
     )
     valor = models.FloatField(blank=True, null=True, default=0)
     horas = models.IntegerField(default=160, null=False)
-    anexo = models.BooleanField(default=False, verbose_name='Anexo')
+    anexo = models.FileField(upload_to='comprovantes/', null=True, blank=True)
+    
+    def delete(self, *args, **kwargs):
+        # Remove o arquivo do sistema de arquivos antes de deletar o objeto
+        if self.anexo and os.path.isfile(self.anexo.path):
+            os.remove(self.anexo.path)
+        super().delete(*args, **kwargs)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['id_pessoa', 'mes', 'ano'], name='unique_pessoa_referencia')
+            models.UniqueConstraint(fields=['id_pessoa', 'ano', 'mes'], name='unique_pessoa_referencia')
         ]
         ordering = ['id_pessoa']
 
-
     def __str__(self):
         return f"{self.id_pessoa} - {self.ano}/{self.mes}"
+
+@receiver(post_delete, sender=salario)
+def delete_anexo_file(sender, instance, **kwargs):
+    if instance.anexo and os.path.isfile(instance.anexo.path):
+        os.remove(instance.anexo.path)
 
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
@@ -113,26 +131,17 @@ class contrapartida_equipamento(models.Model):
     class Meta:
         ordering = ['-ano','-mes']
 
-
-class contrapartida_so(models.Model):
+class contrapartida_rh(models.Model):
+    id = models.AutoField(primary_key=True)
     id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    cp_ue_so = models.FloatField(blank=True, null=True,default=0.0)
-    cp_mensal_so= models.FloatField(blank=True, null=True,default=0.0)
-    
-    valor=models.FloatField(blank=True, null=True,default=0.0)
-
-    mes_alocacao = models.IntegerField(
-    verbose_name="Mês de alocação",
-    validators=[MinValueValidator(1), MaxValueValidator(12)]
-    )
-    ano_alocacao = models.IntegerField(
-    verbose_name="Ano de alocação",
-    validators=[MinValueValidator(2000), MaxValueValidator(2200)]
-    )
+    id_salario = models.ForeignKey(salario, on_delete=models.CASCADE)
+    valor_cp = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
-        ordering = ['id_projeto']
+        unique_together = ('id_projeto', 'id_salario')
 
+    def __str__(self):
+        return f"Contrapartida RH - {self.id_projeto.nome} - {self.id_salario.id_pessoa.nome}"
 
 class contrapartida_so_projeto(models.Model):
     id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE, related_name='Projeto')

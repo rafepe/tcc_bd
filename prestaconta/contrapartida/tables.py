@@ -110,7 +110,6 @@ class pessoa_table(tables.Table):
         url = reverse("pessoa_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
-
 class salario_table(tables.Table):
     pessoa = tables.LinkColumn("salario_update", args=[A("pk")], accessor='id_pessoa.nome', verbose_name="Pessoa")
     ano = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Ano de Referência")
@@ -118,14 +117,9 @@ class salario_table(tables.Table):
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
+    anexo = tables.Column(verbose_name="Comprovante", accessor='anexo', orderable=True, default='Não')
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
-
-    class Meta:
-        model = salario
-        attrs = {"class": "table thead-light table-striped table-hover"}
-        template_name = "django_tables2/bootstrap4.html"
-        fields = ('pessoa', 'ano', 'mes', 'valor', 'horas', 'valor_hora','excluir')
-
+    
     def render_valor_hora(self, record):
         if record.valor and record.horas and record.horas != 0:
             value = round(record.valor / record.horas, 2)
@@ -143,7 +137,16 @@ class salario_table(tables.Table):
         url = reverse("salario_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
+    def render_anexo(self, value):
+        #print(value)
+        if value and value != '0':
+            return "Sim"
+        return "Não"
 
+    class Meta:
+        model = salario
+        template_name = "django_tables2/bootstrap5.html"
+        fields = ['pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo', 'excluir']
 
 class contrapartida_pesquisa_table(tables.Table):
     id_projeto = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Projeto")

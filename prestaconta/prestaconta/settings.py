@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -131,4 +132,23 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 LOGOUT_REDIRECT_URL = '/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = '587'
+EMAIL_USE_TLS = True
+
+# Use environment variables for OAuth 2.0 credentials
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'eng.rafael.peixoto@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'pbrq xfmx czkj mnko')
+#DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'eng.rafael.peixoto@gmail.com')
+
+# OAuth 2.0 settings
+#EMAIL_USE_OAUTH2 = True
+#EMAIL_OAUTH2_CLIENT_ID = os.getenv('EMAIL_OAUTH2_CLIENT_ID', 'your_client_id')
+#EMAIL_OAUTH2_CLIENT_SECRET = os.getenv('EMAIL_OAUTH2_CLIENT_SECRET', 'your_client_secret')
+#EMAIL_OAUTH2_REFRESH_TOKEN = os.getenv('EMAIL_OAUTH2_REFRESH_TOKEN', 'your_refresh_token')
