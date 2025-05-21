@@ -62,37 +62,6 @@
 </table>
 <br>
 
-<h3>Contrapartidas pivotada</h3>
-<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center; border-collapse: collapse;">
-    <thead>
-        <tr>
-            <th>Tipo</th>
-            {% for data in ano_mes %}
-                <th>{{ data }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tbody>
-        {% for linha in dados_tabela %}
-            {% if linha.tipo == "Total" %}
-                <tr style="border-top: 3px solid black;">
-            {% else %}
-                <tr>
-            {% endif %}
-                <td>{{ linha.tipo }}</td>
-                {% for valor in linha.valores %}
-                    {% if linha.tipo in " Saldo" %}
-                        <td style="font-weight: bold; background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %};">
-                            {{ valor|floatformat:2 }}
-                        </td>
-                    {% else %}
-                        <td>{{ valor|floatformat:2 }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
 
     <br>
 <h3>Contrapartidas pivotada</h3>
