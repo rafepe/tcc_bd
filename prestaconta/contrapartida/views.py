@@ -18,8 +18,8 @@ from PyPDF2 import PdfReader
 import calendar
 import csv
 import io
-import locale    
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so,contrapartida_so_projeto
+import locale
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_projeto
 import os
 import re
 

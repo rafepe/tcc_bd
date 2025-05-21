@@ -44,26 +44,7 @@
         </tr>
     </tbody>
 </table>
-    <hr>
-  <h3>Contrapartidas Cadastradas</h3>
-     <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
-    <thead>
-        <tr>
-            <th>Ano-mês Referência</th>
-            <th>Valor</th>
-            <th>Data de Inserção</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for contrapartida in contrapartidas %}
-        <tr>
-            <td>{{ contrapartida.ano }}-{{ contrapartida.mes|add:"00"|slice:":2" }}</td>
-            <td>R$ {{ contrapartida.valor|floatformat:2 }}</td>
-            <td>{{ contrapartida.data_criacao|date:"d/m/Y" }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+
 
     <h3>Historico Contrapartida SO</h3>
    {% render_table tabela_proj %}

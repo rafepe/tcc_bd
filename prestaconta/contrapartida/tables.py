@@ -281,7 +281,7 @@ class contrapartida_so_table(tables.Table):
     #     return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
     
     class Meta:
-        model = contrapartida_so
+        model = contrapartida_so_projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
