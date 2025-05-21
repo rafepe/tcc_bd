@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resultado</title>
+</head>
+<body>
+    <h1>Resultado da Leitura</h1>
+    <p><strong>Nome:</strong> {{ nome }}</p>
+    <p><strong>CPF:</strong> {{ cpf }}</p>
+    <p><strong>Mês de Referência:</strong> {{ mes_referencia }}</p>
+    <p><strong>Salário Bruto:</strong> R$ {{ salario_bruto }}</p>
+    <a href="{% url 'upload_contracheque' %}">Fazer novo upload</a>
+</body>
+</html>
