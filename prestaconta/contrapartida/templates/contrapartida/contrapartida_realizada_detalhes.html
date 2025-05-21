@@ -1,14 +1,33 @@
 {% extends "base.html" %}
 
 {% block corpo %}
+<div class="text-center">
 <h2>Detalhes do Projeto: {{ projeto.nome }}</h2>
 
-<p><strong>Data de Início:</strong> {{ projeto.data_inicio }}</p>
-<p><strong>Data de Fim:</strong> {{ projeto.data_fim }}</p>
-<p><strong>Valor Total Contrapartida:</strong> R$ {{ projeto.contrapartida_max  }}</p>
-<p><strong>Número de meses:</strong> {{ num_meses }}</p>
-<p><strong>Valor Mensal Devido :</strong> R$ {{ vlr_mensal_devido}} </p>
+<table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
+    <thead>
+        <tr>
+            <th>Projeto</th>
+            <th>Valor Total Contrapartida</th>
+            <th>Número de Meses</th>
+            <th>Valor Mensal Devido</th>
+            <th>Data de Início</th>
+            <th>Data de Fim</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ projeto.nome }}</td>
+            <td>R$ {{ projeto.contrapartida_max|floatformat:2 }}</td>
+            <td>{{ projeto.num_mes }}</td>
+            <td>R$ {{ mensal_devido|floatformat:2 }}</td>
+            <td>{{ projeto.data_inicio|date:"d/m/Y" }}</td>
+            <td>{{ projeto.data_fim|date:"d/m/Y" }}</td>
+        </tr>
+    </tbody>
+</table>
 
+<br>
 <h3>Contrapartidas por Mês</h3>
 
 <table border="1" cellpadding="10" cellspacing="2" style="width: 100%; text-align: center;">
@@ -20,6 +39,7 @@
             <th>SO</th>
             <th>Total</th>
             <th>Diferença</th>
+            <th>Saldo</th>
         </tr>
     </thead>
     <tbody>
@@ -31,6 +51,7 @@
             <td>R$ {{ valores.so|floatformat:2 }}</td>
             <td>R$ {{ valores.total|floatformat:2 }}</td>
             <td>R$ {{ valores.diferenca|floatformat:2 }}</td>
+            <td>R$ {{ valores.saldo|floatformat:2}}</td>
         </tr>
         {% empty %}
         <tr>
@@ -39,4 +60,47 @@
         {% endfor %}
     </tbody>
 </table>
+<br>
+
+
+    <br>
+<h3>Contrapartidas pivotada</h3>
+
+<div style="overflow-x: auto; max-width: 100%;">
+  <div style="min-width: 100%; max-width: 100%; overflow-x: auto;">
+    <table border="1" cellpadding="10" cellspacing="0"
+           style="min-width: calc(7 * 150px); width: max-content; border-collapse: collapse; text-align: center;">
+      <thead>
+        <tr>
+          <th style="position: sticky; left: 0; background-color: #f9f9f9; z-index: 2;">Tipo</th>
+          {% for data in ano_mes %}
+            <th style="min-width: 300px;">{{ data }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for linha in dados_tabela %}
+          {% if linha.tipo == "Total" %}
+            <tr style="border-top: 3px solid #ccc;">
+          {% else %}
+            <tr>
+          {% endif %}
+            <td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;">{{ linha.tipo }}</td>
+            {% for valor in linha.valores %}
+              {% if linha.tipo in "Saldo" %}
+                <td style="font-weight: bold; background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %}; color: {% if valor < 0 %}#721c24{% else %}#155724{% endif %}; min-width: 150px;">
+                  {{ valor|floatformat:2 }}
+                </td>
+              {% else %}
+                <td style="min-width: 150px;">{{ valor|floatformat:2 }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div>
 {% endblock %}

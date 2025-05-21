@@ -2,7 +2,7 @@ from .models import *
 from .tables import *
 from collections import defaultdict
 from datetime import datetime
-from django_tables2 import SingleTableView
+from django_tables2 import SingleTableView,RequestConfig
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -12,13 +12,14 @@ from django.http import HttpResponse, FileResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
 from PyPDF2 import PdfReader
 import calendar
 import csv
 import io
-import locale    
+import locale
+from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_projeto
 import os
 import re
 
@@ -684,17 +685,17 @@ class contrapartida_equipamento_create(CreateView):
         if request.user.has_perm("contrapartida.create_contrapartida_equipamento"):
             return super().dispatch(request, *args, **kwargs)
         else:
-            return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
+            return HttpResponse("Sem permissão para criar cp equipamento", status=403)
 
     def form_valid(self, form):
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: O salário para esta pessoa e referência já existe.")
+            return HttpResponse("Erro: contrapartida equipamento invalida.")
         
     def form_invalid(self, form):
         errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        messages.error(self.request, f"Erro ao salvar o a contra partida equipamento: {errors}")
         return self.render_to_response(self.get_context_data(form=form))
     
     def criar_contrapartida_equipamento(request):
@@ -798,9 +799,9 @@ class contrapartida_equipamento_delete(DeleteView):
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
-class contrapartida_so_list(ListView):
+class contrapartida_so_menu(ListView):
     model = projeto  # Define o modelo explicitamente
-    template_name = "contrapartida/contrapartida_so_list.html"
+    template_name = "contrapartida/contrapartida_so_menu.html"
     context_object_name = "projetos"
     paginate_by = 10
 
@@ -833,7 +834,7 @@ class contrapartida_so_list(ListView):
             # Realizando os cálculos necessários para a Contrapartida SO
             so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
             so_no_ptr = projeto.valor_so_ptr
-            num_meses = (projeto.data_fim.year - projeto.data_inicio.year) * 12 + (projeto.data_fim.month - projeto.data_inicio.month)
+            num_meses = projeto.num_mes
         
             if num_meses == 0:
                 num_meses = 1  # Evita divisão por zero
@@ -858,70 +859,65 @@ class contrapartida_so_list(ListView):
         
         return context
 
-
-class contrapartida_so_menu(SingleTableView):
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.view_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
-            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
-            return redirect('projeto_menu')
-
-    model = contrapartida_so
-    table_class = contrapartida_so_table
-    template_name_suffix = '_menu'
-    table_pagination = {"per_page": 10}
-    template_name = 'contrapartida_so_menu.html'
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        projeto = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if projeto:
-            queryset = queryset.filter(id_pessoa__nome__icontains=projeto)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)
-
-        return queryset
+class contrapartida_so_proj(TemplateView):
+    template_name = 'contrapartida/contrapartida_so_proj.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-      
-            "projeto": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")
-        }
-        
+
+        # Obtendo o ID do projeto
+        id_projeto = self.kwargs.get('id_projeto')
+        proj = get_object_or_404(projeto, id=id_projeto)
+
+        # Cálculos base para contrapartida
+        so_da_ue = round(proj.valor_total * proj.tx_adm_ue / 100, 2) - proj.valor_funape
+        so_no_ptr = proj.valor_so_ptr
+        num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (
+                    proj.data_fim.month - proj.data_inicio.month)
+        if num_meses == 0:
+            num_meses = 1  # Para evitar divisão por zero
+
+        # Cálculos da contrapartida
+        cp_ue_so = so_da_ue - so_no_ptr
+        cp_mensal_so = round(cp_ue_so / num_meses, 2)
+        cp_so_proj=contrapartida_so_projeto.objects.filter(id_projeto=proj)
+        tabela = contrapartida_so_proj_table(cp_so_proj)
+        RequestConfig(self.request).configure(tabela)
+
+
+        # Adicionando os valores ao contexto
+        context['projeto'] = proj
+        context['so_da_ue'] = so_da_ue
+        context['so_no_ptr'] = so_no_ptr
+        context['cp_ue_so'] = cp_ue_so
+        context['cp_mensal_so'] = cp_mensal_so
+        context['num_meses'] = num_meses
+
+        # Adicionando contrapartidas relacionadas ao projeto
+        context['contrapartidas'] = contrapartida_so_projeto.objects.filter(id_projeto=proj)
+        context['tabela_proj'] = tabela
         return context
 
 class contrapartida_so_create(CreateView):
-    model = contrapartida_so
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+    model = contrapartida_so_projeto
+    fields = ['ano', 'mes', 'valor']
+    template_name = 'contrapartida/contrapartida_so_form.html'
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.create_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
-            return HttpResponse("Sem permissão para criar contrapartida SO", status=403)
+        self.projeto = get_object_or_404(projeto, id=kwargs.get('id_projeto'))
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        try:
-            return super().form_valid(form)
-        except IntegrityError:
-            return HttpResponse("Erro: O contrapartida So para esta mes já existe.")
-
-
-    def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
-        return self.render_to_response(self.get_context_data(form=form))
+        form.instance.id_projeto = self.projeto
+        return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu')
+        return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.projeto.id})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['projeto'] = self.projeto
+        return context
 
 class contrapartida_so_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
@@ -930,8 +926,8 @@ class contrapartida_so_update(UpdateView):
         else:
             return HttpResponse("Sem permissão para atualizar contrapartida SO")
    
-    model = contrapartida_so
-    fields = ['id_pessoa','ano', 'mes', 'valor', 'horas']
+    model = contrapartida_so_projeto
+    fields = ['id_pessoa','ano', 'mes', 'valor']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_menu')   
@@ -943,11 +939,16 @@ class contrapartida_so_delete(DeleteView):
         else:
             return HttpResponse("Sem permissão para excluir contrapartida SO")
 
-    model = contrapartida_so
+    def get_object(self, queryset=None):
+        self.object = super().get_object(queryset)
+        self.projeto = self.object.id_projeto
+        return self.object
+
+    model = contrapartida_so_projeto
     fields = []
-    template_name_suffix = '_delete'
+    template_name = 'contrapartida/contrapartida_so_delete.html'
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu')
+        return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
 
 
 
@@ -980,9 +981,12 @@ class contrapartida_realizada_list(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        for projeto in context["projetos"]:
+            projeto.mensal_devido = (projeto.contrapartida_max  /projeto.num_mes  if projeto.num_mes else projeto.contrapartida_max)
+
         context["filtros"] = {
             "nome": self.request.GET.get("nome", ""),
-            "data_fim": self.request.GET.get("mes", ""),
+            "mes": self.request.GET.get("mes", ""),
             "ano": self.request.GET.get("ano", "")           
         }
         return context
@@ -990,25 +994,27 @@ class contrapartida_realizada_list(ListView):
 def contrapartida_realizada_detalhes(request, projeto_id):
     proj = get_object_or_404(projeto, id=projeto_id)
 
-    # Calcula número de meses do projeto
-    num_meses = (proj.data_fim.year - proj.data_inicio.year) * 12 + (proj.data_fim.month - proj.data_inicio.month)
-    
-    # Calcula Valor Mensal Devido
-    vlr_mensal_devido = (proj.contrapartida_max ) /num_meses  if num_meses else 0.0
-    # Dicionário para armazenar os totais por mês
 
-    # Formata os valores antes de enviar ao template
-    vlr_cp_max_formatado = locale.format_string('%.2f', proj.contrapartida_max, grouping=True)
-    vlr_mensal_devido_formatado = locale.format_string('%.2f', vlr_mensal_devido, grouping=True)
+    vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
 
     contrapartidas_por_mes = defaultdict(lambda: {
-        'equipamento': 0.0,
-        'pesquisa': 0.0,
         'so': 0.0,
+        'pesquisa': 0.0,
+        'equipamento': 0.0,
+        'prospeccao':0.0,
         'total': 0.0,
         'diferenca': 0.0
     })
-    
+    saldo=0.0
+    contrapartidas_ordenadas = {}
+
+    tipos_contrapartida = ['SO','Pesquisa','Equipamento','Prospeccao','Total', 'Diferenca', 'Saldo']
+
+    # Processa contrapartida de SO
+    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
+        key = f"{so.ano}-{so.mes:02d}"
+        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
+
     # Processa contrapartida de pesquisa
     for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
         key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
@@ -1032,31 +1038,64 @@ def contrapartida_realizada_detalhes(request, projeto_id):
                
         contrapartidas_por_mes[key]['equipamento'] += value
 
-    # Processa contrapartida de SO
-    #for so in contrapartidaSO.objects.filter(projeto=proj):
-    #    key = f"{so.ano_alocacao}-{so.mes_alocacao:02d}"
-    #    contrapartidas_por_mes[key]['so'] += float(so.valor_financiado or 0)
+    # Calcula contrapartida prospeccao
+    #contrapartidas_por_mes[key]['prospeccao'] += float(so.valor or 0)
 
     # Calcula total por mês e diferença
-    for key, valores in contrapartidas_por_mes.items():
+    for key, valores in sorted(contrapartidas_por_mes.items()):
         valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so']
-        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido) 
+        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
+        saldo += valores['diferenca']
+        valores['saldo'] = saldo
+        contrapartidas_ordenadas[key] = valores
 
     # Ordena os meses do mais antigo para o mais recente
-    contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
+    #contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
+
+    ## Inicio do pivot
+
+    ano_mes = sorted(contrapartidas_ordenadas.keys(), key=lambda x: datetime.strptime(x, "%Y-%m"))
+
+    # Estrutura: {'SO': {'2024-07': 0.0, ...}, 'Pesquisa': {...}, ...}
+    dados_transpostos = defaultdict(dict)
+
+
+
+    for data in ano_mes:
+        valores = contrapartidas_ordenadas[data]
+        dados_transpostos['SO'][data] = valores['so']
+        dados_transpostos['Pesquisa'][data] = valores['pesquisa']
+        dados_transpostos['Equipamento'][data] = valores['equipamento']
+        dados_transpostos['Prospeccao'][data] = valores['prospeccao']
+        dados_transpostos['Total'][data] = valores['total']
+        dados_transpostos['Diferenca'][data] = valores['diferenca']
+        dados_transpostos['Saldo'][data] = valores['saldo']
+
+    dados_tabela = []
+
+    for tipo in tipos_contrapartida:
+        linha = {
+            "tipo": tipo,
+            "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
+        }
+        dados_tabela.append(linha)
+
 
     context = {
            'projeto': proj,
-           'num_meses': num_meses,
-           'vlr_mensal_devido': vlr_mensal_devido_formatado,  # Adicionado ao contexto
+           'mensal_devido': vlr_mensal_devido,
            'contrapartidas_por_mes': contrapartidas_ordenadas,
+           "ano_mes": ano_mes,  # lista de '2024-07', '2024-08', ...
+           "dados_tabela": dados_tabela  # lista de dicionários com tipo + valores ordenados
     }
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
 
+
 ##############################
 # DOWNLOAD DO BANCO DE DADOS #
 ##############################
+
 def download_database(request):
     """View para download do arquivo do banco de dados"""
     file_path = os.path.join(settings.BASE_DIR, 'db.sqlite3')

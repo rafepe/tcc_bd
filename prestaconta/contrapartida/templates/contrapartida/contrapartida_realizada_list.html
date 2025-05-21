@@ -33,6 +33,8 @@
                     <th>Data de Início</th>
                     <th>Data de Fim</th>
                     <th>Total Contrapartida </th>
+                    <th>Num. de Meses</th>
+                    <th>Valor Mensal devido </th>
                     <th>Detalhar</th>
                 </tr>
             </thead>
@@ -43,6 +45,8 @@
                     <td>{{ projeto.data_inicio }}</td>
                     <td>{{ projeto.data_fim }}</td>
                     <td>R$ {{ projeto.contrapartida_max}}</td>
+                    <td>{{ projeto.num_mes }}</td>
+                    <td>R$ {{ projeto.mensal_devido|floatformat:2 }}</td>
                     <td>
                         <a href="{% url 'contrapartida_realizada_detalhes' projeto.id %}">Ver Detalhes</a>
                     </td>

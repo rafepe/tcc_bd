@@ -11,45 +11,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Contrapartida Pesquisa</title>
+    <title>Cadastro de Contrapartida SO</title>
 </head>
 
 {% block corpo %}
 <body>
     <div class="container">
         <div class="text-center">
-            <h1>Cadastrar/Atualizar Contrapartida Pesquisa</h1>
+            {% if contrapartida_so_proj.id %}
+            <h1>Atualizar Contrapartida SO</h1>
+            {% else %}
+            <h1>Cadastrar Contrapartida SO</h1>
+            {% endif %}
 
-
-            
+            <h2>{{projeto.nome}}</h2>
+             <br>
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
 
-                <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6">
-                        {% bootstrap_field form.id_projeto placeholder='' %}
-                    </div> 
-                    <div class="col-md-2 col-sm-4">
-                        {% bootstrap_field form.id_salario placeholder='' %}
-                    </div>
-                </div>
 
                 <div class="row justify-content-center" style="line-height: 1;">
-                    <div class="col-md-4 col-sm-6">
-                        {% bootstrap_field form.horas_alocadas placeholder='' %}
-                    </div>
-                    <!--div class="col-md-2 col-sm-4">
-                        <label>Horas já utilizadas:</label>
-                        <input type="text" class="form-control" value="{{ horas_utilizadas }}" readonly>
-                    </div-->
-                    <div class="col-md-2 col-sm-4">
-                        <label>Horas restantes:</label>
-                        <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
-                    </div>
-                </div>
 
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.ano placeholder='' %}
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.mes placeholder='' %}
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.valor placeholder='' %}
+                    </div>
+
+                </div>
                 <div class="row justify-content-center">
                     <div class="col-auto">
+
                         <button type="submit" class="btn btn-primary mt-3">Salvar</button>
                     </div>
                 </div>

@@ -1,10 +1,13 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
-from django.db import models
+from django.utils import timezone
+
+
+
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import os
+
 
 class projeto(models.Model):
     id = models.AutoField(primary_key=True)
@@ -22,6 +25,12 @@ class projeto(models.Model):
 
     def __str__(self):
         return self.nome
+
+    @property
+    def num_mes(self):
+        if self.data_inicio and self.data_fim:
+            return (self.data_fim.year - self.data_inicio.year) * 12 + (self.data_fim.month - self.data_inicio.month)
+        return 0
 
     class Meta:
         ordering = ['data_fim']
@@ -134,11 +143,18 @@ class contrapartida_rh(models.Model):
     def __str__(self):
         return f"Contrapartida RH - {self.id_projeto.nome} - {self.id_salario.id_pessoa.nome}"
 
-class contrapartida_so(models.Model):
-    id = models.AutoField(primary_key=True)
-    id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    valor_cp = models.DecimalField(max_digits=10, decimal_places=2)
+class contrapartida_so_projeto(models.Model):
+    id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE, related_name='Projeto')
+    ano = models.IntegerField(verbose_name="Ano Referencia")
+    mes = models.IntegerField(verbose_name="Mês Referencia")
+    valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor")
+    data_criacao = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Contrapartida SO - {self.id_projeto.nome}"
+        return f"Contrapartida {self.id_projeto.nome} - {self.ano}/{self.mes}"
 
+    class Meta:
+        verbose_name = "Contrapartida SO"
+        verbose_name_plural = "Contrapartidas SO"
+        ordering = ['ano','mes']
+        #db_table = 'contrapartida_so_proj'
