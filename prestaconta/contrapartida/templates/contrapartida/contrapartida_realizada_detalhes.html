@@ -36,6 +36,7 @@
             <th>Mês</th>
             <th>Equipamento</th>
             <th>Pesquisa</th>
+            <th>Rh</th>
             <th>SO</th>
             <th>Total</th>
             <th>Diferença</th>
@@ -48,6 +49,7 @@
             <td>{{ mes }}</td>
             <td>R$ {{ valores.equipamento|floatformat:2 }}</td>
             <td>R$ {{ valores.pesquisa|floatformat:2 }}</td>
+            <td>R$ {{ valores.rh|floatformat:2 }}</td>
             <td>R$ {{ valores.so|floatformat:2 }}</td>
             <td>R$ {{ valores.total|floatformat:2 }}</td>
             <td>R$ {{ valores.diferenca|floatformat:2 }}</td>

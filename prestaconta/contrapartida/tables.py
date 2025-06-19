@@ -304,3 +304,37 @@ class contrapartida_so_proj_table(tables.Table):
         template_name = "django_tables2/bootstrap4.html"
         fields = ("ano", "mes", "valor","excluir")
         ordering = ['ano', 'mes']
+
+class contrapartida_rh_table(tables.Table):
+    id_projeto = tables.LinkColumn("contrapartida_rh_update", args=[A("pk")], verbose_name="Projeto")
+    id_salario = tables.LinkColumn("contrapartida_rh_update", args=[A("pk")], verbose_name="Salário")
+    horas_alocadas = tables.LinkColumn("contrapartida_rh_update", args=[A("pk")], verbose_name="Horas Alocadas")
+    valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
+    valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
+    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+
+
+    def render_valor_hora(self, record):
+        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
+            value = round(record.id_salario.valor/ record.id_salario.horas, 2)
+            formatted_value = locale.currency(value, grouping=True)
+            return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
+        return 0
+    
+    def render_valor_cp(self, record):
+        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
+            value = round(record.horas_alocadas * record.id_salario.valor/ record.id_salario.horas, 2)
+            formatted_value = locale.currency(value, grouping=True)
+            return format_html('<span>{}</span>', formatted_value) 
+        return 0
+
+    def render_excluir(self, record):
+        url = reverse("contrapartida_rh_delete", args=[record.pk])
+        return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
+    
+    
+    class Meta:
+        model = contrapartida_rh
+        attrs = {"class": "table thead-light table-striped table-hover"}
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('id_projeto', 'id_salario', 'horas_alocadas')

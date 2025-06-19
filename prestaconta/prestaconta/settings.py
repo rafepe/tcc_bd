@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'contrapartida',
+    'declaracao',
     'django_tables2',
     'bootstrap5',
     'django_extensions',

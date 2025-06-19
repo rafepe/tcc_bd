@@ -131,18 +131,6 @@ class contrapartida_equipamento(models.Model):
     class Meta:
         ordering = ['-ano','-mes']
 
-class contrapartida_rh(models.Model):
-    id = models.AutoField(primary_key=True)
-    id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE)
-    id_salario = models.ForeignKey(salario, on_delete=models.CASCADE)
-    valor_cp = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        unique_together = ('id_projeto', 'id_salario')
-
-    def __str__(self):
-        return f"Contrapartida RH - {self.id_projeto.nome} - {self.id_salario.id_pessoa.nome}"
-
 class contrapartida_so_projeto(models.Model):
     id_projeto = models.ForeignKey(projeto, on_delete=models.CASCADE, related_name='Projeto')
     ano = models.IntegerField(verbose_name="Ano Referencia")
@@ -158,3 +146,14 @@ class contrapartida_so_projeto(models.Model):
         verbose_name_plural = "Contrapartidas SO"
         ordering = ['ano','mes']
         #db_table = 'contrapartida_so_proj'
+
+class contrapartida_rh(models.Model):
+    id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
+    id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
+    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+
+    class Meta:
+        unique_together = ('id_projeto', 'id_salario')
+
+    def __str__(self):
+        return f"{self.id_projeto} - {self.id_salario}"
