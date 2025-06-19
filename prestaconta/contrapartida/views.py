@@ -999,6 +999,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     contrapartidas_por_mes = defaultdict(lambda: {
         'so': 0.0,
+        'rh': 0.0,
         'pesquisa': 0.0,
         'equipamento': 0.0,
         'prospeccao':0.0,
@@ -1008,7 +1009,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     saldo=0.0
     contrapartidas_ordenadas = {}
 
-    tipos_contrapartida = ['SO','Pesquisa','Equipamento','Prospeccao','Total', 'Diferenca', 'Saldo']
+    tipos_contrapartida = ['SO','Rh','Pesquisa','Equipamento','Total', 'Diferenca', 'Saldo']
 
     # Processa contrapartida de SO
     for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
@@ -1020,6 +1021,12 @@ def contrapartida_realizada_detalhes(request, projeto_id):
         key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
         value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
         contrapartidas_por_mes[key]['pesquisa'] += value
+
+    # Processa contrapartida de rh
+    for c in contrapartida_rh.objects.filter(id_projeto=proj):
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
+        contrapartidas_por_mes[key]['rh'] += value    
 
     # Processa contrapartida de equipamento
     for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
@@ -1043,7 +1050,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     # Calcula total por mês e diferença
     for key, valores in sorted(contrapartidas_por_mes.items()):
-        valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so']
+        valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so'] + valores['rh'] 
         valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
         saldo += valores['diferenca']
         valores['saldo'] = saldo
@@ -1064,6 +1071,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     for data in ano_mes:
         valores = contrapartidas_ordenadas[data]
         dados_transpostos['SO'][data] = valores['so']
+        dados_transpostos['Rh'][data] = valores['rh']
         dados_transpostos['Pesquisa'][data] = valores['pesquisa']
         dados_transpostos['Equipamento'][data] = valores['equipamento']
         dados_transpostos['Prospeccao'][data] = valores['prospeccao']
@@ -1090,6 +1098,189 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     }
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
+
+
+
+##########################
+# CONTRAPARTIDA RH   #####
+##########################
+
+class contrapartida_rh_menu(SingleTableView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_rh"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para ver contrapartida rh")
+
+    model = contrapartida_rh
+    table_class = contrapartida_rh_table
+    template_name_suffix = '_menu'
+    table_pagination = {"per_page": 10}
+    template_name = 'contrapartida_rh_menu.html'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        nome = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes','').strip()
+        if nome:
+            queryset = queryset.filter(id_projeto__nome__icontains=nome)
+        if ano:
+            queryset = queryset.filter(id_salario__ano=ano)
+        if mes:
+            queryset = queryset.filter(id_salario__mes=mes)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "data_fim": self.request.GET.get("data_fim", ""),
+        }
+        return context
+
+class contrapartida_rh_create(CreateView):
+    model = contrapartida_rh
+    fields = ['id_projeto', 'id_salario', 'horas_alocadas']
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.create_contrapartida_pesquisa"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except IntegrityError:
+            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")
+
+
+    def form_invalid(self, form):
+        errors = form.errors.as_text()  # Converte os erros para texto
+        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        return self.render_to_response(self.get_context_data(form=form))
+    
+    def criar_contrapartida_rh(request):
+        context = super().get_context_data(**kwargs)
+
+        horas_utilizadas = 0
+        horas_mensais = 0
+
+        # Captura o ID do salário selecionado no dropdown (se houver)
+        id_salario = self.request.GET.get("id_salario") or self.request.POST.get("id_salario")
+        if id_salario:
+            try:
+                salario_obj = salario.objects.get(id=id_salario)
+                pessoa_id = salario_obj.id_pessoa
+                mes_ref = salario_obj.mes
+                ano_ref = salario_obj.ano
+                horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
+
+                # Filtra todas as contrapartidas já cadastradas com o mesmo salário
+                horas_usadas = contrapartida_rh.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+                horas_utilizadas = sum(horas_usadas)  # Soma as horas já utilizadas
+
+            except salario.DoesNotExist:
+                messages.error(self.request, "Salário não encontrado")
+
+        # Adicionando ao contexto
+        context["horas_utilizadas"] = horas_utilizadas
+        context["horas_mensais"] = horas_mensais
+        context["horas_restantes"] = (horas_mensais or 0) - (horas_utilizadas or 0)
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_rh_menu')
+
+
+    def get_success_url(self):
+        return reverse_lazy("contrapartida_rh_update", kwargs={"pk": self.object.pk})
+    
+
+
+class contrapartida_rh_update(UpdateView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.update_contrapartida_rh"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para atualizar contrapartida rh")
+   
+    model = contrapartida_rh
+    fields =  ['id_projeto', 'id_salario', 'horas_alocadas']
+
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        horas_utilizadas = 0
+        horas_mensais = 0
+
+        id_pesquisa = context["form"].instance.pk if "form" in context and context["form"].instance.pk else None
+       
+        if id_pesquisa:
+            try:
+                contrapartida = contrapartida_rh.objects.get(id=id_pesquisa)
+                salario_id=contrapartida.id_salario_id
+                salario_obj=salario.objects.get(id =salario_id)  
+
+                pessoa_id = salario_obj.id_pessoa
+                mes_ref = salario_obj.mes
+                ano_ref = salario_obj.ano
+                horas_mensais = salario_obj.horas
+
+                horas_usadas = contrapartida_rh.objects.filter(
+                   id_salario__id_pessoa=pessoa_id,
+                   id_salario__mes=mes_ref,
+                   id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+                horas_utilizadas = sum(horas_usadas)  # Somamos direto os valores
+
+            except contrapartida_rh.DoesNotExist:
+                   messages.error(self.request, "Contrapartida não encontrada")
+            except salario.DoesNotExist:
+                   messages.error(self.request, "Salário não encontrado")
+
+    # Adicionando ao contexto
+        context["horas_utilizadas"] = horas_utilizadas
+        context["horas_mensais"] = horas_mensais
+        context["horas_restantes"] = horas_mensais - horas_utilizadas
+
+        return context    
+    def form_valid(self, form):
+        self.object = form.save()
+
+        action = self.request.POST.get("action")
+        if action == "update":
+            return redirect("contrapartida_rh_update", pk=self.object.pk)
+        elif action == "save_exit":
+            return redirect("contrapartida_rh_menu")
+
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_rh_menu')   
+
+class contrapartida_rh_delete(DeleteView):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.delete_contrapartida_rh"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponse("Sem permissão para excluir contrapartida rh")
+
+    model = contrapartida_rh
+    fields = []
+    template_name_suffix = '_delete'
+    def get_success_url(self):
+        return reverse_lazy('contrapartida_rh_menu')     
+
+
 
 
 ##############################

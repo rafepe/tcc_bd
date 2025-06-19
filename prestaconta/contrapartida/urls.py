@@ -56,6 +56,10 @@ urlpatterns = [
     path("contrapartida_so_update/<int:pk>/", views.contrapartida_so_update.as_view(), name='contrapartida_so_update'),
     path('contrapartida_so_delete/<int:pk>/', views.contrapartida_so_delete.as_view(), name='contrapartida_so_delete'),
 
+    path("contrapartida_rh_create/", views.contrapartida_rh_create.as_view(), name='contrapartida_rh_create'),
+    path('contrapartida_rh_menu/', views.contrapartida_rh_menu.as_view(), name='contrapartida_rh_menu'),
+    path("contrapartida_rh_update/<int:pk>/", views.contrapartida_rh_update.as_view(), name='contrapartida_rh_update'),
+    path('contrapartida_rh_delete/<int:pk>/', views.contrapartida_rh_delete.as_view(), name='contrapartida_rh_delete'),
 
     path("contrapartida_realizada_list/", views.contrapartida_realizada_list.as_view(), name='contrapartida_realizada_list'),
     path('contrapartida_realizada_detalhes/<int:projeto_id>/', contrapartida_realizada_detalhes, name='contrapartida_realizada_detalhes'),
