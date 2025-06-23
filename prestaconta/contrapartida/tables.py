@@ -116,16 +116,15 @@ class salario_table(tables.Table):
     mes = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Mês de Referência")
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
-    valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
+    valor_hora = tables.Column(empty_values=(),verbose_name="Valor-Hora", orderable=False)
     anexo = tables.Column(verbose_name="Comprovante", accessor='anexo', orderable=True, default='Não')
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     
     def render_valor_hora(self, record):
-        if record.valor and record.horas and record.horas != 0:
-            value = round(record.valor / record.horas, 2)
-            formatted_value = locale.currency(value, grouping=True)
+        if record.valor_hora:
+            formatted_value = locale.currency(record.valor_hora, grouping=True)
             return format_html('<span>{}</span>', formatted_value)
-        return 0
+        return "oooi"
     
     def render_valor(self, value):
         if value is not None:
@@ -146,30 +145,24 @@ class salario_table(tables.Table):
     class Meta:
         model = salario
         template_name = "django_tables2/bootstrap5.html"
-        fields = ['pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo', 'excluir']
+        fields = ['pessoa', 'ano', 'mes', 'valor', 'horas','valor_hora', 'anexo', 'excluir']
 
 class contrapartida_pesquisa_table(tables.Table):
     id_projeto = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Projeto")
     id_salario = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Salário")
     horas_alocadas = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Horas Alocadas")
-    valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
-    valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
+    valor_hora = tables.Column(empty_values=(),verbose_name="Valor-Hora", orderable=False)
+    valor_cp = tables.Column( verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
 
     def render_valor_hora(self, record):
-        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
-            value = round(record.id_salario.valor/ record.id_salario.horas, 2)
-            formatted_value = locale.currency(value, grouping=True)
-            return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
-        return 0
+        formatted_value = locale.currency(record.id_salario.valor_hora, grouping=True)
+        return format_html('<span>{}</span>', formatted_value)
     
     def render_valor_cp(self, record):
-        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
-            value = round(record.horas_alocadas * record.id_salario.valor/ record.id_salario.horas, 2)
-            formatted_value = locale.currency(value, grouping=True)
-            return format_html('<span>{}</span>', formatted_value) 
-        return 0
+        formatted_value = locale.currency(record.valor_cp, grouping=True)
+        return format_html('<span>{}</span>', formatted_value)
 
     def render_excluir(self, record):
         url = reverse("contrapartida_pesquisa_delete", args=[record.pk])
@@ -180,7 +173,9 @@ class contrapartida_pesquisa_table(tables.Table):
         model = contrapartida_pesquisa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'id_salario', 'horas_alocadas')
+        fields = ('id_projeto', 'id_salario', 'horas_alocadas','valor_hora','valor_cp')
+
+
 
 class contrapartida_equipamento_table(tables.Table):
     id_projeto = tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Projeto")

@@ -84,6 +84,13 @@ class salario(models.Model):
     horas = models.IntegerField(default=160, null=False)
     anexo = models.FileField(upload_to='comprovantes/', null=True, blank=True)
     
+    @property
+    def valor_hora(self):
+        if self.valor and self.horas and self.horas != 0:
+            return round(self.valor / self.horas, 2)
+        return 0
+
+    
     def delete(self, *args, **kwargs):
         # Remove o arquivo do sistema de arquivos antes de deletar o objeto
         if self.anexo and os.path.isfile(self.anexo.path):
@@ -108,7 +115,13 @@ class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
-
+    
+    @property
+    def valor_cp(self):
+        if self.id_salario.valor and self.id_salario.horas:
+            return round(self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas), 2)
+        return 0
+    
     class Meta:
         unique_together = ('id_projeto', 'id_salario')
 
