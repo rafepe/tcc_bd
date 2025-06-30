@@ -139,7 +139,22 @@ class contrapartida_equipamento(models.Model):
         validators=[MinValueValidator(2000), MaxValueValidator(2200)]
     )    
     id_equipamento = models.ForeignKey(equipamento, on_delete=models.CASCADE)
+    descricao=models.CharField(max_length=400,null=True,verbose_name='Descricao')
     horas_alocadas = models.IntegerField(blank=True, null=True, default=0)
+
+    @property
+    def valor_cp(self):
+        valor_aquisicao = self.id_equipamento.valor_aquisicao or 0
+        cvc = self.id_equipamento.cvc or 0
+        cma = self.id_equipamento.cma or 0
+        quantidade_nos = self.id_equipamento.quantidade_nos or 1  # Evita divisão por zero
+        horas_alocadas = self.horas_alocadas or 0 
+        if self.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
+          value_valor_hora = (( (0.1*valor_aquisicao) + cvc + cma )  /  1200) / quantidade_nos
+        else:
+          value_valor_hora = ( ( (0.1*valor_aquisicao) + cvc + cma )  /  1440  ) /  quantidade_nos
+        value = round(horas_alocadas * value_valor_hora , 2)
+        return value
     
     class Meta:
         ordering = ['-ano','-mes']
@@ -164,6 +179,13 @@ class contrapartida_rh(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+
+    @property
+    def valor_cp(self):
+        if self.id_salario.valor and self.id_salario.horas:
+            return round(self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas), 2)
+        return 0
+    
 
     class Meta:
         unique_together = ('id_projeto', 'id_salario')

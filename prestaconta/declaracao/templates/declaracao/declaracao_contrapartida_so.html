@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block corpo %}
+<div class="container mt-4">
+    <h2>Declaração de Contrapartida SO</h2>
+    <hr>
+
+    <p><strong>Projeto:</strong> {{ declaracao.projeto }}</p>
+    <p><strong>Mês/Ano:</strong> {{ declaracao.mes }}/{{ declaracao.ano }}</p>
+    <p><strong>Data de Geração:</strong> {{ declaracao.data_geracao|date:"d/m/Y H:i" }}</p>
+    <p><strong>Total:</strong> {{ declaracao.total }}</p>
+
+</div>
+{% endblock %}

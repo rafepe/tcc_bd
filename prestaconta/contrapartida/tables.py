@@ -183,10 +183,17 @@ class contrapartida_equipamento_table(tables.Table):
     ano = tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Ano")
     id_equipamento = tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Equipamento")
     horas_alocadas = tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Horas Alocadas")
+    descricao= tables.Column(empty_values=(), verbose_name="Descricao", orderable=False)
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
     valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
-
+    
+    def render_descricao(self, value):
+        if not value:
+             return "-"
+        if len(value) > 20:
+            return f"{value[:20]}..."
+        return value
 
     def render_valor_hora(self, record):
         valor_aquisicao = record.id_equipamento.valor_aquisicao or 0
@@ -202,17 +209,7 @@ class contrapartida_equipamento_table(tables.Table):
 
     
     def render_valor_cp(self, record):
-        valor_aquisicao = record.id_equipamento.valor_aquisicao or 0
-        cvc = record.id_equipamento.cvc or 0
-        cma = record.id_equipamento.cma or 0
-        quantidade_nos = record.id_equipamento.quantidade_nos or 1  # Evita divisão por zero
-        horas_alocadas = record.horas_alocadas or 0 
-        if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value_valor_hora = (( (0.1*valor_aquisicao) + cvc + cma )  /  1200) / quantidade_nos
-        else:
-          value_valor_hora = ( ( (0.1*valor_aquisicao) + cvc + cma )  /  1440  ) /  quantidade_nos
-        value = round(horas_alocadas * value_valor_hora , 2)
-        formatted_value = locale.currency(value, grouping=True)
+        formatted_value = locale.currency(record.valor_cp, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
 
 
@@ -225,8 +222,8 @@ class contrapartida_equipamento_table(tables.Table):
         model = contrapartida_equipamento
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
-        sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
+        fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
+        sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento','descricao','horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
 
 ## inutil
 class contrapartida_so_table(tables.Table):
@@ -308,25 +305,20 @@ class contrapartida_rh_table(tables.Table):
     valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
-
     def render_valor_hora(self, record):
-        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
-            value = round(record.id_salario.valor/ record.id_salario.horas, 2)
-            formatted_value = locale.currency(value, grouping=True)
-            return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
-        return 0
+        formatted_value = locale.currency(record.id_salario.valor_hora, grouping=True)
+        return format_html('<span>{}</span>', formatted_value)
     
     def render_valor_cp(self, record):
-        if record.id_salario.valor and record.id_salario.horas and record.id_salario.horas != 0:
-            value = round(record.horas_alocadas * record.id_salario.valor/ record.id_salario.horas, 2)
-            formatted_value = locale.currency(value, grouping=True)
-            return format_html('<span>{}</span>', formatted_value) 
-        return 0
+        formatted_value = locale.currency(record.valor_cp, grouping=True)
+        return format_html('<span>{}</span>', formatted_value)    
+
 
     def render_excluir(self, record):
         url = reverse("contrapartida_rh_delete", args=[record.pk])
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
     
+
     
     class Meta:
         model = contrapartida_rh
