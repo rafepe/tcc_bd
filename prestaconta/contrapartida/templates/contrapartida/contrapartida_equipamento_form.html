@@ -42,7 +42,14 @@
                     </div>
                 </div>
                 {% if contrapartida_equipamento.id %}
+                <div class="row justify-content-center" style="line-height: 1";>
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.descricao placeholder=''%}
+                    </div>
+                </div>
                 <div class="row justify-content-center" style="line-height: 1;">
+                    
+
                     <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.horas_alocadas placeholder='' %}
                     </div>
