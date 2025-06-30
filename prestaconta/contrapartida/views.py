@@ -679,7 +679,7 @@ class contrapartida_equipamento_menu(SingleTableView):
 
 class contrapartida_equipamento_create(CreateView):
     model = contrapartida_equipamento
-    fields = ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
+    fields = ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao',  'horas_alocadas']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_contrapartida_equipamento"):
@@ -705,6 +705,7 @@ class contrapartida_equipamento_create(CreateView):
         id_equipamento = request.GET.get("id_equipamento")
         mes = request.GET.get("mes")
         ano = request.GET.get("ano")
+
 
         if id_equipamento and mes and ano:
             try:
@@ -740,7 +741,7 @@ class contrapartida_equipamento_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida_equipamentos")
    
     model = contrapartida_equipamento
-    fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento', 'horas_alocadas']
+    fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao', 'horas_alocadas']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu') 
