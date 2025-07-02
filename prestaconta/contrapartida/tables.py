@@ -154,7 +154,7 @@ class contrapartida_pesquisa_table(tables.Table):
     valor_hora = tables.Column(empty_values=(),verbose_name="Valor-Hora", orderable=False)
     valor_cp = tables.Column( verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
-
+    funcao = tables.Column(empty_values=(), verbose_name="Função")
 
     def render_valor_hora(self, record):
         formatted_value = locale.currency(record.id_salario.valor_hora, grouping=True)
@@ -173,7 +173,7 @@ class contrapartida_pesquisa_table(tables.Table):
         model = contrapartida_pesquisa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'id_salario', 'horas_alocadas','valor_hora','valor_cp')
+        fields = ('id_projeto', 'id_salario','funcao', 'horas_alocadas','valor_hora','valor_cp')
 
 
 
@@ -304,6 +304,7 @@ class contrapartida_rh_table(tables.Table):
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
     valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+    funcao = tables.Column(empty_values=(), verbose_name="Função")
 
     def render_valor_hora(self, record):
         formatted_value = locale.currency(record.id_salario.valor_hora, grouping=True)
@@ -324,4 +325,4 @@ class contrapartida_rh_table(tables.Table):
         model = contrapartida_rh
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'id_salario', 'horas_alocadas')
+        fields = ('id_projeto', 'id_salario', 'funcao', 'horas_alocadas')

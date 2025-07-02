@@ -10,6 +10,7 @@ import os
 class declaracao_contrapartida_pesquisa(models.Model):
     id_projeto=models.IntegerField(verbose_name="Projeto Id")
     projeto = models.CharField(max_length=255, verbose_name='Projeto')
+    codigo=models.CharField( null=True, max_length=30, verbose_name='Peia')
     mes = models.IntegerField(verbose_name="Mês de referência")
     ano = models.IntegerField(verbose_name="Ano de referência")
     total=models.FloatField(default=0, verbose_name="Total")
@@ -63,6 +64,7 @@ class declaracao_contrapartida_pesquisa_item(models.Model):
 class declaracao_contrapartida_so(models.Model): 
     id_projeto=models.IntegerField(verbose_name="Projeto Id")
     projeto = models.CharField(max_length=255, verbose_name='Projeto')
+    codigo=models.CharField(null=True,max_length=30, verbose_name='Peia')
     mes = models.IntegerField(verbose_name="Mês de referência")
     ano = models.IntegerField(verbose_name="Ano de referência")
     total=models.FloatField(default=0, verbose_name="Total")
@@ -86,6 +88,7 @@ class declaracao_contrapartida_so(models.Model):
 class declaracao_contrapartida_rh(models.Model):
     id_projeto=models.IntegerField(verbose_name="Projeto Id")
     projeto = models.CharField(max_length=255, verbose_name='Projeto')
+    codigo=models.CharField(null=True,max_length=30, verbose_name='Peia')
     mes = models.IntegerField(verbose_name="Mês de referência")
     ano = models.IntegerField(verbose_name="Ano de referência")
     total=models.FloatField(default=0, verbose_name="Total")
@@ -167,11 +170,11 @@ class declaracao_contrapartida_equipamento_item(models.Model):
         verbose_name='Declaração'
     )
     
-    codigo = models.CharField(max_length=255, verbose_name="Peia")
+    codigo = models.CharField(max_length=30, verbose_name="Peia")
     projeto = models.CharField(max_length=14, verbose_name="Projeto")
     equipamento=models.CharField(max_length=255, verbose_name="Equipamento")
     horas_alocadas = models.IntegerField(verbose_name="Horas no mes")
-    descricao = models.CharField(max_length=400, verbose_name="Descricao")
+    descricao = models.CharField(max_length=400,null=True, verbose_name="Descricao")
     valor_cp = models.FloatField( default=0,verbose_name="Valor da Contrapartida")
 
     class Meta:

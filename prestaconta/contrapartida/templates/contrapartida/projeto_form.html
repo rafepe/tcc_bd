@@ -14,6 +14,11 @@
     <body>
       <div class="container">
         <div class="text-center">
+          {% if projeto.id %}
+          <h1>Atualizar Projeto</h1>
+          {% else %}
+          <h1>Cadastrar Projeto</h1>
+          {% endif %}
           <form method="POST" enctype="multipart/form-data" class="form">
             {% csrf_token %}
             <div class="row justify-content-center" style="line-height: 1;">

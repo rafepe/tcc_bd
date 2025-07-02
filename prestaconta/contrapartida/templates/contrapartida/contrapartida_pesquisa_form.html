@@ -37,6 +37,9 @@
                 {% if contrapartida_pesquisa.id %}
                 <div class="row justify-content-center" style="line-height: 1;">
                     <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.funcao placeholder='' %}
+                    </div>
+                    <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.horas_alocadas placeholder='' %}
                     </div>
                     <div class="col-md-2 col-sm-6">

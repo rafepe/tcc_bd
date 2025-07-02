@@ -13,6 +13,9 @@
 <form method="GET">
     <label for="id_nome">Nome do Projeto:</label>
     <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+    
+    <label for="pessoa_nome">Pessoa:</label>
+    <input type="text" name="pessoa" id="pessoa_nome" value="{{ filtros.pessoa }}">
 
     <label for="id_ano">Ano:</label>
     <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> 
@@ -29,7 +32,7 @@
     <div class="container">
         <div class="col-md-12 col-sm-12 col-xs-12">
             <center>
-            <h1>Rh</h1>
+            <h1>Contrapartida RH</h1>
             {% render_table table %}
             <br>
             <a href="{% url 'contrapartida_rh_create' %}">

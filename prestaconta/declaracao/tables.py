@@ -46,7 +46,7 @@ class declaracao_contrapartida_rh_item_table(tables.Table):
 
 class declaracao_contrapartida_equipamento_item_table(tables.Table):
     valor_cp = tables.Column(verbose_name="Valor CP", accessor='valor_cp',attrs={"td": {"class": "text-end"}})
-    descricao = tables.Column(verbose_name="Descricao", accessor='descricao',attrs={"td": {"class": "text-end"}})
+    descricao = tables.Column(empty_values=(),verbose_name="Descricao", accessor='descricao',attrs={"td": {"class": "text-end"}})
     def render_valor_cp(self, value):
         return f'{value:.2f}' 
     

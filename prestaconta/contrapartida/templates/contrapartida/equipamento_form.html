@@ -14,7 +14,11 @@
 <body>
     <div class="container">
         <div class="text-center">
-            <h1>Equipamentos</h1>
+            {% if equipamento.id %}
+            <h1>Atualizar Equipamento</h1>
+            {% else %}
+            <h1>Cadastrar Equipamento</h1>
+            {% endif %}
             <form method="POST">
                 {% csrf_token %}
 
