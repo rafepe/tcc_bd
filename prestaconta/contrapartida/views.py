@@ -477,10 +477,13 @@ class contrapartida_pesquisa_menu(SingleTableView):
     def get_queryset(self):
         queryset = super().get_queryset()
         nome = self.request.GET.get('nome', '').strip()
+        pessoa= self.request.GET.get('pessoa','').strip()
         ano = self.request.GET.get('ano', '').strip()
         mes = self.request.GET.get('mes','').strip()
         if nome:
             queryset = queryset.filter(id_projeto__nome__icontains=nome)
+        if pessoa:
+            queryset= queryset.filter(id_salario__id_pessoa__nome__icontains=pessoa)
         if ano:
             queryset = queryset.filter(id_salario__ano=ano)
         if mes:
@@ -492,13 +495,15 @@ class contrapartida_pesquisa_menu(SingleTableView):
         context = super().get_context_data(**kwargs)
         context["filtros"] = {
             "nome": self.request.GET.get("nome", ""),
-            "data_fim": self.request.GET.get("data_fim", ""),
+            "pessoa": self.request.GET.get("pessoa", ""),
+            "ano": self.request.GET.get("ano", ""),
+            "mes": self.request.GET.get("mes", ""),
         }
         return context
 
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
-    fields = ['id_projeto', 'id_salario', 'horas_alocadas']
+    fields = ['id_projeto', 'id_salario','funcao', 'horas_alocadas']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_contrapartida_pesquisa"):
@@ -535,13 +540,20 @@ class contrapartida_pesquisa_create(CreateView):
                 horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
-                horas_usadas = contrapartida_pesquisa.objects.filter(
+                horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+                
+                horas_usadas_rh =contrapartida_rh.objects.filter(
                     id_salario__id_pessoa=pessoa_id,
                     id_salario__mes=mes_ref,
                     id_salario__ano=ano_ref
                 ).values_list('horas_alocadas', flat=True)
 
-                horas_utilizadas = sum(horas_usadas)  # Soma as horas já utilizadas
+
+                horas_utilizadas = sum(horas_usadas_pesquisa) + sum(horas_usadas_rh) # Soma as horas já utilizadas
 
             except salario.DoesNotExist:
                 messages.error(self.request, "Salário não encontrado")
@@ -569,7 +581,7 @@ class contrapartida_pesquisa_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida_pesquisas")
    
     model = contrapartida_pesquisa
-    fields =  ['id_projeto', 'id_salario', 'horas_alocadas']
+    fields =  ['id_projeto', 'id_salario','funcao', 'horas_alocadas']
 
 
     def get_context_data(self, **kwargs):
@@ -590,13 +602,23 @@ class contrapartida_pesquisa_update(UpdateView):
                 ano_ref = salario_obj.ano
                 horas_mensais = salario_obj.horas
 
-                horas_usadas = contrapartida_pesquisa.objects.filter(
-                   id_salario__id_pessoa=pessoa_id,
-                   id_salario__mes=mes_ref,
-                   id_salario__ano=ano_ref
+                # Filtra todas as contrapartidas já cadastradas com o mesmo salário
+                horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
                 ).values_list('horas_alocadas', flat=True)
 
-                horas_utilizadas = sum(horas_usadas)  # Somamos direto os valores
+                # Soma as horas já utilizadas
+
+                horas_usadas_rh =contrapartida_rh.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+
+                horas_utilizadas = sum(horas_usadas_pesquisa) + sum(horas_usadas_rh)
 
             except contrapartida_pesquisa.DoesNotExist:
                    messages.error(self.request, "Contrapartida não encontrada")
@@ -797,6 +819,8 @@ class contrapartida_equipamento_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu')
+    
+
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
@@ -1122,10 +1146,13 @@ class contrapartida_rh_menu(SingleTableView):
     def get_queryset(self):
         queryset = super().get_queryset()
         nome = self.request.GET.get('nome', '').strip()
+        pessoa= self.request.GET.get('pessoa','').strip()
         ano = self.request.GET.get('ano', '').strip()
         mes = self.request.GET.get('mes','').strip()
         if nome:
             queryset = queryset.filter(id_projeto__nome__icontains=nome)
+        if pessoa:
+            queryset= queryset.filter(id_salario__id_pessoa__nome__icontains=pessoa)
         if ano:
             queryset = queryset.filter(id_salario__ano=ano)
         if mes:
@@ -1137,13 +1164,15 @@ class contrapartida_rh_menu(SingleTableView):
         context = super().get_context_data(**kwargs)
         context["filtros"] = {
             "nome": self.request.GET.get("nome", ""),
-            "data_fim": self.request.GET.get("data_fim", ""),
+            "pessoa": self.request.GET.get("pessoa", ""),
+            "ano": self.request.GET.get("ano", ""),
+            "mes": self.request.GET.get("mes", ""),
         }
         return context
 
 class contrapartida_rh_create(CreateView):
     model = contrapartida_rh
-    fields = ['id_projeto', 'id_salario', 'horas_alocadas']
+    fields = ['id_projeto', 'id_salario','funcao', 'horas_alocadas']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_contrapartida_pesquisa"):
@@ -1180,13 +1209,22 @@ class contrapartida_rh_create(CreateView):
                 horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
-                horas_usadas = contrapartida_rh.objects.filter(
+                horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
                     id_salario__id_pessoa=pessoa_id,
                     id_salario__mes=mes_ref,
                     id_salario__ano=ano_ref
                 ).values_list('horas_alocadas', flat=True)
 
-                horas_utilizadas = sum(horas_usadas)  # Soma as horas já utilizadas
+                # Soma as horas já utilizadas
+
+                horas_usadas_rh =contrapartida_rh.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+
+                horas_utilizadas = sum(horas_usadas_pesquisa) + sum(horas_usadas_rh)
 
             except salario.DoesNotExist:
                 messages.error(self.request, "Salário não encontrado")
@@ -1214,7 +1252,7 @@ class contrapartida_rh_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida rh")
    
     model = contrapartida_rh
-    fields =  ['id_projeto', 'id_salario', 'horas_alocadas']
+    fields =  ['id_projeto', 'id_salario','funcao', 'horas_alocadas']
 
 
     def get_context_data(self, **kwargs):
@@ -1235,13 +1273,23 @@ class contrapartida_rh_update(UpdateView):
                 ano_ref = salario_obj.ano
                 horas_mensais = salario_obj.horas
 
-                horas_usadas = contrapartida_rh.objects.filter(
-                   id_salario__id_pessoa=pessoa_id,
-                   id_salario__mes=mes_ref,
-                   id_salario__ano=ano_ref
+                # Filtra todas as contrapartidas já cadastradas com o mesmo salário
+                horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
                 ).values_list('horas_alocadas', flat=True)
 
-                horas_utilizadas = sum(horas_usadas)  # Somamos direto os valores
+                # Soma as horas já utilizadas
+
+                horas_usadas_rh =contrapartida_rh.objects.filter(
+                    id_salario__id_pessoa=pessoa_id,
+                    id_salario__mes=mes_ref,
+                    id_salario__ano=ano_ref
+                ).values_list('horas_alocadas', flat=True)
+
+
+                horas_utilizadas = sum(horas_usadas_pesquisa) + sum(horas_usadas_rh)
 
             except contrapartida_rh.DoesNotExist:
                    messages.error(self.request, "Contrapartida não encontrada")
