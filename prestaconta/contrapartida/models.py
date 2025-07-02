@@ -33,7 +33,7 @@ class projeto(models.Model):
         return 0
 
     class Meta:
-        ordering = ['data_fim']
+        ordering = ['nome']
 
     @property
     def contrapartida_max(self):
@@ -115,6 +115,7 @@ class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+    funcao = models.CharField(max_length=100, default="Pesquisador",null=True, verbose_name="Função")
     
     @property
     def valor_cp(self):
@@ -179,6 +180,7 @@ class contrapartida_rh(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+    funcao = models.CharField(max_length=100,null=True, verbose_name="Função")
 
     @property
     def valor_cp(self):

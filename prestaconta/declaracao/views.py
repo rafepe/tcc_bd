@@ -83,6 +83,7 @@ def gerar_declaracao_contrapartida_pesquisa(request, projeto_id, mes, ano):
     declaracao = declaracao_contrapartida_pesquisa.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_obj.nome,
+        codigo=projeto_obj.peia,
         mes=mes,    	
         ano=ano,
     )
@@ -107,7 +108,7 @@ def gerar_declaracao_contrapartida_pesquisa(request, projeto_id, mes, ano):
             declaracao=declaracao,
             nome=pessoa_obj.nome,
             cpf=pessoa_obj.cpf,
-            funcao="Pesquisador",
+            funcao=r.funcao,
             horas_alocadas=r.horas_alocadas,
             salario=r.id_salario.valor,
             valor_cp=r.valor_cp
@@ -163,111 +164,6 @@ class declaracao_contrapartida_pesquisa_delete(DeleteView):
             ano=self.object.ano
         )
 
-                        # <a href="{% url 'remover_declaracao_contrapartida_'|add:tipo res.pk %}" class="btn btn-danger btn-sm">
-                        #     Excluir
-                        # </a>
-
-
-# class declaracao_contrapartida_pesquisa_delete(DeleteView):
-#     model = declaracao_contrapartida_pesquisa
-#     fields = []
-#     template_name_suffix = '_delete'
-#     context_object_name = 'declaracao'
-
-   
-#     success_url='/declaracao/menu/?projeto={projeto}&mes={mes}&ano={ano}'
-
-#     def dispatch(self, request, *args, **kwargs):
-#         if not request.user.has_perm("declaracao.declaracao_contrapartida_pesquisa_delete"):
-#             return HttpResponse("Sem permissão para excluir declaracoes de contrapartida_pesquisas")
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def delete(self, request, *args, **kwargs):
-#         # Guarda dados antes da exclusão
-#         self.projeto = self.get_object().projeto
-#         self.mes = self.get_object().mes
-#         self.ano = self.get_object().ano
-#         return super().delete(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         # Substitui {projeto}, {mes}, {ano} no success_url usando os atributos do objeto
-#         print(self.object)
-#         return self.success_url.format(
-#             projeto=self.object.projeto,
-#             mes=self.object.mes,
-#             ano=self.object.ano
-#         )
-
-# class declaracao_contrapartida_pesquisa_delete(View):
-#     model = declaracao_contrapartida_pesquisa
-#     context_object_name = 'declaracao'
-#     template_name = 'base/blank.html'  # Você precisa ter um template, mesmo que vazio
-
-#     def dispatch(self, request, *args, **kwargs):
-#         if request.user.has_perm("declaracao.declaracao_contrapartida_pesquisa_delete"):
-#             return super().dispatch(request, *args, **kwargs)
-#         return HttpResponse("Sem permissão para excluir declarações de contrapartida pesquisa", status=403)
-    
-#     def get(self, request, *args, **kwargs):
-#         # Poderia redirecionar ou avisar
-#         return HttpResponseNotAllowed(['POST'])
-
-#     def post(self, request, *args, **kwargs):
-        
-#         pk = kwargs.get("pk")
-
-#         declaracao = get_object_or_404(declaracao_contrapartida_pesquisa, pk=pk)
-
-#         projeto = declaracao.projeto or ''
-#         mes = declaracao.mes or ''
-#         ano = declaracao.ano or ''
-
-#         declaracao.delete()
-#         messages.success(request, "Declaração excluída com sucesso!")
-
-#         url = reverse('declaracoes_menu')
-#         return HttpResponseRedirect(f'{url}?projeto={projeto}&mes={mes}&ano={ano}')
-
-                        # <form method="post" action="{% url 'remover_contrapartida_pesquisa' declaracao.pk %}" style="display:inline;">
-                        #     {% csrf_token %}
-                        #     <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                        # </form>
-
-
-
-# class declaracao_contrapartida_pesquisa_item_delete(DeleteView):
-#     model = declaracao_contrapartida_pesquisa_item
-#     template_name_suffix = '_delete'  # usa declaracao_contrapartida_pesquisa_item_delete.html
-#     context_object_name = 'item'
-
-#     def dispatch(self, request, *args, **kwargs):
-#         if not request.user.has_perm("declaracao.delete_declaracao_contrapartida_pesquisa_item"):
-#             return HttpResponse("Sem permissão para excluir itens de declaração", status=403)
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         # Depois de excluir o item, volta para a view de detalhes da declaração
-#         decl = self.object
-#         url = reverse('declaracoes_menu')
-#         return redirect(f'{url}?projeto={decl.projeto}&mes={decl.mes}&ano={decl.ano}')
-    
-# class DeclaracaoDeleteView(DeleteView):
-#     model = declaracao_contrapartida_pesquisa
-#     template_name_suffix = '_delete'  # usa declaracao_contrapartida_pesquisa_delete.html
-#     context_object_name = 'declaracao'
-
-#     def dispatch(self, request, *args, **kwargs):
-#         if not request.user.has_perm("declaracao.delete_declaracao_contrapartida_pesquisa"):
-#             return HttpResponse("Sem permissão para excluir declarações", status=403)
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         # Depois de excluir a declaração, volta ao menu de declarações, 
-#         # mantendo projeto, mes e ano nos query params
-#         decl = self.object
-#         qs = f"?projeto={decl.projeto_id}&mes={decl.mes}&ano={decl.ano}"
-#         return reverse('declaracoes_menu') + qs
-
 ###############
 #     SO      #
 ###############
@@ -294,6 +190,7 @@ def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
     declaracao = declaracao_contrapartida_so.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_obj.nome,
+        codigo=projeto_obj.peia,
         mes=mes,    	
         ano=ano,
     )
@@ -383,6 +280,7 @@ def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
     declaracao = declaracao_contrapartida_rh.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_obj.nome,
+        codigo=projeto_obj.peia,
         mes=mes,    	
         ano=ano,
     )
@@ -406,7 +304,7 @@ def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
             declaracao=declaracao,
             nome=pessoa_obj.nome,
             cpf=pessoa_obj.cpf,
-            funcao="Prospector",
+            funcao=r.funcao,
             horas_alocadas=r.horas_alocadas,
             salario=r.id_salario.valor,
             salario_mes=r.id_salario.mes,
@@ -510,6 +408,7 @@ def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
             codigo=r.id_projeto.peia,
             projeto=r.id_projeto.nome,
             equipamento=r.id_equipamento.nome,
+            descricao=r.descricao,
             horas_alocadas=r.horas_alocadas,
             valor_cp=r.valor_cp
         )
