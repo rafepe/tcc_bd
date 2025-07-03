@@ -269,6 +269,24 @@ class pessoa_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'pessoa_menu.html'
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        pessoa = self.request.GET.get('nome', '').strip()
+        email = self.request.GET.get('email', '').strip()
+        cpf = self.request.GET.get('cpf','').strip()
+        if pessoa:
+            queryset = queryset.filter(nome__icontains=pessoa)
+        if email:
+            queryset = queryset.filter(email__icontains=email)
+        if cpf:
+            queryset = queryset.filter(cpf__icontains=cpf)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)        
+        return context    
+
 class pessoa_create(CreateView):
     model = pessoa
     fields = ['nome', 'ativo', 'cpf', 'email']
@@ -366,7 +384,7 @@ class salario_create(CreateView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return self.request.path
+        return reverse_lazy('salario_menu')
 
 class salario_update(UpdateView):
     model = salario
@@ -388,7 +406,7 @@ class salario_update(UpdateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return self.request.path
+        return reverse_lazy('salario_menu')
 
 class salario_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):

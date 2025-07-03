@@ -104,7 +104,7 @@ class pessoa_table(tables.Table):
         model = pessoa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('nome','ativo')
+        fields = ('nome','email', 'cpf','ativo')
 
     def render_excluir(self, record):
         url = reverse("pessoa_delete", args=[record.pk])
