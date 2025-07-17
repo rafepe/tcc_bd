@@ -1,7 +1,7 @@
 from .models import *
 from .tables import *
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime,date
 from django_tables2 import SingleTableView,RequestConfig
 from django.conf import settings
 from django.contrib import messages
@@ -530,23 +530,42 @@ class contrapartida_pesquisa_create(CreateView):
             return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
 
     def form_valid(self, form):
+        # Pegue os dados do formulário necessários para validar
+        salario_obj=form.cleaned_data.get('id_salario')
+        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('id_salario','Data fora do período do projeto.')
+                return self.form_invalid(form)
+        
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")
+            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")   
 
+
+    # def form_invalid(self, form):
+    #     errors = form.errors.as_text()  # Converte os erros para texto
+    #     messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+    #     return self.render_to_response(self.get_context_data(form=form))
 
     def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
         return self.render_to_response(self.get_context_data(form=form))
+    
+
     
     def criar_contrapartida_pesquisa(request):
         context = super().get_context_data(**kwargs)
 
         horas_utilizadas = 0
         horas_mensais = 0
-
+                    
         # Captura o ID do salário selecionado no dropdown (se houver)
         id_salario = self.request.GET.get("id_salario") or self.request.POST.get("id_salario")
         if id_salario:
@@ -556,6 +575,8 @@ class contrapartida_pesquisa_create(CreateView):
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
                 horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
+
+        
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -653,6 +674,17 @@ class contrapartida_pesquisa_update(UpdateView):
         self.object = form.save()
 
         action = self.request.POST.get("action")
+
+        salario_obj=form.cleaned_data.get('id_salario')
+        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('id_salario','Data fora do período do projeto.')
+                return self.form_invalid(form)
+                
+
         if action == "update":
             return redirect("contrapartida_pesquisa_update", pk=self.object.pk)
         elif action == "save_exit":
@@ -660,8 +692,17 @@ class contrapartida_pesquisa_update(UpdateView):
 
         return super().form_valid(form)
 
+
+    def form_invalid(self, form):
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
+        return self.render_to_response(self.get_context_data(form=form))
+
     def get_success_url(self):
-        return reverse_lazy('contrapartida_pesquisa_menu')   
+        return reverse_lazy('contrapartida_pesquisa_menu')
+       
 
 class contrapartida_pesquisa_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
@@ -728,14 +769,26 @@ class contrapartida_equipamento_create(CreateView):
             return HttpResponse("Sem permissão para criar cp equipamento", status=403)
 
     def form_valid(self, form):
+
+        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('mes','Data fora do período do projeto.')
+                form.add_error('ano','Data fora do período do projeto.')
+                return self.form_invalid(form)
+                
         try:
             return super().form_valid(form)
         except IntegrityError:
             return HttpResponse("Erro: contrapartida equipamento invalida.")
         
     def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o a contra partida equipamento: {errors}")
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
         return self.render_to_response(self.get_context_data(form=form))
     
     def criar_contrapartida_equipamento(request):
@@ -764,7 +817,7 @@ class contrapartida_equipamento_create(CreateView):
             except equipamento.DoesNotExist:
                 horas_restantes = "Equipamento não encontrado"
 
-        return render(request, "\contrapartida\contrapartida_equipamento_form.html", {
+        return render(request, "/contrapartida/contrapartida_equipamento_form.html", {
             "equipamentos": equipamentos,
             "horas_restantes": horas_restantes,
         })
@@ -789,13 +842,28 @@ class contrapartida_equipamento_update(UpdateView):
     def form_valid(self, form):
         self.object = form.save()
 
+        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('mes','Data fora do período do projeto.')
+                form.add_error('ano','Data fora do período do projeto.')
+                return self.form_invalid(form)
+
         action = self.request.POST.get("action")
         if action == "update":
             return redirect("contrapartida_equipamento_update", pk=self.object.pk)
         elif action == "save_exit":
             return redirect("contrapartida_equipamento_menu")
-
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -952,7 +1020,23 @@ class contrapartida_so_create(CreateView):
 
     def form_valid(self, form):
         form.instance.id_projeto = self.projeto
+        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
+        proj = self.projeto  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('mes','Data fora do período do projeto.')
+                form.add_error('ano','Data fora do período do projeto.')
+                return self.form_invalid(form)        
         return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
+        return self.render_to_response(self.get_context_data(form=form))
+		
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.projeto.id})
@@ -964,16 +1048,41 @@ class contrapartida_so_create(CreateView):
 
 class contrapartida_so_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.update_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
+        if not request.user.has_perm("contrapartida.update_contrapartida_so"):
             return HttpResponse("Sem permissão para atualizar contrapartida SO")
+        self.object = self.get_object()
+        self.projeto = self.object.id_projeto  # Adiciona aqui a referência ao projeto
+        return super().dispatch(request, *args, **kwargs)    
    
     model = contrapartida_so_projeto
-    fields = ['id_pessoa','ano', 'mes', 'valor']
+    fields = ['ano', 'mes', 'valor']
+    template_name = 'contrapartida/contrapartida_so_form.html'
+
+    def form_valid(self, form):
+        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
+        proj = self.projeto  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('mes','Data fora do período do projeto.')
+                form.add_error('ano','Data fora do período do projeto.')
+                return self.form_invalid(form)        
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
+        return self.render_to_response(self.get_context_data(form=form))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['projeto'] = self.object.id_projeto  # pega o projeto relacionado
+        return context    
 
     def get_success_url(self):
-        return reverse_lazy('contrapartida_so_menu')   
+        return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.projeto.id})
 
 class contrapartida_so_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
@@ -992,155 +1101,6 @@ class contrapartida_so_delete(DeleteView):
     template_name = 'contrapartida/contrapartida_so_delete.html'
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
-
-
-
-##############################
-# CONTRAPARTIDA REALIZADA    #
-##############################
-class contrapartida_realizada_list(ListView):
-    model = projeto  # Define o modelo explicitamente
-    template_name = "contrapartida/contrapartida_realizada_list.html"
-    context_object_name = "projetos"
-    paginate_by = 10  # Paginação para melhor navegação
-
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        f_nome = self.request.GET.get('nome', '').strip()
-        mes_fim = self.request.GET.get('mes', '').strip()
-        ano_fim = self.request.GET.get('ano','').strip()
-       ## vlr_total=self.request.GET.get('valor_total')
-       ## vlr_financiado =self.request.GET.get('valor_financiado')
-       ## vlr_cp_max=vlr_total-vlr_financiado
-       ## vlr_cp_max_formatado = locale.format_string('%.2f', vlr_cp_max, grouping=True)
-        if f_nome:
-            queryset = queryset.filter(nome__icontains=f_nome)
-        if mes_fim:
-            queryset = queryset.filter(data_fim__month=int(mes_fim))
-        if ano_fim:
-            queryset = queryset.filter(data_fim__year=int(ano_fim))         
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        for projeto in context["projetos"]:
-            projeto.mensal_devido = (projeto.contrapartida_max  /projeto.num_mes  if projeto.num_mes else projeto.contrapartida_max)
-
-        context["filtros"] = {
-            "nome": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")           
-        }
-        return context
-
-def contrapartida_realizada_detalhes(request, projeto_id):
-    proj = get_object_or_404(projeto, id=projeto_id)
-
-
-    vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
-
-    contrapartidas_por_mes = defaultdict(lambda: {
-        'so': 0.0,
-        'rh': 0.0,
-        'pesquisa': 0.0,
-        'equipamento': 0.0,
-        'prospeccao':0.0,
-        'total': 0.0,
-        'diferenca': 0.0
-    })
-    saldo=0.0
-    contrapartidas_ordenadas = {}
-
-    tipos_contrapartida = ['SO','Rh','Pesquisa','Equipamento','Total', 'Diferenca', 'Saldo']
-
-    # Processa contrapartida de SO
-    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
-        key = f"{so.ano}-{so.mes:02d}"
-        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
-
-    # Processa contrapartida de pesquisa
-    for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
-        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
-        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
-        contrapartidas_por_mes[key]['pesquisa'] += value
-
-    # Processa contrapartida de rh
-    for c in contrapartida_rh.objects.filter(id_projeto=proj):
-        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
-        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
-        contrapartidas_por_mes[key]['rh'] += value    
-
-    # Processa contrapartida de equipamento
-    for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
-        key = f"{ce.ano}-{ce.mes:02d}"
-        if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100']:
-            value_valor_hora = (
-                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
-                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1200
-            ) / float(ce.id_equipamento.quantidade_nos)
-        else:
-            value_valor_hora = (
-                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
-                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1440
-            ) / float(ce.id_equipamento.quantidade_nos)
-        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
-               
-        contrapartidas_por_mes[key]['equipamento'] += value
-
-    # Calcula contrapartida prospeccao
-    #contrapartidas_por_mes[key]['prospeccao'] += float(so.valor or 0)
-
-    # Calcula total por mês e diferença
-    for key, valores in sorted(contrapartidas_por_mes.items()):
-        valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so'] + valores['rh'] 
-        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
-        saldo += valores['diferenca']
-        valores['saldo'] = saldo
-        contrapartidas_ordenadas[key] = valores
-
-    # Ordena os meses do mais antigo para o mais recente
-    #contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
-
-    ## Inicio do pivot
-
-    ano_mes = sorted(contrapartidas_ordenadas.keys(), key=lambda x: datetime.strptime(x, "%Y-%m"))
-
-    # Estrutura: {'SO': {'2024-07': 0.0, ...}, 'Pesquisa': {...}, ...}
-    dados_transpostos = defaultdict(dict)
-
-
-
-    for data in ano_mes:
-        valores = contrapartidas_ordenadas[data]
-        dados_transpostos['SO'][data] = valores['so']
-        dados_transpostos['Rh'][data] = valores['rh']
-        dados_transpostos['Pesquisa'][data] = valores['pesquisa']
-        dados_transpostos['Equipamento'][data] = valores['equipamento']
-        dados_transpostos['Prospeccao'][data] = valores['prospeccao']
-        dados_transpostos['Total'][data] = valores['total']
-        dados_transpostos['Diferenca'][data] = valores['diferenca']
-        dados_transpostos['Saldo'][data] = valores['saldo']
-
-    dados_tabela = []
-
-    for tipo in tipos_contrapartida:
-        linha = {
-            "tipo": tipo,
-            "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
-        }
-        dados_tabela.append(linha)
-
-
-    context = {
-           'projeto': proj,
-           'mensal_devido': vlr_mensal_devido,
-           'contrapartidas_por_mes': contrapartidas_ordenadas,
-           "ano_mes": ano_mes,  # lista de '2024-07', '2024-08', ...
-           "dados_tabela": dados_tabela  # lista de dicionários com tipo + valores ordenados
-    }
-
-    return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
 
 
 
@@ -1199,15 +1159,26 @@ class contrapartida_rh_create(CreateView):
             return HttpResponse("Sem permissão para criar cp pesquisa", status=403)
 
     def form_valid(self, form):
+        # Pegue os dados do formulário necessários para validar
+        salario_obj=form.cleaned_data.get('id_salario')
+        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('id_salario','Data fora do período do projeto.')
+                return self.form_invalid(form)
+        
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")
-
+            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")   
 
     def form_invalid(self, form):
-        errors = form.errors.as_text()  # Converte os erros para texto
-        messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
         return self.render_to_response(self.get_context_data(form=form))
     
     def criar_contrapartida_rh(request):
@@ -1319,9 +1290,19 @@ class contrapartida_rh_update(UpdateView):
         context["horas_mensais"] = horas_mensais
         context["horas_restantes"] = horas_mensais - horas_utilizadas
 
-        return context    
+        return context
+        
     def form_valid(self, form):
         self.object = form.save()
+
+        salario_obj=form.cleaned_data.get('id_salario')
+        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        
+        if data and proj:
+            if not (proj.data_inicio <= data <= proj.data_fim):
+                form.add_error('id_salario','Data fora do período do projeto.')
+                return self.form_invalid(form)
 
         action = self.request.POST.get("action")
         if action == "update":
@@ -1330,6 +1311,13 @@ class contrapartida_rh_update(UpdateView):
             return redirect("contrapartida_rh_menu")
 
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        for field, error_list in form.errors.items():
+            for error in error_list:
+                field_label = form.fields.get(field).label if field in form.fields else "Erro"
+                messages.error(self.request, f"{field_label}: {error}")
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_rh_menu')   
@@ -1345,7 +1333,181 @@ class contrapartida_rh_delete(DeleteView):
     fields = []
     template_name_suffix = '_delete'
     def get_success_url(self):
-        return reverse_lazy('contrapartida_rh_menu')     
+        return reverse_lazy('contrapartida_rh_menu')    
+
+
+##############################
+# CONTRAPARTIDA REALIZADA    #
+##############################
+class contrapartida_realizada_list(ListView):
+    model = projeto  # Define o modelo explicitamente
+    template_name = "contrapartida/contrapartida_realizada_list.html"
+    context_object_name = "projetos"
+    paginate_by = 10  # Paginação para melhor navegação
+
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        f_nome = self.request.GET.get('nome', '').strip()
+        mes_fim = self.request.GET.get('mes', '').strip()
+        ano_fim = self.request.GET.get('ano','').strip()
+       ## vlr_total=self.request.GET.get('valor_total')
+       ## vlr_financiado =self.request.GET.get('valor_financiado')
+       ## vlr_cp_max=vlr_total-vlr_financiado
+       ## vlr_cp_max_formatado = locale.format_string('%.2f', vlr_cp_max, grouping=True)
+        if f_nome:
+            queryset = queryset.filter(nome__icontains=f_nome)
+        if mes_fim:
+            queryset = queryset.filter(data_fim__month=int(mes_fim))
+        if ano_fim:
+            queryset = queryset.filter(data_fim__year=int(ano_fim))         
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        for projeto in context["projetos"]:
+            projeto.mensal_devido = (projeto.contrapartida_max  /projeto.num_mes  if projeto.num_mes else projeto.contrapartida_max)
+
+        context["filtros"] = {
+            "nome": self.request.GET.get("nome", ""),
+            "mes": self.request.GET.get("mes", ""),
+            "ano": self.request.GET.get("ano", "")           
+        }
+        return context
+
+
+def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
+    meses = []
+    ano, mes = inicio.year, inicio.month
+
+    while (ano, mes) <= (fim.year, fim.month):
+        meses.append(date(ano, mes, 1))
+        if mes == 12:
+            mes = 1
+            ano += 1
+        else:
+            mes += 1
+
+    return meses
+
+
+
+def contrapartida_realizada_detalhes(request, projeto_id): 
+
+    proj = get_object_or_404(projeto, id=projeto_id)
+
+    vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
+
+    contrapartidas_por_mes = defaultdict(lambda: {
+        'so': 0.0,
+        'rh': 0.0,
+        'pesquisa': 0.0,
+        'equipamento': 0.0,
+        'prospeccao':0.0,
+        'total': 0.0,
+        'diferenca': 0.0
+    })
+    saldo=0.0
+    contrapartidas_ordenadas = {}
+
+    tipos_contrapartida = ['SO','Rh','Pesquisa','Equipamento','Total', 'Diferenca', 'Saldo']
+
+    todos_meses = gerar_meses_entre(proj.data_inicio, proj.data_fim)
+
+    for date in todos_meses:
+        key=f"{date.year}-{date.month:02d}"
+        contrapartidas_por_mes[key]
+
+
+    # Processa contrapartida de SO
+    for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
+        key = f"{so.ano}-{so.mes:02d}"
+        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
+
+    # Processa contrapartida de pesquisa
+    for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
+        contrapartidas_por_mes[key]['pesquisa'] += value
+
+    # Processa contrapartida de rh
+    for c in contrapartida_rh.objects.filter(id_projeto=proj):
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
+        contrapartidas_por_mes[key]['rh'] += value    
+
+    # Processa contrapartida de equipamento
+    for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
+        key = f"{ce.ano}-{ce.mes:02d}"
+        if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100']:
+            value_valor_hora = (
+                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
+                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1200
+            ) / float(ce.id_equipamento.quantidade_nos)
+        else:
+            value_valor_hora = (
+                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
+                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1440
+            ) / float(ce.id_equipamento.quantidade_nos)
+        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
+               
+        contrapartidas_por_mes[key]['equipamento'] += value
+
+    # Calcula contrapartida prospeccao
+    #contrapartidas_por_mes[key]['prospeccao'] += float(so.valor or 0)
+
+    # Calcula total por mês e diferença
+    for key, valores in sorted(contrapartidas_por_mes.items()):
+        valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so'] + valores['rh'] 
+        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
+        saldo += valores['diferenca']
+        valores['saldo'] = saldo
+        contrapartidas_ordenadas[key] = valores
+
+    # Ordena os meses do mais antigo para o mais recente
+    #contrapartidas_ordenadas = dict(sorted(contrapartidas_por_mes.items()))
+
+    ## Inicio do pivot
+
+    ano_mes = sorted(contrapartidas_ordenadas.keys(), key=lambda x: datetime.strptime(x, "%Y-%m"))
+
+    # Estrutura: {'SO': {'2024-07': 0.0, ...}, 'Pesquisa': {...}, ...}
+    dados_transpostos = defaultdict(dict)
+
+
+
+    for data in ano_mes:
+        valores = contrapartidas_ordenadas[data]
+        dados_transpostos['SO'][data] = valores['so']
+        dados_transpostos['Rh'][data] = valores['rh']
+        dados_transpostos['Pesquisa'][data] = valores['pesquisa']
+        dados_transpostos['Equipamento'][data] = valores['equipamento']
+        dados_transpostos['Prospeccao'][data] = valores['prospeccao']
+        dados_transpostos['Total'][data] = valores['total']
+        dados_transpostos['Diferenca'][data] = valores['diferenca']
+        dados_transpostos['Saldo'][data] = valores['saldo']
+
+    dados_tabela = []
+
+    for tipo in tipos_contrapartida:
+        linha = {
+            "tipo": tipo,
+            "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
+        }
+        dados_tabela.append(linha)
+
+
+    context = {
+           'projeto': proj,
+           'mensal_devido': vlr_mensal_devido,
+           'contrapartidas_por_mes': contrapartidas_ordenadas,
+           "ano_mes": ano_mes,  # lista de '2024-07', '2024-08', ...
+           "dados_tabela": dados_tabela  # lista de dicionários com tipo + valores ordenados
+    }
+
+    return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
+
+ 
 
 
 
