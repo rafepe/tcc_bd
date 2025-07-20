@@ -69,5 +69,6 @@ urlpatterns = [
     path('upload/', views.upload_contracheque, name='upload_contracheque'),
     
     path('verifica_contracheque/', verifica_contracheque, name='verifica_contracheque'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

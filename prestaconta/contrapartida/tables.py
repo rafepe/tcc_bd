@@ -124,7 +124,7 @@ class salario_table(tables.Table):
         if record.valor_hora:
             formatted_value = locale.currency(record.valor_hora, grouping=True)
             return format_html('<span>{}</span>', formatted_value)
-        return "oooi"
+        return "-"
     
     def render_valor(self, value):
         if value is not None:

@@ -18,10 +18,10 @@ from PyPDF2 import PdfReader
 import calendar
 import csv
 import io
-import locale
 from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_projeto
 import os
 import re
+from django.db.models import Q
 
 def index(request):
     usuario = request.POST.get('username')
@@ -746,7 +746,7 @@ class contrapartida_equipamento_create(CreateView):
             except equipamento.DoesNotExist:
                 horas_restantes = "Equipamento não encontrado"
 
-        return render(request, "\contrapartida\contrapartida_equipamento_form.html", {
+        return render(request, "/contrapartida/contrapartida_equipamento_form.html", {
             "equipamentos": equipamentos,
             "horas_restantes": horas_restantes,
         })
@@ -1415,9 +1415,13 @@ def verifica_contracheque(request):
         pessoa_id = request.POST.get('pessoa_id')
         pessoa_obj = pessoa.objects.get(id=pessoa_id)
         # Filtrar salários da pessoa que não possuem anexo ou cujo anexo é 0
+
         salarios_sem_anexo = salario.objects.filter(
             id_pessoa=pessoa_obj
-        ).exclude(anexo__isnull=False, anexo__gt='0')
+        ).filter(
+            Q(anexo__isnull=True) | Q(anexo='') | Q(anexo='0') | Q(anexo='False')
+        )
+
 
         # Preparar informações para o e-mail
         meses_sem_anexo = [
@@ -1449,3 +1453,4 @@ def verifica_contracheque(request):
 
     context['pessoas'] = pessoas
     return render(request, 'verifica_contracheque.html', context)
+

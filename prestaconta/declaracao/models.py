@@ -188,3 +188,5 @@ class declaracao_contrapartida_equipamento_item(models.Model):
                 name='unique_item_por_declaracao_equipamento_projeto'
             )
         ]
+
+
