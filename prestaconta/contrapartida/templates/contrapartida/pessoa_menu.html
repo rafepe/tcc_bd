@@ -8,7 +8,22 @@
 
 {% block titulo %}Pessoas{% endblock %}
 {% block corpo %}
-
+<center>
+    <form method="GET">
+        <label for="id_pesoa">Nome</label>
+        <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
+    
+        <label for="email">Email:</label>
+        <input type="text" name="email" id="email" value="{{ filtros.email }}" style="width: 80px;"> <!-- Tamanho reduzido -->
+    
+        <label for="cpf">Cpf:</label>
+        <input type="text" name="cpf" id="cpf" value="{{ filtros.cpf }}" style="width: 80px;"> <!-- Tamanho reduzido -->
+    
+        <button type="submit">Filtrar</button>
+        <a href="{% url 'salario_menu' %}">Limpar Filtros</a> <!-- Substitua pelo nome correto da URL -->
+    </form>
+    </center>
+    
 <body>
     <div class="container">
         <div class="col-md-12 col-sm-12 col-xs-12">

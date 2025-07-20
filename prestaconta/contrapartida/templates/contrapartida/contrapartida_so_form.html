@@ -18,10 +18,10 @@
 <body>
     <div class="container">
         <div class="text-center">
-            {% if contrapartida_so_proj.id %}
-            <h1>Atualizar Contrapartida SO</h1>
+            {% if form.instance.pk %}
+                 <h1>Atualizar Contrapartida SO</h1>
             {% else %}
-            <h1>Cadastrar Contrapartida SO</h1>
+                 <h1>Cadastrar Contrapartida SO</h1>
             {% endif %}
 
             <h2>{{projeto.nome}}</h2>
