@@ -104,7 +104,7 @@ class pessoa_table(tables.Table):
         model = pessoa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('nome','ativo')
+        fields = ('nome','email', 'cpf','ativo')
 
     def render_excluir(self, record):
         url = reverse("pessoa_delete", args=[record.pk])
@@ -279,10 +279,9 @@ class contrapartida_so_table(tables.Table):
         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
 
 class contrapartida_so_proj_table(tables.Table):
-    ano= tables.Column(verbose_name="Ano Referencia")
-    #id_projeto = tables.Column(verbose_name="Projeto")
-    mes = tables.Column(verbose_name="Mês Referencia")
-    valor = tables.Column(verbose_name="Valor Alocado")
+    ano = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano de Referência")
+    mes = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês de Referência")
+    valor = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor")
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
 
