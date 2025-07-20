@@ -1,0 +1,19 @@
+<!-- gerar_declaracao.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Gerar Declaração</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="p-4">
+    <h2>Gerar Declaração de Contrapartida</h2>
+
+    <p>Projeto: <strong>{{ projeto.nome }}</strong></p>
+    <p>Mês selecionado: <strong>{{ mes }}/{{ ano }}</strong></p>
+
+    <a href="{% url 'gerar_docx_contrapartida' projeto.id ano mes %}" class="btn btn-success">
+        Gerar Arquivo .DOCX
+    </a>
+</body>
+</html>

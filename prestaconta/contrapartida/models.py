@@ -194,3 +194,6 @@ class contrapartida_rh(models.Model):
 
     def __str__(self):
         return f"{self.id_projeto} - {self.id_salario}"
+    
+class teste_modelo(models.Model):
+    id_teste = models.CharField(max_length=10)

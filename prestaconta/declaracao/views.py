@@ -66,7 +66,7 @@ def gerar_declaracao_contrapartida_pesquisa(request, projeto_id, mes, ano):
     try:
         projeto_obj = projeto.objects.get(id=projeto_id)
     except projeto.DoesNotExist:
-        messages.error(request, "Projeto não encontrado.")
+        messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
     # Verificar se já existe declaração
@@ -173,7 +173,7 @@ def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
     try:
         projeto_obj = projeto.objects.get(id=projeto_id)
     except projeto.DoesNotExist:
-        messages.error(request, "Projeto não encontrado.")
+        messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
     # Verificar se já existe declaração
@@ -263,7 +263,7 @@ def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
     try:
         projeto_obj = projeto.objects.get(id=projeto_id)
     except projeto.DoesNotExist:
-        messages.error(request, "Projeto não encontrado.")
+        messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
     # Verificar se já existe declaração
@@ -371,7 +371,7 @@ def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
     try:
         projeto_obj = projeto.objects.get(id=projeto_id)
     except projeto.DoesNotExist:
-        messages.error(request, "Projeto não encontrado.")
+        messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
     # Verificar se já existe declaração
@@ -452,3 +452,152 @@ class declaracao_contrapartida_equipamento_delete(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('declaracoes_menu')
+
+##################################
+from django.shortcuts import render
+from contrapartida.models import projeto 
+
+def declaracoes_menu(request):
+    projetos = projeto.objects.all()  
+
+    projeto_nome = request.GET.get('projeto')
+    projeto_selecionado = None
+    if projeto_nome:
+        projeto_selecionado = projeto.objects.filter(nome=projeto_nome).first()
+
+    return render(request, 'declaracao/menu.html', {
+        'projetos': projetos,
+        'projeto': projeto_selecionado,
+        'mes': request.GET.get('mes'),
+        'ano': request.GET.get('ano'),
+    })
+
+
+
+
+##################################
+from django.http import HttpResponse
+from docx import Document
+from datetime import datetime
+import os
+from django.conf import settings
+from .models import declaracao_contrapartida_rh
+from .models import declaracao_contrapartida_rh_item
+
+def gerar_docx(request, ano, mes):
+    # Nome do mês por extenso
+    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+
+    # Tenta buscar a declaração correspondente
+    declaracao = declaracao_contrapartida_rh.objects.filter(ano=ano, mes=mes).first()
+    declaracao_id = declaracao.id
+    declaracao_itens = declaracao_contrapartida_rh_item.objects.filter(declaracao_id=declaracao_id)
+
+    if not declaracao:
+        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
+
+    projeto_nome = declaracao.projeto
+    total_valor_cp = declaracao.total
+
+    # Caminho para o base.docx
+    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base.docx')
+    doc = Document(caminho_docx)
+
+    # Substitui os campos no texto
+    for p in doc.paragraphs:
+        p.text = (
+            p.text
+            .replace('{{mes_selecionado}}', mes_nome)
+            .replace('{{ano_selecionado}}', str(ano))
+            .replace('{{nome_projeto}}', projeto_nome)
+            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+        )
+    itens = declaracao.itens.all() if declaracao else []
+   
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
+    for i, paragraph in enumerate(doc.paragraphs):
+        if '{{tabela_itens}}' in paragraph.text:
+            # Remove o marcador
+            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+
+
+            # Insere a tabela logo depois
+            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
+            table.style = 'Table Grid'
+
+            # Cabeçalho
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Nome do Bolsista'
+            hdr_cells[1].text = 'CPF'
+            hdr_cells[2].text = 'Função'
+            hdr_cells[3].text = 'Horas alocadas'
+            hdr_cells[4].text = 'Salário'
+            hdr_cells[5].text = 'Valor CP'
+            hdr_cells[6].text = 'Valor Hora'
+
+            # Preenche as linhas
+            for item in itens:
+                row_cells = table.add_row().cells
+                row_cells[0].text = item.nome
+                row_cells[1].text = item.cpf
+                row_cells[2].text = item.funcao
+                row_cells[3].text = str(item.horas_alocadas)
+                row_cells[4].text = f"R$ {item.salario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[6].text = f"R$ {item.valor_hora:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            break  # Para após inserir a tabela
+    p = doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
+    p = doc.add_paragraph('(**) Mês da competência do contracheque.')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+    # Adiciona uma tabela 2x2
+    table = doc.add_table(rows=2, cols=2)
+    table.style = 'Table Grid'  # ou outro estilo, ou personalize
+
+    # Primeira linha (nomes)
+    row = table.rows[0]
+    row.cells[0].text = "Anderson Soares"
+    row.cells[1].text = "Telma Woerle de Lima Soares"
+
+    # Segunda linha (cargos)
+    row = table.rows[1]
+    row.cells[0].text = "Coordenador do projeto"
+    row.cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
+
+    # Ajusta alinhamento
+    for r in table.rows:
+        for cell in r.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
+                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
+
+    # Remove bordas para tabela invisível (opcional)
+    tbl = table._tbl
+    for cell in tbl.iter_tcs():
+        tcPr = cell.tcPr
+        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            element = OxmlElement(f'w:{border}')
+            element.set(qn('w:val'), 'nil')
+            tcPr.append(element)
+
+
+
+    # Resposta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="RH_{projeto_nome}_{mes}_{ano}.docx"'
+    doc.save(response)
+    return response
+

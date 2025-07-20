@@ -23,4 +23,8 @@ urlpatterns = [
     path('contrapartida_equipamento/<int:id_declaracao>/', views.declaracao_contrapartida_equipamento_view.as_view(), name='ver_declaracao_contrapartida_equipamento'),
     path('remover_contrapartida_equipamento/<int:pk>/', views.declaracao_contrapartida_equipamento_delete.as_view(), name='remover_declaracao_contrapartida_equipamento'),
 
+    #path('gerar-docx/<int:projeto_id>/<int:ano>/<int:mes>/', views.gerar_docx, name='gerar_docx'),
+    path('gerar-docx/<int:ano>/<int:mes>/', views.gerar_docx, name='gerar_docx'),
+
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
