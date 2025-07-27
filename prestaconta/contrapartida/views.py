@@ -537,19 +537,13 @@ class contrapartida_pesquisa_create(CreateView):
         
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('id_salario','Data fora do período do projeto.')
+                form.add_error('id_salario','Data fora do período do projeto. ')
                 return self.form_invalid(form)
         
         try:
             return super().form_valid(form)
         except IntegrityError:
             return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")   
-
-
-    # def form_invalid(self, form):
-    #     errors = form.errors.as_text()  # Converte os erros para texto
-    #     messages.error(self.request, f"Erro ao salvar o projeto: {errors}")  
-    #     return self.render_to_response(self.get_context_data(form=form))
 
     def form_invalid(self, form):
         for field, error_list in form.errors.items():
@@ -773,12 +767,34 @@ class contrapartida_equipamento_create(CreateView):
         data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
         
-        if data and proj:
-            if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('mes','Data fora do período do projeto.')
-                form.add_error('ano','Data fora do período do projeto.')
-                return self.form_invalid(form)
-                
+        if not (proj.data_inicio <= data <= proj.data_fim):
+            ano_valido = proj.data_inicio.year <= data.year <= proj.data_fim.year
+            mes_valido = True  # Valor inicial
+
+            # Verifica o mês apenas se o ano for válido
+            if ano_valido:
+                if data.year == proj.data_inicio.year and data.month < proj.data_inicio.month:
+                    mes_valido = False
+                elif data.year == proj.data_fim.year and data.month > proj.data_fim.month:
+                    mes_valido = False
+
+            # Gera mensagens específicas
+            if not ano_valido:
+                msg = (
+                    f"Vigência do projeto de "
+                    f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+                )
+                form.add_error('ano', msg)
+
+            if ano_valido and not mes_valido:
+                msg = (
+                    f"Vigência do projeto de "
+                    f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+                )
+                form.add_error('mes', msg)
+
+            return self.form_invalid(form)
+
         try:
             return super().form_valid(form)
         except IntegrityError:

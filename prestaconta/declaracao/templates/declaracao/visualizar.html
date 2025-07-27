@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Declaração {{ declaracao.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Declaração de Contrapartida RH</h1>
+                <div>
+                    <a href="{% url 'download_declaracao' declaracao.id %}" class="btn btn-success">
+                        <i class="fas fa-download"></i> Download PDF
+                    </a>
+                    <a href="{% url 'editar_declaracao' declaracao.id %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{% url 'central_declaracoes' %}?projeto_id={{ declaracao.id_projeto }}&ano={{ declaracao.ano }}&semestre={% if declaracao.mes <= 6 %}1{% else %}2{% endif %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Informações da Declaração</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>ID:</strong> {{ declaracao.id }}</p>
+                            <p><strong>Projeto:</strong> {{ declaracao.projeto }}</p>
+                            <p><strong>Código:</strong> {{ declaracao.codigo }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Mês/Ano:</strong> {{ declaracao.mes }}/{{ declaracao.ano }}</p>
+                            <p><strong>Total:</strong> R$ {{ declaracao.total|floatformat:2 }}</p>
+                            <p><strong>Criada em:</strong> {{ declaracao.data|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h4>Itens da Declaração</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>Função</th>
+                                    <th>Horas Alocadas</th>
+                                    <th>Salário</th>
+                                    <th>Valor/Hora</th>
+                                    <th>Valor CP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens %}
+                                <tr>
+                                    <td>{{ item.nome }}</td>
+                                    <td>{{ item.cpf }}</td>
+                                    <td>{{ item.funcao }}</td>
+                                    <td>{{ item.horas_alocadas }}</td>
+                                    <td>R$ {{ item.salario|floatformat:2 }}</td>
+                                    <td>R$ {{ item.valor_hora|floatformat:2 }}</td>
+                                    <td><strong>R$ {{ item.valor_cp|floatformat:2 }}</strong></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        Nenhum item encontrado para esta declaração.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <th colspan="6">Total Geral:</th>
+                                    <th>R$ {{ declaracao.total|floatformat:2 }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
