@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Central de Declarações{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1>Central de Declarações - Contrapartida RH</h1>
+            
+            {% if messages %}
+                <div class="alerts-container">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% if projeto_obj %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3>{{ projeto_obj.nome }} - {{ semestre }}º Semestre de {{ ano }}</h3>
+                        <small class="text-muted">Código: {{ projeto_obj.peia }}</small>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Mês</th>
+                                        <th>Status</th>
+                                        <th>Declarações Existentes</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in meses_data %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.nome_mes }}</strong>
+                                                <small class="text-muted d-block">{{ item.mes }}/{{ ano }}</small>
+                                            </td>
+                                            <td>
+                                                {% if item.declaracoes_existentes %}
+                                                    <span class="badge bg-success">Declaração Gerada</span>
+                                                {% elif item.tem_dados_para_gerar %}
+                                                    <span class="badge bg-warning">Pode Gerar</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Sem Dados</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.declaracoes_existentes %}
+                                                    {% for declaracao in item.declaracoes_existentes %}
+                                                        <div class="mb-1">
+                                                            <small>
+                                                                ID: {{ declaracao.id }} | 
+                                                                Total: R$ {{ declaracao.total|floatformat:2 }}
+                                                                <br>
+                                                                Criada em: {{ declaracao.data|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Nenhuma</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.pode_gerar %}
+                                                    <a href="?projeto_id={{ projeto_id }}&mes={{ item.mes }}&ano={{ ano }}&semestre={{ semestre }}&gerar=true" 
+                                                       class="btn btn-primary btn-sm"
+                                                       onclick="return confirm('Confirma a geração da declaração para {{ item.nome_mes }}/{{ ano }}?')">
+                                                        <i class="fas fa-plus"></i> Gerar Declaração
+                                                    </a>
+                                                {% elif item.declaracoes_existentes %}
+                                                    {% for declaracao in item.declaracoes_existentes %}
+                                                        <div class="btn-group mb-1" role="group">
+                                                            <a href="{% url 'visualizar_declaracao' declaracao.id %}" 
+                                                               class="btn btn-outline-info btn-sm">
+                                                                <i class="fas fa-eye"></i> Ver
+                                                            </a>
+                                                            <a href="{% url 'download_declaracao' declaracao.id %}" 
+                                                               class="btn btn-outline-success btn-sm">
+                                                                <i class="fas fa-download"></i> PDF
+                                                            </a>
+                                                            <a href="{% url 'editar_declaracao' declaracao.id %}" 
+                                                               class="btn btn-outline-warning btn-sm">
+                                                                <i class="fas fa-edit"></i> Editar
+                                                            </a>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">
+                                                        <i class="fas fa-info-circle"></i> Sem dados disponíveis
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resumo do Semestre -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Resumo do {{ semestre }}º Semestre de {{ ano }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded">
+                                    <h4 class="text-info mb-1">
+                                        {{ meses_data|length }}
+                                    </h4>
+                                    <small class="text-muted">Total de Meses</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded">
+                                    <h4 class="text-success mb-1">
+                                        {% with geradas=0 %}
+                                            {% for item in meses_data %}
+                                                {% if item.declaracoes_existentes %}
+                                                    {% with geradas=geradas|add:1 %}{% endwith %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {{ geradas }}
+                                        {% endwith %}
+                                    </h4>
+                                    <small class="text-muted">Declarações Geradas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded">
+                                    <h4 class="text-warning mb-1">
+                                        {% with pendentes=0 %}
+                                            {% for item in meses_data %}
+                                                {% if item.pode_gerar %}
+                                                    {% with pendentes=pendentes|add:1 %}{% endwith %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {{ pendentes }}
+                                        {% endwith %}
+                                    </h4>
+                                    <small class="text-muted">Podem ser Geradas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 border rounded">
+                                    <h4 class="text-secondary mb-1">
+                                        {% with sem_dados=0 %}
+                                            {% for item in meses_data %}
+                                                {% if not item.tem_dados_para_gerar and not item.declaracoes_existentes %}
+                                                    {% with sem_dados=sem_dados|add:1 %}{% endwith %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {{ sem_dados }}
+                                        {% endwith %}
+                                    </h4>
+                                    <small class="text-muted">Sem Dados</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Barra de progresso -->
+                        <div class="mt-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Progresso do Semestre</span>
+                                <span>
+                                    {% with geradas=0 %}
+                                        {% for item in meses_data %}
+                                            {% if item.declaracoes_existentes %}
+                                                {% with geradas=geradas|add:1 %}{% endwith %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ geradas }} de {{ meses_data|length }}
+                                    {% endwith %}
+                                </span>
+                            </div>
+                            <div class="progress">
+                                {% with geradas=0 %}
+                                    {% for item in meses_data %}
+                                        {% if item.declaracoes_existentes %}
+                                            {% with geradas=geradas|add:1 %}{% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% widthratio geradas meses_data|length 100 as percentual %}
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ percentual }}%" 
+                                         aria-valuenow="{{ percentual }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ percentual }}%
+                                    </div>
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            {% else %}
+                <div class="alert alert-info">
+                    <h4>Como usar esta página:</h4>
+                    <ol>
+                        <li>Acesse através do menu de declarações</li>
+                        <li>Selecione projeto, ano e semestre</li>
+                        <li>Visualize o status de cada mês</li>
+                        <li>Gere as declarações necessárias</li>
+                    </ol>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh alerts
+    setTimeout(function() {
+        $('.alert').alert('close');
+    }, 5000);
+</script>
+{% endblock %}

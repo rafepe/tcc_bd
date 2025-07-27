@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
+
+{% block corpo %}
+<h6>declaracoes_menu.html</h6>
+<div class="container mt-4">
+    <h2>Central de Declarações</h2>
+    <hr>
+    
+    <!-- Navegação entre semestres -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center">
+            <!-- Botão Semestre Anterior -->
+            <form method="get" class="me-2">
+                {% if semestre == 1 %}
+                    <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
+                    <input type="hidden" name="semestre" value="2">
+                {% else %}
+                    <input type="hidden" name="ano" value="{{ ano }}">
+                    <input type="hidden" name="semestre" value="1">
+                {% endif %}
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+            </form>
+            
+            <!-- Texto do semestre atual -->
+            <div class="mx-3">
+                <h4 class="mb-0 text-primary">{{ semestre }}º Semestre de {{ ano }}</h4>
+                <small class="text-muted">
+                    {% if semestre == 1 %}Janeiro - Junho{% else %}Julho - Dezembro{% endif %}
+                </small>
+            </div>
+            
+            <!-- Botão Semestre Seguinte -->
+            <form method="get" class="ms-2">
+                {% if semestre == 2 %}
+                    <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
+                    <input type="hidden" name="semestre" value="1">
+                {% else %}
+                    <input type="hidden" name="ano" value="{{ ano }}">
+                    <input type="hidden" name="semestre" value="2">
+                {% endif %}
+                <button type="submit" class="btn btn-outline-secondary">
+                    Próximo <i class="fas fa-chevron-right"></i>
+                </button>
+            </form>
+        </div>
+        
+        <!-- Botão de atualizar -->
+        <button type="button" class="btn btn-outline-info" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+    </div>
+
+    <!-- Seleção de Projeto -->
+    {% if projetos %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-project-diagram"></i> Selecione o Projeto
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-10">
+                    <select id="projeto_select" class="form-select" onchange="carregarDadosProjeto()">
+                        <option value="">-- Selecione um projeto --</option>
+                        {% for p in projetos %}
+                            <option value="{{ p.id }}" 
+                                    data-nome="{{ p.nome }}" 
+                                    data-inicio="{{ p.data_inicio|date:'m/Y' }}" 
+                                    data-fim="{{ p.data_fim|date:'m/Y' }}"
+                                    data-peia="{{ p.peia }}">
+                                {{ p.nome }} ({{ p.data_inicio|date:"m/Y" }} - {{ p.data_fim|date:"m/Y" }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-success w-100" onclick="carregarDadosProjeto()">
+                        <i class="fas fa-search"></i> Carregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dados do Projeto Selecionado -->
+    <div id="dados_projeto" style="display: none;">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0" id="projeto_nome"></h5>
+                        <small id="projeto_detalhes"></small>
+                    </div>
+                    <div class="text-right">
+                        <span class="badge bg-light text-dark" id="projeto_periodo"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="loading_dados" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando dados do projeto...</p>
+                </div>
+                
+                <div id="tabela_meses" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Mês</th>
+                                    <th style="text-align: center;">Pesquisa</th>
+                                    <th style="text-align: center;">RH</th>
+                                    <th style="text-align: center;">SO</th>
+                                    <th style="text-align: center;">Equipamento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_meses">
+                                <!-- Conteúdo será carregado via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Mensagem quando não há dados -->
+                <div id="sem_dados" class="alert alert-info" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    Este projeto não possui dados para o semestre selecionado.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if projeto %}
+    <br>
+    <form method="GET" class="row g-3">
+        <input type="hidden" name="projeto" value="{{ projeto.nome }}">
+        <div class="col-md-2">
+            <label for="mes" class="form-label">Mês</label>
+            <input type="number" class="form-control" id="mes" name="mes" min="1" max="12" value="{{ mes }}" required>
+        </div>
+        <div class="col-md-2">
+            <label for="ano" class="form-label">Ano</label>
+            <input type="number" class="form-control" id="ano" name="ano" min="2000" max="2100" value="{{ ano }}" required>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100">Filtrar/Ajustar</button>
+        </div>
+    </form>
+    <hr>
+    <h4>Projeto: {{ projeto.nome }} | {{ mes }}/{{ ano }}</h4>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Contrapartida</th>
+                <th>Gerar</th>
+                <th>Visualizar</th>
+                <th>Excluir</th>
+                <th>PDF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tipo,res in declaracoes.items %}
+            <tr>
+                <td>{{ tipo|title }}</td>
+                <td>
+                    <a href="{% url 'gerar_declaracao_contrapartida_'|add:tipo projeto.id mes ano %}" class="btn btn-sm btn-primary">
+                      Gerar
+                    </a>
+                </td>
+                <td>
+                    {% if declaracoes|dictkey:tipo %}
+                        <a href="{% url 'ver_declaracao_contrapartida_'|add:tipo res.id %}" class="btn btn-sm btn-info">
+                            Ver
+                        </a>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Não existe</button>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if declaracoes|dictkey:tipo %}
+                        <a href="{% url 'remover_declaracao_contrapartida_'|add:tipo res.pk %}" class="btn btn-danger btn-sm">
+                            Excluir
+                        </a>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Excluir</button>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if declaracoes|dictkey:tipo %}
+                       <p>pdf</p>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Não existe</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            Nenhum projeto ativo neste semestre.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+window.SEMESTRE_CONTEXT = {{ semestre }};
+window.ANO_CONTEXT = {{ ano }};
+// Dados dos meses por semestre
+const mesesSemestre = {
+    1: [
+        {num: 1, nome: 'Janeiro', abrev: 'Jan'},
+        {num: 2, nome: 'Fevereiro', abrev: 'Fev'},
+        {num: 3, nome: 'Março', abrev: 'Mar'},
+        {num: 4, nome: 'Abril', abrev: 'Abr'},
+        {num: 5, nome: 'Maio', abrev: 'Mai'},
+        {num: 6, nome: 'Junho', abrev: 'Jun'}
+    ],
+    2: [
+        {num: 7, nome: 'Julho', abrev: 'Jul'},
+        {num: 8, nome: 'Agosto', abrev: 'Ago'},
+        {num: 9, nome: 'Setembro', abrev: 'Set'},
+        {num: 10, nome: 'Outubro', abrev: 'Out'},
+        {num: 11, nome: 'Novembro', abrev: 'Nov'},
+        {num: 12, nome: 'Dezembro', abrev: 'Dez'}
+    ]
+};
+
+function carregarDadosProjeto() {
+    const select = document.getElementById('projeto_select');
+    console.log('entrou carregarDadosProjeto')
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (!selectedOption.value) {
+        document.getElementById('dados_projeto').style.display = 'none';
+        return;
+    }
+    
+    // Mostrar dados do projeto
+    document.getElementById('projeto_nome').textContent = selectedOption.dataset.nome;
+    document.getElementById('projeto_detalhes').textContent = `Código: ${selectedOption.dataset.peia}`;
+    document.getElementById('projeto_periodo').textContent = `${selectedOption.dataset.inicio} - ${selectedOption.dataset.fim}`;
+    
+    // Mostrar loading
+    document.getElementById('dados_projeto').style.display = 'block';
+    document.getElementById('loading_dados').style.display = 'block';
+    document.getElementById('tabela_meses').style.display = 'none';
+    document.getElementById('sem_dados').style.display = 'none';
+    console.log('entrou loading')
+    // Simular carregamento (substitua por chamada AJAX real)
+    setTimeout(() => {
+        carregarDadosMeses(selectedOption.value);
+    }, 1000);
+}
+
+function carregarDadosMeses(projetoId) {
+    // Remover duplicidade: as variáveis semestre e ano já estão disponíveis no escopo do template
+    // const semestre = {{ semestre }};
+    // const ano = {{ ano }};
+    const semestre = window.SEMESTRE_CONTEXT;
+    const ano = window.ANO_CONTEXT;
+    const meses = mesesSemestre[semestre];
+    
+    // Aqui você faria uma chamada AJAX para buscar os dados reais
+    // Por enquanto, vou simular dados
+    
+    fetch(`{% url 'ajax_dados_projeto' %}?projeto_id=${projetoId}&semestre=${semestre}&ano=${ano}`)
+        .then(response => response.json())
+        .then(data => {
+            preencherTabelaMeses(data, meses, projetoId, ano);
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Em caso de erro, ainda mostra a estrutura básica
+            preencherTabelaMesesBasica(meses, projetoId, ano);
+        });
+}
+
+function preencherTabelaMeses(dados, meses, projetoId, ano) {
+    const tbody = document.getElementById('tbody_meses');
+    tbody.innerHTML = '';
+    
+    meses.forEach(mes => {
+        const dadosMes = dados.meses ? dados.meses[mes.num] : null;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <strong>${mes.nome}</strong>
+                <br><small class="text-muted">${mes.num}/${ano}</small>
+            </td>
+            <td>${gerarColunaDeclaracao(dadosMes, 'pesquisa', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(dadosMes, 'rh', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(dadosMes, 'so', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(dadosMes, 'equipamentos', projetoId, mes.num, ano)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('loading_dados').style.display = 'none';
+    document.getElementById('tabela_meses').style.display = 'block';
+}
+
+function preencherTabelaMesesBasica(meses, projetoId, ano) {
+    const tbody = document.getElementById('tbody_meses');
+    tbody.innerHTML = '';
+    
+    meses.forEach(mes => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <strong>${mes.nome}</strong>
+                <br><small class="text-muted">${mes.num}/${ano}</small>
+            </td>
+            <td>${gerarColunaDeclaracao(null, 'pesquisa', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(null, 'rh', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(null, 'so', projetoId, mes.num, ano)}</td>
+            <td>${gerarColunaDeclaracao(null, 'equipamentos', projetoId, mes.num, ano)}</td>
+           
+        `;
+        tbody.appendChild(row);
+    });
+    
+    document.getElementById('loading_dados').style.display = 'none';
+    document.getElementById('tabela_meses').style.display = 'block';
+}
+
+function gerarColunaDeclaracao(dados, tipo, projetoId, mes, ano) {
+    const temDeclaracao = dados && dados[tipo] && dados[tipo].existe;
+    console.log('DEBUG gerarColunaDeclaracao', {dados, tipo, dadosTipo: dados ? dados[tipo] : undefined, temDeclaracao});
+    const podeGerar = dados && dados[tipo] && dados[tipo].pode_gerar;
+    
+    if (temDeclaracao) {
+        const valor = dados[tipo].valor || 0;
+        const declaracaoId = dados[tipo].declaracao_id;
+        
+        // URLs para as ações quando a declaração existe
+        let urlVer = '';
+        let urlExcluir = '';
+        let urlPdf = '';
+        
+        if (tipo === 'rh') {
+            urlVer = `/declaracao/contrapartida_rh/${declaracaoId}/`;
+            urlExcluir = `/declaracao/remover_contrapartida_rh/${declaracaoId}/`;
+            urlPdf = `/declaracao/download_declaracao/${declaracaoId}/`;
+        } else if (tipo === 'pesquisa') {
+            urlVer = `/declaracao/contrapartida_pesquisa/${declaracaoId}/`;
+            urlExcluir = `/declaracao/remover_contrapartida_pesquisa/${declaracaoId}/`;
+            urlPdf = `/declaracao/download_declaracao/${declaracaoId}/`;
+        } else if (tipo === 'so') {
+            urlVer = `/declaracao/contrapartida_so/${declaracaoId}/`;
+            urlExcluir = `/declaracao/remover_contrapartida_so/${declaracaoId}/`;
+            urlPdf = `/declaracao/download_declaracao/${declaracaoId}/`;
+        } else if (tipo === 'equipamentos' || tipo === 'equipamento') {
+            urlVer = `/declaracao/contrapartida_equipamento/${declaracaoId}/`;
+            urlExcluir = `/declaracao/remover_contrapartida_equipamento/${declaracaoId}/`;
+            urlPdf = `/declaracao/download_declaracao/${declaracaoId}/`;
+        }
+        
+        return `
+            <div class="text-center">
+                <span class="badge bg-success mb-1">Gerada</span>
+                <br><small>R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
+                <br>
+                <div class="btn-group-vertical mt-1" role="group">
+                    <a href="${urlVer}" class="btn btn-sm btn-info">Ver</a>
+                    <a href="${urlExcluir}" class="btn btn-sm btn-danger">Excluir</a>
+                    <a href="${urlPdf}" class="btn btn-sm btn-success">PDF</a>
+                </div>
+            </div>
+        `;
+    } else {
+        // URLs para gerar quando não existe declaração
+        let urlGerar = '';
+        if (tipo === 'rh') {
+            urlGerar = `/declaracao/gerar_declaracao_contrapartida_rh/${projetoId}/${mes}/${ano}/`;
+        } else if (tipo === 'pesquisa') {
+            urlGerar = `/declaracao/gerar_declaracao_contrapartida_pesquisa/${projetoId}/${mes}/${ano}/`;
+        } else if (tipo === 'so') {
+            urlGerar = `/declaracao/gerar_declaracao_contrapartida_so/${projetoId}/${mes}/${ano}/`;
+        } else if (tipo === 'equipamentos' || tipo === 'equipamento') {
+            urlGerar = `/declaracao/gerar_declaracao_contrapartida_equipamento/${projetoId}/${mes}/${ano}/`;
+        }
+        
+return `
+    <div class="text-center">
+        <a href="${urlGerar}" class="btn btn-sm btn-primary">Gerar</a>
+    </div>
+`;
+
+    }
+}
+
+
+
+
+
+
+</script>
+
+{% endblock %}
