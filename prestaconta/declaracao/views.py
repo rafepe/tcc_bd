@@ -463,8 +463,8 @@ class declaracao_contrapartida_equipamento_view(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        id_declaracao = self.kwargs.get('id_declaracao')
-        declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id_declaracao)
+        id = self.kwargs.get('id')
+        declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
 
         itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
 
@@ -577,9 +577,12 @@ from .models import declaracao_contrapartida_rh
 from .models import declaracao_contrapartida_rh_item
 from django.db.models import Sum
 
-def gerar_docx(request, declaracao_id):
+def gerar_docx_rh(request, declaracao_id):
     declaracao_itens = declaracao_contrapartida_rh_item.objects.filter(declaracao_id=declaracao_id)
+    print(declaracao_itens)
     ano = declaracao_itens.first().salario_ano if declaracao_itens.exists() else None
+    print('ano')
+    print(ano)
     mes = declaracao_itens.first().salario_mes if declaracao_itens.exists() else None
 
     # Nome do mês por extenso
@@ -592,8 +595,8 @@ def gerar_docx(request, declaracao_id):
         projeto_nome = declaracao_itens.first().declaracao.projeto
         total_valor_cp = declaracao_itens.aggregate(total=Sum('valor_cp'))['total'] or 0
 
-    # Caminho para o base.docx
-    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base.docx')
+    # Caminho para o base_rh.docx
+    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
     doc = Document(caminho_docx)
 
     # Substitui os campos no texto
@@ -695,6 +698,355 @@ def gerar_docx(request, declaracao_id):
     doc.save(response)
     return response
 
+
+def gerar_docx_so(request, declaracao_id):
+    declaracao_itens = declaracao_contrapartida_so_item.objects.filter(declaracao_id=declaracao_id)
+    print(declaracao_itens)
+    ano = declaracao_itens.first().salario_ano if declaracao_itens.exists() else None
+    print('ano')
+    print(ano)
+    mes = declaracao_itens.first().salario_mes if declaracao_itens.exists() else None
+
+    # Nome do mês por extenso
+    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+
+    if not declaracao_itens:
+        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
+    
+    if declaracao_itens.exists():
+        projeto_nome = declaracao_itens.first().declaracao.projeto
+        total_valor_cp = declaracao_itens.aggregate(total=Sum('valor_cp'))['total'] or 0
+
+    # Caminho para o base_so.docx
+    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_so.docx')
+    doc = Document(caminho_docx)
+
+    # Substitui os campos no texto
+    for p in doc.paragraphs:
+        p.text = (
+            p.text
+            .replace('{{mes_selecionado}}', mes_nome)
+            .replace('{{ano_selecionado}}', str(ano))
+            .replace('{{nome_projeto}}', projeto_nome)
+            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+        )
+    #itens = declaracao_itens.itens.all() if declaracao_itens else []
+    itens = list(declaracao_itens) if declaracao_itens.exists() else []
+   
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
+    for i, paragraph in enumerate(doc.paragraphs):
+        if '{{tabela_itens}}' in paragraph.text:
+            # Remove o marcador
+            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+
+
+            # Insere a tabela logo depois
+            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
+            table.style = 'Table Grid'
+
+            # Cabeçalho
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Nome do Bolsista'
+            hdr_cells[1].text = 'CPF'
+            hdr_cells[2].text = 'Função'
+            hdr_cells[3].text = 'Horas alocadas'
+            hdr_cells[4].text = 'Salário'
+            hdr_cells[5].text = 'Valor CP'
+            hdr_cells[6].text = 'Valor Hora'
+
+            # Preenche as linhas
+            for item in itens:
+                row_cells = table.add_row().cells
+                row_cells[0].text = item.nome
+                row_cells[1].text = item.cpf
+                row_cells[2].text = item.funcao
+                row_cells[3].text = str(item.horas_alocadas)
+                row_cells[4].text = f"R$ {item.salario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[6].text = f"R$ {item.valor_hora:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            break  # Para após inserir a tabela
+    p = doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
+    p = doc.add_paragraph('(**) Mês da competência do contracheque.')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+    # Adiciona uma tabela 2x2
+    table = doc.add_table(rows=2, cols=2)
+    table.style = 'Table Grid'  # ou outro estilo, ou personalize
+
+    # Primeira linha (nomes)
+    row = table.rows[0]
+    row.cells[0].text = "Anderson Soares"
+    row.cells[1].text = "Telma Woerle de Lima Soares"
+
+    # Segunda linha (cargos)
+    row = table.rows[1]
+    row.cells[0].text = "Coordenador do projeto"
+    row.cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
+
+    # Ajusta alinhamento
+    for r in table.rows:
+        for cell in r.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
+                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
+
+    # Remove bordas para tabela invisível (opcional)
+    tbl = table._tbl
+    for cell in tbl.iter_tcs():
+        tcPr = cell.tcPr
+        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            element = OxmlElement(f'w:{border}')
+            element.set(qn('w:val'), 'nil')
+            tcPr.append(element)
+
+
+
+    # Resposta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="SO_{projeto_nome}_{mes}_{ano}.docx"'
+    doc.save(response)
+    return response
+'''
+def gerar_docx_equipamento(request, declaracao_id):
+    declaracao = declaracao_contrapartida_equipamento.objects.filter(id=declaracao_id)
+    declaracao_itens = declaracao_contrapartida_equipamento_item.objects.filter(id=declaracao_id)
+    print(declaracao_itens)
+    ano = declaracao.first().ano if declaracao_itens.exists() else None
+    print('ano')
+    print(ano)
+    mes = declaracao.first().mes if declaracao_itens.exists() else None
+
+    # Nome do mês por extenso
+    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+
+    if not declaracao:
+        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
+    
+
+    # Caminho para o base_so.docx
+    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_equipamento.docx')
+    doc = Document(caminho_docx)
+
+    # Substitui os campos no texto
+    for p in doc.paragraphs:
+        p.text = (
+            p.text
+            .replace('{{mes_selecionado}}', mes_nome)
+            .replace('{{ano_selecionado}}', str(ano))
+            .replace('{{nome_projeto}}', projeto_nome)
+            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+        )
+    #itens = declaracao_itens.itens.all() if declaracao_itens else []
+    itens = list(declaracao_itens) if declaracao_itens.exists() else []
+   
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
+    for i, paragraph in enumerate(doc.paragraphs):
+        if '{{tabela_itens}}' in paragraph.text:
+            # Remove o marcador
+            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+
+
+            # Insere a tabela logo depois
+            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
+            table.style = 'Table Grid'
+
+            # Cabeçalho
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Descrição'
+            hdr_cells[1].text = 'Quantidade'
+            hdr_cells[2].text = 'Unidade'
+            hdr_cells[3].text = 'Valor Unitário'
+            hdr_cells[4].text = 'Valor Total'
+            hdr_cells[5].text = 'Tipo de Equipamento'
+            hdr_cells[6].text = 'Observações'
+
+
+            # Preenche as linhas
+            for item in itens:
+                row_cells = table.add_row().cells
+                row_cells[0].text = item.descricao
+                row_cells[1].text = str(item.quantidade)
+                row_cells[2].text = item.unidade
+                row_cells[3].text = f"R$ {item.valor_unitario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[4].text = f"R$ {item.valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                row_cells[5].text = item.tipo_equipamento
+                row_cells[6].text = item.observacoes or ''
+
+
+            break  # Para após inserir a tabela
+
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+    p = doc.add_paragraph('')
+
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+    # Adiciona uma tabela 2x2
+    table = doc.add_table(rows=1, cols=1)
+    table.style = 'Table Grid'  # ou outro estilo, ou personalize
+
+    # Primeira linha (nomes)
+    row = table.rows[0]
+    row.cells[0].text = "Telma Woerle de Lima Soares"
+
+    # Segunda linha
+    row = table.add_row()
+    row.cells[0].text = "Diretora da Unidade Embrapii - CEIA/UFG"
+
+    # Ajusta alinhamento
+    for r in table.rows:
+        for cell in r.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
+                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
+
+    # Remove bordas para tabela invisível (opcional)
+    tbl = table._tbl
+    for cell in tbl.iter_tcs():
+        tcPr = cell.tcPr
+        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            element = OxmlElement(f'w:{border}')
+            element.set(qn('w:val'), 'nil')
+            tcPr.append(element)
+
+
+
+    # Resposta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Equipamento_{projeto_nome}_{mes}_{ano}.docx"'
+    doc.save(response)
+    return response
+'''
+
+from datetime import datetime
+import os
+from django.conf import settings
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from .models import declaracao_contrapartida_equipamento, declaracao_contrapartida_equipamento_item
+
+def gerar_docx_equipamento(request, id):
+    # Busca a declaração
+    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
+
+    # Recupera os itens relacionados à declaração
+    itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
+
+    if not itens.exists():
+        return HttpResponse("Nenhum item encontrado para esta declaração.")
+
+    # Dados principais
+    mes = declaracao.mes
+    ano = declaracao.ano
+    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+    total_valor_cp = itens.aggregate(total=Sum('valor_cp'))['total'] or 0
+
+    # Nome do primeiro projeto apenas para nome do arquivo
+    nome_projeto = itens.first().projeto
+
+    # Caminho para o template base
+    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_equipamento.docx')
+    doc = Document(caminho_docx)
+
+    # Substitui os campos no texto
+    for p in doc.paragraphs:
+        p.text = (
+            p.text
+            .replace('{{mes_selecionado}}', mes_nome)
+            .replace('{{ano_selecionado}}', str(ano))
+            .replace('{{nome_projeto}}', nome_projeto)
+            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        )
+
+    # Insere a tabela onde há o marcador {{tabela_itens}}
+    for paragraph in doc.paragraphs:
+        if '{{tabela_itens}}' in paragraph.text:
+            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+
+            table = doc.add_table(rows=1, cols=6)
+            table.style = 'Table Grid'
+
+            # Cabeçalho da tabela
+            hdr_cells = table.rows[0].cells
+            hdr_cells[0].text = 'Projeto'
+            hdr_cells[1].text = 'Código (PEIA)'
+            hdr_cells[2].text = 'Equipamento'
+            hdr_cells[3].text = 'Descrição'
+            hdr_cells[4].text = 'Horas Alocadas'
+            hdr_cells[5].text = 'Valor da Contrapartida'
+
+            for item in itens:
+                row_cells = table.add_row().cells
+                row_cells[0].text = item.projeto
+                row_cells[1].text = item.codigo
+                row_cells[2].text = item.equipamento
+                row_cells[3].text = item.descricao or ''
+                row_cells[4].text = str(item.horas_alocadas)
+                row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            break  # só substitui o primeiro marcador encontrado
+
+    # Espaço extra
+    for _ in range(5):
+        doc.add_paragraph('')
+
+    # Tabela com assinatura
+    table = doc.add_table(rows=1, cols=1)
+    table.style = 'Table Grid'
+    row = table.rows[0]
+    row.cells[0].text = "Telma Woerle de Lima Soares"
+    row = table.add_row()
+    row.cells[0].text = "Diretora da Unidade Embrapii - CEIA/UFG"
+
+    # Alinhamento central
+    for r in table.rows:
+        for cell in r.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    # Remover bordas da tabela
+    tbl = table._tbl
+    for cell in tbl.iter_tcs():
+        tcPr = cell.tcPr
+        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            element = OxmlElement(f'w:{border}')
+            element.set(qn('w:val'), 'nil')
+            tcPr.append(element)
+
+    # Resposta com o arquivo
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="Declaracao_Equipamento_{mes}_{ano}.docx"'
+    doc.save(response)
+    return response
+
 from django.db.models.functions import ExtractMonth
 from django.db.models import Q
 
@@ -713,7 +1065,7 @@ def central_declaracoes(request):
 
         meses_data = []
         for mes in meses_semestre:
-            registros_mes = declaracao_contrapartida_rh.objects.filter(
+            registros_mes = declaracao_contrapartida_so.objects.filter(
                 projeto_id=projeto_id,
                 data__year=ano,
                 data__month=mes,
