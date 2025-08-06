@@ -117,7 +117,7 @@ class salario_table(tables.Table):
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     valor_hora = tables.Column(empty_values=(),verbose_name="Valor-Hora", orderable=False)
-    anexo = tables.Column(verbose_name="Comprovante", accessor='anexo', orderable=True, default='Não')
+    anexo = tables.Column(verbose_name="Comprovante", accessor='anexo', orderable=True, default='-')
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     
     def render_valor_hora(self, record):
@@ -137,8 +137,9 @@ class salario_table(tables.Table):
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
     def render_anexo(self, value):
-        #print(value)
-        if value and value != '0':
+        print(value)
+        if value:
+            print(value)
             return "Sim"
         return "Não"
 
