@@ -182,7 +182,6 @@ class contrapartida_rh(models.Model):
     horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
     funcao = models.CharField(max_length=100,null=True, verbose_name="Função")
 
-    @property
     def valor_cp(self):
         if self.id_salario.valor and self.id_salario.horas:
             return round(self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas), 2)
@@ -195,5 +194,3 @@ class contrapartida_rh(models.Model):
     def __str__(self):
         return f"{self.id_projeto} - {self.id_salario}"
     
-class teste_modelo(models.Model):
-    id_teste = models.CharField(max_length=10)
