@@ -1544,7 +1544,7 @@ def download_database(request):
 ##########################
 def upload_contracheque(request):
     if request.method == 'POST' and 'pdf_files' in request.FILES:
-        pdf_files = request.FILES.getlist('pdf_files')  # Obtém todos os arquivos enviados
+        pdf_files = request.FILES.getlist('pdf_files')
         for pdf_file in pdf_files:
             reader = PdfReader(pdf_file)
             text = ''
@@ -1552,14 +1552,11 @@ def upload_contracheque(request):
                 text += page.extract_text()
 
             try:
-                # Extração de dados do contracheque
                 nome_linha = text.splitlines()[9]
                 nome = re.match(r"^[A-Za-zÀ-ú ]+", nome_linha).group(0).strip()
-                print(nome)
 
                 cpf_linha = text.splitlines()[11]
                 cpf = re.search(r"(\d{11})$", cpf_linha).group(1)
-                print(cpf)
 
                 salario_bruto_linha = text.splitlines()[-5]
                 valores = re.findall(r"(\d{1,3}(?:\.\d{3})*,\d{2})", salario_bruto_linha)
@@ -1572,7 +1569,6 @@ def upload_contracheque(request):
                 mes = meses_pt.index(mes_abreviado.upper()) + 1
 
                 try:
-                    # Tenta inserir os dados no banco de dados
                     pessoa_obj, created = pessoa.objects.get_or_create(nome=nome, cpf=cpf, ativo=True)
                     salario_obj, salario_created = salario.objects.get_or_create(
                         id_pessoa=pessoa_obj,
@@ -1584,24 +1580,26 @@ def upload_contracheque(request):
                             'anexo': pdf_file,
                         }
                     )
-                    if not salario_created:  # Se já existe, tenta atualizar o anexo
+                    if not salario_created:
                         if not salario_obj.anexo:
                             salario_obj.anexo = pdf_file
                             salario_obj.save()
-                            messages.success(request, f"Arquivo de contracheque atualizado para {nome}.")
+                            messages.success(request, f"Arquivo de contracheque atualizado para {nome} ({mes}/{ano}).")
                         else:
                             messages.warning(request, f"Contracheque já cadastrado para {nome} ({mes}/{ano}).")
                     else:
-                        messages.success(request, f"Salário inserido com sucesso para {nome}.")
-                        return redirect(reverse_lazy('salario_menu') + f'?nome={nome.rstrip()}&mes={mes}&ano={ano}')
+                        messages.success(request, f"Salário inserido com sucesso para {nome} ({mes}/{ano}).")
+
                 except Exception as e:
                     messages.error(request, f"Erro ao processar o arquivo para {nome}: {str(e)}")
+
             except (IndexError, AttributeError, ValueError) as e:
                 messages.error(request, f"Erro ao extrair informações do arquivo {pdf_file.name}: {str(e)}")
 
         return redirect('upload_contracheque')
 
     return render(request, 'upload.html')
+
 
 def verifica_contracheque(request):
     pessoas = pessoa.objects.all()
