@@ -1,16 +1,25 @@
-from django.urls import path
-from django.views.generic.base import RedirectView
-from django.contrib.auth import views as auth_views
-from django.conf import settings
-from django.conf.urls.static import static
-
-
 from . import views
 from .views import *
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
+from django.http import HttpResponse
+from django.urls import path
+from django.urls import path
+from django.views.generic.base import RedirectView
+
+def robots_txt(request):
+    lines = [
+        "User-agent: *",
+        "Disallow:",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
 
 urlpatterns = [
     path('', views.index, name='index'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+
+    path("robots.txt", robots_txt),
 
     path('importar_csv/', views.importar_csv, name='importar_csv'),
     path('download_database/', views.download_database, name='download_database'),

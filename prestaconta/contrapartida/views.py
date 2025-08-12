@@ -22,7 +22,6 @@ import io
 import os
 import re
 
-
 def index(request):
     usuario = request.POST.get('username')
     senha = request.POST.get('password')
