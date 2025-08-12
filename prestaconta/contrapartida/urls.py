@@ -11,7 +11,7 @@ from django.views.generic.base import RedirectView
 def robots_txt(request):
     lines = [
         "User-agent: *",
-        "Disallow:",
+        "Disallow: /",
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
 
