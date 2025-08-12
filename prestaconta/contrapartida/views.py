@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from django.db import IntegrityError
+from django.db.models import Q
 from django.http import HttpResponse, FileResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
@@ -18,10 +19,9 @@ from PyPDF2 import PdfReader
 import calendar
 import csv
 import io
-from .models import projeto, contrapartida_pesquisa, contrapartida_equipamento ,contrapartida_so_projeto
 import os
 import re
-from django.db.models import Q
+
 
 def index(request):
     usuario = request.POST.get('username')
