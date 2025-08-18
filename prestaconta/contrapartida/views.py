@@ -366,7 +366,7 @@ class salario_menu(SingleTableView):
 
 class salario_create(CreateView):
     model = salario
-    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo']
+    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas','horas_limite', 'anexo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_salario"):
@@ -387,7 +387,7 @@ class salario_create(CreateView):
 
 class salario_update(UpdateView):
     model = salario
-    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas', 'anexo']
+    fields = ['id_pessoa', 'ano', 'mes', 'valor', 'horas','horas_limite', 'anexo']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_salario"):
@@ -531,12 +531,12 @@ class contrapartida_pesquisa_create(CreateView):
     def form_valid(self, form):
         # Pegue os dados do formulário necessários para validar
         salario_obj=form.cleaned_data.get('id_salario')
-        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
-        
+        data = date(salario_obj.ano,salario_obj.mes,proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('id_salario','Data fora do período do projeto. ')
+                form.add_error('id_salario',f"Data fora do período vigência do projeto de {proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}")
                 return self.form_invalid(form)
         
         try:
@@ -567,7 +567,7 @@ class contrapartida_pesquisa_create(CreateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
+                horas_mensais = salario_obj.horas_limite  # Total de horas disponíveis para aquele salário
 
         
 
@@ -632,7 +632,7 @@ class contrapartida_pesquisa_update(UpdateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas
+                horas_mensais = salario_obj.horas_limite
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -669,12 +669,13 @@ class contrapartida_pesquisa_update(UpdateView):
         action = self.request.POST.get("action")
 
         salario_obj=form.cleaned_data.get('id_salario')
-        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
+        data = date(salario_obj.ano,salario_obj.mes,proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
         
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('id_salario','Data fora do período do projeto.')
+                form.add_error('id_salario',f"Data fora do período vigência do projeto de {proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}")
                 return self.form_invalid(form)
                 
 
@@ -753,7 +754,7 @@ class contrapartida_equipamento_menu(SingleTableView):
 
 class contrapartida_equipamento_create(CreateView):
     model = contrapartida_equipamento
-    fields = ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao',  'horas_alocadas']
+    fields = ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao',  'horas_alocadas','valor_manual']
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.create_contrapartida_equipamento"):
@@ -762,34 +763,27 @@ class contrapartida_equipamento_create(CreateView):
             return HttpResponse("Sem permissão para criar cp equipamento", status=403)
 
     def form_valid(self, form):
+        ano = form.cleaned_data.get('ano')
+        mes = form.cleaned_data.get('mes')
+        proj = form.cleaned_data.get('id_projeto')
 
-        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
-        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
-        
+        # valida ano/mes preenchidos
+        if not ano or not mes:
+            form.add_error(None, "Ano e mês são obrigatórios.")
+            return self.form_invalid(form)
+
+        data = date(ano, mes, proj.data_inicio.day)
+
+        # valida intervalo de datas
         if not (proj.data_inicio <= data <= proj.data_fim):
-            ano_valido = proj.data_inicio.year <= data.year <= proj.data_fim.year
-            mes_valido = True  # Valor inicial
+            msg = (
+                f"Vigência do projeto de "
+                f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+            )
 
-            # Verifica o mês apenas se o ano for válido
-            if ano_valido:
-                if data.year == proj.data_inicio.year and data.month < proj.data_inicio.month:
-                    mes_valido = False
-                elif data.year == proj.data_fim.year and data.month > proj.data_fim.month:
-                    mes_valido = False
-
-            # Gera mensagens específicas
-            if not ano_valido:
-                msg = (
-                    f"Vigência do projeto de "
-                    f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
-                )
+            if data.year < proj.data_inicio.year or data.year > proj.data_fim.year:
                 form.add_error('ano', msg)
-
-            if ano_valido and not mes_valido:
-                msg = (
-                    f"Vigência do projeto de "
-                    f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
-                )
+            else:
                 form.add_error('mes', msg)
 
             return self.form_invalid(form)
@@ -797,7 +791,8 @@ class contrapartida_equipamento_create(CreateView):
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: contrapartida equipamento invalida.")
+            form.add_error(None, "Erro: contrapartida equipamento inválida.")
+            return self.form_invalid(form)
         
     def form_invalid(self, form):
         for field, error_list in form.errors.items():
@@ -849,28 +844,46 @@ class contrapartida_equipamento_update(UpdateView):
             return HttpResponse("Sem permissão para atualizar contrapartida_equipamentos")
    
     model = contrapartida_equipamento
-    fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao', 'horas_alocadas']
+    fields =  ['id_projeto', 'ano', 'mes', 'id_equipamento','descricao', 'horas_alocadas','valor_manual']
 
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu') 
     
     def form_valid(self, form):
-        self.object = form.save()
+        ano = form.cleaned_data.get('ano')
+        mes = form.cleaned_data.get('mes')
+        proj = form.cleaned_data.get('id_projeto')
 
-        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
-        proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
-        
-        if data and proj:
-            if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('mes','Data fora do período do projeto.')
-                form.add_error('ano','Data fora do período do projeto.')
-                return self.form_invalid(form)
+        # valida ano/mes preenchidos
+        if not ano or not mes:
+            form.add_error(None, "Ano e mês são obrigatórios.")
+            return self.form_invalid(form)
+
+        data = date(ano, mes, proj.data_inicio.day)
+
+        # valida intervalo de datas
+        if not (proj.data_inicio <= data <= proj.data_fim):
+            msg = (
+                f"Vigência do projeto de "
+                f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+            )
+
+            if data.year < proj.data_inicio.year or data.year > proj.data_fim.year:
+                form.add_error('ano', msg)
+            else:
+                form.add_error('mes', msg)
+
+            return self.form_invalid(form)
+
+        # salva o objeto antes de tratar as ações
+        self.object = form.save()
 
         action = self.request.POST.get("action")
         if action == "update":
             return redirect("contrapartida_equipamento_update", pk=self.object.pk)
         elif action == "save_exit":
             return redirect("contrapartida_equipamento_menu")
+
         return super().form_valid(form)
 
     def form_invalid(self, form):
@@ -1035,15 +1048,36 @@ class contrapartida_so_create(CreateView):
 
     def form_valid(self, form):
         form.instance.id_projeto = self.projeto
-        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
-        proj = self.projeto  # ou campo que referencia o projeto
+        proj = self.projeto
+        ano = form.cleaned_data.get('ano')
+        mes = form.cleaned_data.get('mes')
         
-        if data and proj:
-            if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('mes','Data fora do período do projeto.')
-                form.add_error('ano','Data fora do período do projeto.')
-                return self.form_invalid(form)        
-        return super().form_valid(form)
+        # valida ano/mes preenchidos
+        if not ano or not mes:
+            form.add_error(None, "Ano e mês são obrigatórios.")
+            return self.form_invalid(form)
+
+        data = date(ano, mes, proj.data_inicio.day)
+        
+        # valida intervalo de datas
+        if not (proj.data_inicio <= data <= proj.data_fim):
+            msg = (
+                f"Vigência do projeto de "
+                f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+            )
+
+            if data.year < proj.data_inicio.year or data.year > proj.data_fim.year:
+                form.add_error('ano', msg)
+            else:
+                form.add_error('mes', msg)
+
+            return self.form_invalid(form)
+
+        try:
+            return super().form_valid(form)
+        except IntegrityError:
+            form.add_error(None, "Erro: contrapartida rh inválida.")
+            return self.form_invalid(form)
     
     def form_invalid(self, form):
         for field, error_list in form.errors.items():
@@ -1074,14 +1108,22 @@ class contrapartida_so_update(UpdateView):
     template_name = 'contrapartida/contrapartida_so_form.html'
 
     def form_valid(self, form):
-        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),1)  # substitua 'data' pelo nome do campo real da data
         proj = self.projeto  # ou campo que referencia o projeto
+        data = date(form.cleaned_data.get('ano'),form.cleaned_data.get('mes'),proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
         
-        if data and proj:
-            if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('mes','Data fora do período do projeto.')
-                form.add_error('ano','Data fora do período do projeto.')
-                return self.form_invalid(form)        
+        
+        if not (proj.data_inicio <= data <= proj.data_fim):
+            msg = (
+                f"Vigência do projeto de "
+                f"{proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}."
+            )
+
+            if data.year < proj.data_inicio.year or data.year > proj.data_fim.year:
+                form.add_error('ano', msg)
+            else:
+                form.add_error('mes', msg)
+
+            return self.form_invalid(form) 
         return super().form_valid(form)
     
     def form_invalid(self, form):
@@ -1127,7 +1169,7 @@ class contrapartida_rh_menu(SingleTableView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.view_contrapartida_rh"):
             return super().dispatch(request, *args, **kwargs)
-        else:
+        else:      
             return HttpResponse("Sem permissão para ver contrapartida rh")
 
     model = contrapartida_rh
@@ -1175,13 +1217,13 @@ class contrapartida_rh_create(CreateView):
 
     def form_valid(self, form):
         # Pegue os dados do formulário necessários para validar
-        salario_obj=form.cleaned_data.get('id_salario')
-        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        salario_obj=form.cleaned_data.get('id_salario')        
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
-        
+        data = date(salario_obj.ano,salario_obj.mes,proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
+
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('id_salario','Data fora do período do projeto.')
+                form.add_error('id_salario',f"Data fora do período vigência do projeto de {proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}")
                 return self.form_invalid(form)
         
         try:
@@ -1210,7 +1252,7 @@ class contrapartida_rh_create(CreateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas  # Total de horas disponíveis para aquele salário
+                horas_mensais = salario_obj.horas_limite  # Total de horas disponíveis para aquele salário
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -1275,7 +1317,7 @@ class contrapartida_rh_update(UpdateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas
+                horas_mensais = salario_obj.horas_limite
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -1310,15 +1352,14 @@ class contrapartida_rh_update(UpdateView):
     def form_valid(self, form):
         self.object = form.save()
 
-        salario_obj=form.cleaned_data.get('id_salario')
-        data = date(salario_obj.ano,salario_obj.mes,1)  # substitua 'data' pelo nome do campo real da data
+        salario_obj=form.cleaned_data.get('id_salario')        
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
-        
+        data = date(salario_obj.ano,salario_obj.mes,proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
-                form.add_error('id_salario','Data fora do período do projeto.')
+                form.add_error('id_salario',f"Data fora do período vigência do projeto de {proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}")
                 return self.form_invalid(form)
-
+    
         action = self.request.POST.get("action")
         if action == "update":
             return redirect("contrapartida_rh_update", pk=self.object.pk)
@@ -1414,15 +1455,15 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     vlr_mensal_devido = (proj.contrapartida_max ) /proj.num_mes  if proj.num_mes else proj.contrapartida_max
 
     contrapartidas_por_mes = defaultdict(lambda: {
-        'so': 0.0,
-        'rh': 0.0,
-        'pesquisa': 0.0,
-        'equipamento': 0.0,
-        'prospeccao':0.0,
-        'total': 0.0,
-        'diferenca': 0.0
+        'so': Decimal(0.0),
+        'rh': Decimal(0.0),
+        'pesquisa': Decimal(0.0),
+        'equipamento': Decimal(0.0),
+        'prospeccao':Decimal(0.0),
+        'total': Decimal(0.0),
+        'diferenca': Decimal(0.0)
     })
-    saldo=0.0
+    saldo=Decimal(0.0)
     contrapartidas_ordenadas = {}
 
     tipos_contrapartida = ['SO','Rh','Pesquisa','Equipamento','Total', 'Diferenca', 'Saldo']
@@ -1437,36 +1478,23 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     # Processa contrapartida de SO
     for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
         key = f"{so.ano}-{so.mes:02d}"
-        contrapartidas_por_mes[key]['so'] += float(so.valor or 0)
+        contrapartidas_por_mes[key]['so'] += Decimal(so.valor or 0)
 
     # Processa contrapartida de pesquisa
     for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
         key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
-        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
-        contrapartidas_por_mes[key]['pesquisa'] += value
+        contrapartidas_por_mes[key]['pesquisa'] += c.valor_cp
 
     # Processa contrapartida de rh
     for c in contrapartida_rh.objects.filter(id_projeto=proj):
-        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
-        value = round(c.horas_alocadas * c.id_salario.valor/ c.id_salario.horas, 2)
-        contrapartidas_por_mes[key]['rh'] += value    
+        key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}" 
+        contrapartidas_por_mes[key]['rh'] += c.valor_cp  
 
     # Processa contrapartida de equipamento
     for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
-        key = f"{ce.ano}-{ce.mes:02d}"
-        if ce.id_equipamento.nome in ['DGX-1', 'DGX-A100', 'DGX-H100']:
-            value_valor_hora = (
-                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
-                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1200
-            ) / float(ce.id_equipamento.quantidade_nos)
-        else:
-            value_valor_hora = (
-                ((0.1 * float(ce.id_equipamento.valor_aquisicao)) +
-                 float(ce.id_equipamento.cvc) + float(ce.id_equipamento.cma)) / 1440
-            ) / float(ce.id_equipamento.quantidade_nos)
-        value = round(float(ce.horas_alocadas) * value_valor_hora, 2)
-               
-        contrapartidas_por_mes[key]['equipamento'] += value
+        key = f"{ce.ano}-{ce.mes:02d}"               
+        contrapartidas_por_mes[key]['equipamento'] += ce.valor_cp
+
 
     # Calcula contrapartida prospeccao
     #contrapartidas_por_mes[key]['prospeccao'] += float(so.valor or 0)
@@ -1474,7 +1502,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
     # Calcula total por mês e diferença
     for key, valores in sorted(contrapartidas_por_mes.items()):
         valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so'] + valores['rh'] 
-        valores['diferenca'] = valores['total'] - float(vlr_mensal_devido)
+        valores['diferenca'] = valores['total'] - Decimal(vlr_mensal_devido)
         saldo += valores['diferenca']
         valores['saldo'] = saldo
         contrapartidas_ordenadas[key] = valores
