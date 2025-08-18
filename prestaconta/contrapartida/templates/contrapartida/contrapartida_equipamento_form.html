@@ -37,7 +37,7 @@
                         {% bootstrap_field form.mes placeholder='' %}
                     </div>
 
-                    <div class="col-md-2 col-sm-4">
+                    <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.id_equipamento placeholder='' %}
                     </div>
                     <div class="col-md-4 col-sm-6">
@@ -51,9 +51,14 @@
                     <div class="col-md-4 col-sm-6">
                         {% bootstrap_field form.horas_alocadas placeholder='' %}
                     </div>
-                    <div class="col-md-2 col-sm-6">
-                        <label>Horas restantes:</label>
-                        <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label">Horas restantes:</label>
+                            <input type="text" class="form-control" value="{{ horas_restantes }}" readonly>
+                        </div>
+                    </div>  
+                    <div class="col-md-4 col-sm-6">
+                        {% bootstrap_field form.valor_manual placeholder='' %}
                     </div>
                 </div>
 
