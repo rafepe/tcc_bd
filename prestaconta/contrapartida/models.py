@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-
+from decimal import Decimal
 
 
 from django.db.models.signals import post_delete
@@ -42,12 +42,26 @@ class projeto(models.Model):
 class equipamento(models.Model):
     id = models.AutoField(primary_key=True)
     nome = models.CharField(max_length=255, verbose_name="Nome do Equipamento")
-    valor_aquisicao = models.FloatField(verbose_name="Valor de Aquisição")
+    valor_aquisicao = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,verbose_name="Valor de Aquisição")
     quantidade_nos = models.IntegerField(default=1, verbose_name="Quantidade de Nós")
-    cvc = models.FloatField(default=0, verbose_name="CVC - Custo de Verificação e Calibração")
-    cma = models.FloatField(default=0, verbose_name="CMA - Custo de Manutenção Anual")
+    cvc = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="CVC - Custo de Verificação e Calibração")
+    cma = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="CMA - Custo de Manutenção Anual")
     ativo = models.BooleanField(default=True, verbose_name='Ativo')
     horas_mensais = models.IntegerField(default=0, verbose_name="Horas Mensais")
+    
+    @property
+    def valor_hora(self):
+        valor_aquisicao = self.valor_aquisicao or 0
+        cvc = self.cvc or 0
+        cma = self.cma or 0
+        quantidade_nos = self.quantidade_nos or 1 
+        if self.nome in ['DGX-1','DGX-A100','DGX-H100']:
+            value = (( (Decimal(0.1)*valor_aquisicao) +  cvc + cma )  /  1200) / quantidade_nos
+        else:
+            value = ((Decimal(0.1)*valor_aquisicao) +  cvc + cma )  /  1440 / quantidade_nos
+           
+        return round(value,2) 
+    
     def __str__(self):
         return self.nome
  
@@ -80,8 +94,9 @@ class salario(models.Model):
         verbose_name="Ano de referência",
         validators=[MinValueValidator(2000), MaxValueValidator(2200)]
     )
-    valor = models.FloatField(blank=True, null=True, default=0)
+    valor = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,blank=True, null=True)
     horas = models.IntegerField(default=160, null=False)
+    horas_limite= models.IntegerField(default=0 , null=True)
     anexo = models.FileField(upload_to='comprovantes/', null=True, blank=True)
     
     @property
@@ -114,7 +129,7 @@ def delete_anexo_file(sender, instance, **kwargs):
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
-    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+    horas_alocadas = models.DecimalField(max_digits=6, decimal_places=1, default=0.0, verbose_name='Horas Alocadas',blank=True)
     funcao = models.CharField(max_length=100, default="Pesquisador",null=True, verbose_name="Função")
     
     @property
@@ -142,20 +157,16 @@ class contrapartida_equipamento(models.Model):
     id_equipamento = models.ForeignKey(equipamento, on_delete=models.CASCADE)
     descricao=models.CharField(max_length=400,null=True,verbose_name='Descricao')
     horas_alocadas = models.IntegerField(blank=True, null=True, default=0)
+    valor_manual= models.DecimalField(max_digits=12, decimal_places=2, blank=True,null=True,default=0)
 
     @property
     def valor_cp(self):
-        valor_aquisicao = self.id_equipamento.valor_aquisicao or 0
-        cvc = self.id_equipamento.cvc or 0
-        cma = self.id_equipamento.cma or 0
-        quantidade_nos = self.id_equipamento.quantidade_nos or 1  # Evita divisão por zero
-        horas_alocadas = self.horas_alocadas or 0 
-        if self.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value_valor_hora = (( (0.1*valor_aquisicao) + cvc + cma )  /  1200) / quantidade_nos
-        else:
-          value_valor_hora = ( ( (0.1*valor_aquisicao) + cvc + cma )  /  1440  ) /  quantidade_nos
-        value = round(horas_alocadas * value_valor_hora , 2)
-        return value
+        horas_alocadas = self.horas_alocadas or 0
+        valor_hora_equipamento= self.id_equipamento.valor_hora
+        if self.valor_manual is not None and self.valor_manual > 0:
+            return round(self.valor_manual, 2)
+
+        return round(horas_alocadas *valor_hora_equipamento, 2)
     
     class Meta:
         ordering = ['-ano','-mes']
@@ -179,9 +190,10 @@ class contrapartida_so_projeto(models.Model):
 class contrapartida_rh(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
-    horas_alocadas = models.FloatField(verbose_name='Horas Alocadas',default=0.0,null=True,blank=True)
+    horas_alocadas = models.DecimalField(max_digits=6, decimal_places=1, default=0.0,verbose_name='Horas Alocadas',null=True,blank=True)
     funcao = models.CharField(max_length=100,null=True, verbose_name="Função")
 
+    @property
     def valor_cp(self):
         if self.id_salario.valor and self.id_salario.horas:
             return round(self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas), 2)

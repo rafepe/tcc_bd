@@ -84,11 +84,7 @@ class equipamento_table(tables.Table):
             return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
         return '-'
 
-    def render_valor_hora(self, record):
-        if record.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value = (( (0.1*record.valor_aquisicao) + record.cvc + record.cma ) / 1200) / record.quantidade_nos
-        else:
-          value = ( ( (0.1*record.valor_aquisicao) + record.cvc + record.cma ) / 1440 ) / record.quantidade_nos
+    def render_valor_hora(self, value):
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$   
     
@@ -117,6 +113,7 @@ class salario_table(tables.Table):
     valor = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Valor")
     horas = tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas mensais")
     valor_hora = tables.Column(empty_values=(),verbose_name="Valor-Hora", orderable=False)
+    horas_limite= tables.LinkColumn("salario_update", args=[A("pk")], verbose_name="Horas limite")
     anexo = tables.Column(verbose_name="Comprovante", accessor='anexo', orderable=True, default='-')
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     
@@ -137,16 +134,16 @@ class salario_table(tables.Table):
         return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
 
     def render_anexo(self, value):
-        print(value)
+        #print(value)
         if value:
-            print(value)
+            #print(value)
             return "Sim"
         return "Não"
 
     class Meta:
         model = salario
         template_name = "django_tables2/bootstrap5.html"
-        fields = ['pessoa', 'ano', 'mes', 'valor', 'horas','valor_hora', 'anexo', 'excluir']
+        fields = ['pessoa', 'ano', 'mes', 'valor', 'horas','valor_hora','horas_limite', 'anexo', 'excluir']
 
 class contrapartida_pesquisa_table(tables.Table):
     id_projeto = tables.LinkColumn("contrapartida_pesquisa_update", args=[A("pk")], verbose_name="Projeto")
@@ -187,6 +184,7 @@ class contrapartida_equipamento_table(tables.Table):
     descricao= tables.Column(empty_values=(), verbose_name="Descricao", orderable=False)
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
     valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
+    valor_manual=tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Valor Informado Manualmente")
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     
     def render_descricao(self, value):
@@ -197,20 +195,11 @@ class contrapartida_equipamento_table(tables.Table):
         return value
 
     def render_valor_hora(self, record):
-        valor_aquisicao = record.id_equipamento.valor_aquisicao or 0
-        cvc = record.id_equipamento.cvc or 0
-        cma = record.id_equipamento.cma or 0
-        quantidade_nos = record.id_equipamento.quantidade_nos or 1 
-        if record.id_equipamento.nome in ['DGX-1','DGX-A100','DGX-H100']:
-          value = (( (0.1*valor_aquisicao) +  cvc + cma )  /  1200) / quantidade_nos
-        else:
-          value = ( (0.1*valor_aquisicao) +  cvc + cma )  /  1440 / quantidade_nos
-        formatted_value = locale.currency(value, grouping=True)
+        formatted_value = locale.currency(record.id_equipamento.valor_hora, grouping=True)
         return format_html('<span>{}</span>', formatted_value)  # Exibe o valor com o símbolo R$
-
     
-    def render_valor_cp(self, record):
-        formatted_value = locale.currency(record.valor_cp, grouping=True)
+    def render_valor_cp(self, value):
+        formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
 
 
@@ -223,61 +212,61 @@ class contrapartida_equipamento_table(tables.Table):
         model = contrapartida_equipamento
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
-        sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento','descricao','horas_alocadas', 'valor_hora', 'valor_cp', 'excluir')
+        fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
+        sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento','descricao','horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
 
 ## inutil
-class contrapartida_so_table(tables.Table):
-    id_projeto = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Projeto")
-    so_da_ue  = tables.Column(empty_values=(), verbose_name="SO da Ue Permitido", orderable=False)
-    so_no_ptr=  tables.Column(empty_values=(), verbose_name="SO no PTR", orderable=False)
-    cp_ue_so = tables.Column(empty_values=(), verbose_name="Contrapartida UE de S.O", orderable=False)
-    cp_mensal_so = tables.Column(empty_values=(), verbose_name="Contrapartida Mensal de SO", orderable=False)
-    num_meses=tables.Column(empty_values=(), verbose_name="Numero de Meses", orderable=False)
-    dt_inicio=tables.Column(empty_values=(), verbose_name="Data Inicio", orderable=False)
-    ano_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano")
-    mes_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês")
-    valor =tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor Alocado")
+# class contrapartida_so_table(tables.Table):
+#     id_projeto = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Projeto")
+#     so_da_ue  = tables.Column(empty_values=(), verbose_name="SO da Ue Permitido", orderable=False)
+#     so_no_ptr=  tables.Column(empty_values=(), verbose_name="SO no PTR", orderable=False)
+#     cp_ue_so = tables.Column(empty_values=(), verbose_name="Contrapartida UE de S.O", orderable=False)
+#     cp_mensal_so = tables.Column(empty_values=(), verbose_name="Contrapartida Mensal de SO", orderable=False)
+#     num_meses=tables.Column(empty_values=(), verbose_name="Numero de Meses", orderable=False)
+#     dt_inicio=tables.Column(empty_values=(), verbose_name="Data Inicio", orderable=False)
+#     ano_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano")
+#     mes_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês")
+#     valor =tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor Alocado")
     
 
-    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+#     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     
 
-    def render_so_da_ue(self, record):
-        value=round(record.id_projeto.valor_total * record.id_projeto.tx_adm_ue,2)-record.valor_funape
-        formatted_value = locale.currency(value, grouping=True)
-        return format_html('<span>{}</span>', formatted_value) 
+#     def render_so_da_ue(self, record):
+#         value=round(record.id_projeto.valor_total * record.id_projeto.tx_adm_ue,2)-record.valor_funape
+#         formatted_value = locale.currency(value, grouping=True)
+#         return format_html('<span>{}</span>', formatted_value) 
     
-    def render_so_no_ptr(self, record):
-        value=record.id_projeto_valor_so_ptr
-        formatted_value = locale.currency(value, grouping=True)
-        return format_html('<span>{}</span>', formatted_value) 
+#     def render_so_no_ptr(self, record):
+#         value=record.id_projeto_valor_so_ptr
+#         formatted_value = locale.currency(value, grouping=True)
+#         return format_html('<span>{}</span>', formatted_value) 
     
-    def render_num_meses(self, record):
-        data_inicio = record.id_projeto.data_inicio
-        data_fim = record.id_projeto.data_fim
-        num_meses = data_fim.month - data_inicio.month + ((data_fim.year - data_inicio.year) * 12)
-        return num_meses
+#     def render_num_meses(self, record):
+#         data_inicio = record.id_projeto.data_inicio
+#         data_fim = record.id_projeto.data_fim
+#         num_meses = data_fim.month - data_inicio.month + ((data_fim.year - data_inicio.year) * 12)
+#         return num_meses
     
-    def render_cp_ue_so(self, record):
-        value = record.so_da_ue - record.so_no_ptr
-        formatted_value = locale.currency(value, grouping=True)
-        return format_html('<span>{}</span>', formatted_value) 
+#     def render_cp_ue_so(self, record):
+#         value = record.so_da_ue - record.so_no_ptr
+#         formatted_value = locale.currency(value, grouping=True)
+#         return format_html('<span>{}</span>', formatted_value) 
      
-    def render_cp_mensal_so(self, record):
-        value = round(record.cp_ue_so/record.num_meses,2)
-        formatted_value = locale.currency(value, grouping=True)
-        return format_html('<span>{}</span>', formatted_value) 
+#     def render_cp_mensal_so(self, record):
+#         value = round(record.cp_ue_so/record.num_meses,2)
+#         formatted_value = locale.currency(value, grouping=True)
+#         return format_html('<span>{}</span>', formatted_value) 
 
-    # def render_excluir(self, record):
-    #     url = reverse("contrapartida_so_delete", args=[record.pk])
-    #     return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
+#     # def render_excluir(self, record):
+#     #     url = reverse("contrapartida_so_delete", args=[record.pk])
+#     #     return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
     
-    class Meta:
-        model = contrapartida_so_projeto
-        attrs = {"class": "table thead-light table-striped table-hover"}
-        template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
+#     class Meta:
+#         model = contrapartida_so_projeto
+#         attrs = {"class": "table thead-light table-striped table-hover"}
+#         template_name = "django_tables2/bootstrap4.html"
+#         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
 
 class contrapartida_so_proj_table(tables.Table):
     ano = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano de Referência")
