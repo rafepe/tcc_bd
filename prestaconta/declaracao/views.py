@@ -579,17 +579,13 @@ from django.db.models import Sum
 
 def gerar_docx_rh(request, declaracao_id):
     declaracao_itens = declaracao_contrapartida_rh_item.objects.filter(declaracao_id=declaracao_id)
-    print(declaracao_itens)
-    ano = declaracao_itens.first().salario_ano if declaracao_itens.exists() else None
-    print('ano')
-    print(ano)
-    mes = declaracao_itens.first().salario_mes if declaracao_itens.exists() else None
+    if not declaracao_itens.exists():
+        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
 
-    # Nome do mês por extenso
+    ano = declaracao_itens.first().salario_ano
+    mes = declaracao_itens.first().salario_mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
 
-    if not declaracao_itens:
-        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
     
     if declaracao_itens.exists():
         projeto_nome = declaracao_itens.first().declaracao.projeto
@@ -622,7 +618,7 @@ def gerar_docx_rh(request, declaracao_id):
 
 
             # Insere a tabela logo depois
-            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
+            table = doc.add_table(rows=1, cols=7)
             table.style = 'Table Grid'
 
             # Cabeçalho
