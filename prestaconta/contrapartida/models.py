@@ -55,7 +55,7 @@ class equipamento(models.Model):
         cvc = self.cvc or 0
         cma = self.cma or 0
         quantidade_nos = self.quantidade_nos or 1 
-        if self.nome in ['DGX-1','DGX-A100','DGX-H100']:
+        if self.nome.upper().startswith("DGX"):
             value = (( (Decimal(0.1)*valor_aquisicao) +  cvc + cma )  /  1200) / quantidade_nos
         else:
             value = ((Decimal(0.1)*valor_aquisicao) +  cvc + cma )  /  1440 / quantidade_nos
