@@ -145,9 +145,6 @@ EMAIL_PORT = '587'
 EMAIL_USE_TLS = True
 
 # Use environment variables for OAuth 2.0 credentials
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'eng.rafael.peixoto@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'pbrq xfmx czkj mnko')
-#DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'eng.rafael.peixoto@gmail.com')
 
 # OAuth 2.0 settings
 #EMAIL_USE_OAUTH2 = True

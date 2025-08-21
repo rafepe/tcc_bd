@@ -29,7 +29,6 @@ __pycache__/
 Thumbs.db
 
 # Ignore arquivos estáticos gerados
-static/
 media/
 
 # Ignore migrações compiladas
