@@ -665,7 +665,7 @@ def gerar_docx_rh(request, declaracao_id):
 
     # Segunda linha (cargos)
     row = table.rows[1]
-    row.cells[0].text = "Coordenador do projeto"
+    row.cells[0].text = "Coordenador do Projeto"
     row.cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
 
     # Ajusta alinhamento
