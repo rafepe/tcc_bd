@@ -4,9 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.http import HttpResponse
-from django.urls import path
-from django.urls import path
+from django.urls import path, include
 from django.views.generic.base import RedirectView
+from django.contrib import admin
 
 def robots_txt(request):
     lines = [
@@ -73,6 +73,7 @@ urlpatterns = [
     path('upload/', views.upload_contracheque, name='upload_contracheque'),
     
     path('verifica_contracheque/', verifica_contracheque, name='verifica_contracheque'),
+    path('declaracao/', include('declaracao.urls')),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

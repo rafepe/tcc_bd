@@ -463,7 +463,7 @@ class declaracao_contrapartida_equipamento_view(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        id = self.kwargs.get('id')
+        id = self.kwargs.get('id_declaracao') 
         declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
 
         itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
@@ -475,6 +475,24 @@ class declaracao_contrapartida_equipamento_view(TemplateView):
         context['tabela'] = tabela
 
         return context
+
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+
+    id_declaracao = self.kwargs.get('id_declaracao')  # 👈 agora bate com o path
+    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id_declaracao)
+
+    itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
+
+    tabela = declaracao_contrapartida_equipamento_item_table(itens)
+    RequestConfig(self.request).configure(tabela)
+
+    context['declaracao'] = declaracao
+    context['tabela'] = tabela
+
+    return context
+
+
 
 class declaracao_contrapartida_equipamento_delete(DeleteView):
 
@@ -724,7 +742,7 @@ def gerar_docx_so(request, declaracao_id):
             .replace('{{mes_selecionado}}', mes_nome)
             .replace('{{ano_selecionado}}', str(ano))
             .replace('{{nome_projeto}}', projeto_nome)
-            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+            .replace('{{valor_total}}', f"{total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
         )
     #itens = declaracao_itens.itens.all() if declaracao_itens else []
     itens = list(declaracao_itens) if declaracao_itens.exists() else []
