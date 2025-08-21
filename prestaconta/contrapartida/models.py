@@ -196,7 +196,7 @@ class contrapartida_rh(models.Model):
     @property
     def valor_cp(self):
         if self.id_salario.valor and self.id_salario.horas:
-            return round(self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas), 2)
+            return round((self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas) or 0), 2)
         return 0
     
 
