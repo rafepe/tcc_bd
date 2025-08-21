@@ -567,7 +567,7 @@ class contrapartida_pesquisa_create(CreateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas_limite  # Total de horas disponíveis para aquele salário
+                horas_mensais = (salario_obj.horas_limite or 0)  # Total de horas disponíveis para aquele salário
 
         
 
@@ -632,7 +632,7 @@ class contrapartida_pesquisa_update(UpdateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas_limite
+                horas_mensais = (salario_obj.horas_limite or 0)
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -1229,7 +1229,7 @@ class contrapartida_rh_create(CreateView):
         try:
             return super().form_valid(form)
         except IntegrityError:
-            return HttpResponse("Erro: Já existe uma contrapartida de pesquisa para este projeto e salário.")   
+            return HttpResponse("Erro: Já existe uma contrapartida de rh para este projeto e salário.")   
 
     def form_invalid(self, form):
         for field, error_list in form.errors.items():
@@ -1252,7 +1252,7 @@ class contrapartida_rh_create(CreateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas_limite  # Total de horas disponíveis para aquele salário
+                horas_mensais = (salario_obj.horas_limite or 0) # Total de horas disponíveis para aquele salário
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -1317,7 +1317,7 @@ class contrapartida_rh_update(UpdateView):
                 pessoa_id = salario_obj.id_pessoa
                 mes_ref = salario_obj.mes
                 ano_ref = salario_obj.ano
-                horas_mensais = salario_obj.horas_limite
+                horas_mensais = (salario_obj.horas_limite or 0)
 
                 # Filtra todas as contrapartidas já cadastradas com o mesmo salário
                 horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
@@ -1550,9 +1550,130 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
 
- 
+##############################
+# CONTRAPARTIDA GERAL        #
+##############################
 
+def contrapartida_realizada_geral(request):
+    # ano padrão (atual) se não vier ou vier vazio
+    ano_str = request.GET.get("ano")
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else datetime.today().year
 
+    # semestre padrão (atual) se não vier ou vier vazio
+    semestre_atual = 1 if datetime.today().month <= 6 else 2
+    semestre_str = request.GET.get("semestre")
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_atual
+    # semestre=1
+    # ano=2024
+    # ano = request.GET.get("ano")
+    # semestre = request.GET.get("semestre")
+    # Define limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    # Filtra projetos ativos no semestre
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    )
+
+    dados_tabela = []
+
+    for proj in projetos:
+        vlr_mensal_devido = (proj.contrapartida_max / proj.num_mes 
+                             if proj.num_mes else proj.contrapartida_max)
+
+        contrapartidas_por_mes = defaultdict(lambda: {
+            'so': Decimal(0.0),
+            'rh': Decimal(0.0),
+            'pesquisa': Decimal(0.0),
+            'equipamento': Decimal(0.0),
+            'prospeccao': Decimal(0.0),
+            'total': Decimal(0.0),
+            'diferenca': Decimal(0.0),
+            'saldo': Decimal(0.0)
+        })
+
+        saldo = Decimal(0.0)
+        contrapartidas_ordenadas = {}
+
+        tipos_contrapartida = ['SO', 'Rh', 'Pesquisa', 'Equipamento', 'Prospeccao', 'Total', 'Diferenca', 'Saldo']
+        todos_meses = gerar_meses_entre(proj.data_inicio, proj.data_fim)
+
+        for date in todos_meses:
+            key = f"{date.year}-{date.month:02d}"
+            contrapartidas_por_mes[key]
+
+        # SO
+        for so in contrapartida_so_projeto.objects.filter(id_projeto=proj):
+            key = f"{so.ano}-{so.mes:02d}"
+            contrapartidas_por_mes[key]['so'] += Decimal(so.valor or 0)
+
+        # Pesquisa
+        for c in contrapartida_pesquisa.objects.filter(id_projeto=proj):
+            key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+            contrapartidas_por_mes[key]['pesquisa'] += c.valor_cp
+
+        # RH
+        for c in contrapartida_rh.objects.filter(id_projeto=proj):
+            key = f"{c.id_salario.ano}-{c.id_salario.mes:02d}"
+            contrapartidas_por_mes[key]['rh'] += c.valor_cp
+
+        # Equipamento
+        for ce in contrapartida_equipamento.objects.filter(id_projeto=proj):
+            key = f"{ce.ano}-{ce.mes:02d}"
+            contrapartidas_por_mes[key]['equipamento'] += ce.valor_cp
+
+        # Totais, diferença e saldo
+        for key, valores in sorted(contrapartidas_por_mes.items()):
+            valores['total'] = valores['equipamento'] + valores['pesquisa'] + valores['so'] + valores['rh']
+            valores['diferenca'] = valores['total'] - Decimal(vlr_mensal_devido)
+            saldo += valores['diferenca']
+            valores['saldo'] = saldo
+            contrapartidas_ordenadas[key] = valores
+
+        # Meses ordenados
+        ano_mes = sorted(contrapartidas_ordenadas.keys(), key=lambda x: datetime.strptime(x, "%Y-%m"))
+
+        # Pivot
+        dados_transpostos = defaultdict(dict)
+        for data in ano_mes:
+            valores = contrapartidas_ordenadas[data]
+            dados_transpostos['SO'][data] = valores['so']
+            dados_transpostos['Rh'][data] = valores['rh']
+            dados_transpostos['Pesquisa'][data] = valores['pesquisa']
+            dados_transpostos['Equipamento'][data] = valores['equipamento']
+            dados_transpostos['Prospeccao'][data] = valores['prospeccao']
+            dados_transpostos['Total'][data] = valores['total']
+            dados_transpostos['Diferenca'][data] = valores['diferenca']
+            dados_transpostos['Saldo'][data] = valores['saldo']
+
+        linhas = []
+        for tipo in tipos_contrapartida:
+            linha = {
+                "tipo": tipo,
+                "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
+            }
+            linhas.append(linha)
+
+        dados_tabela.append({
+            'projeto': proj,
+            'ano_mes': ano_mes,
+            'linhas': linhas
+        })
+
+    context = {
+        'ano': ano,
+        'semestre': semestre,
+        'dados_tabela': dados_tabela
+        
+    }
+
+    return render(request, 'contrapartida/contrapartida_realizada_geral.html', context)
 
 
 ##############################
