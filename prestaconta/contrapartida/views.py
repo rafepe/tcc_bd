@@ -1229,6 +1229,8 @@ class contrapartida_rh_create(CreateView):
         try:
             return super().form_valid(form)
         except IntegrityError:
+            print(form) ##debug
+            print('entrou aqui debug create rh')
             return HttpResponse("Erro: Já existe uma contrapartida de rh para este projeto e salário.")   
 
     def form_invalid(self, form):
