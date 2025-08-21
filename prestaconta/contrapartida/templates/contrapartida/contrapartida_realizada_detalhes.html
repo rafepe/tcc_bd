@@ -76,7 +76,7 @@
         <tr>
           <th style="position: sticky; left: 0; background-color: #f9f9f9; z-index: 2;">Tipo</th>
           {% for data in ano_mes %}
-            <th style="min-width: 300px;">{{ data }}</th>
+            <th style="min-width: 150px;">{{ data }}</th>
           {% endfor %}
         </tr>
       </thead>
@@ -89,12 +89,12 @@
           {% endif %}
             <td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;">{{ linha.tipo }}</td>
             {% for valor in linha.valores %}
-              {% if linha.tipo in "Saldo" %}
+              {% if linha.tipo == "Saldo" %}
                 <td style="font-weight: bold; background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %}; color: {% if valor < 0 %}#721c24{% else %}#155724{% endif %}; min-width: 150px;">
                   {{ valor|floatformat:2 }}
                 </td>
               {% else %}
-                <td style="min-width: 150px;">{{ valor|floatformat:2 }}</td>
+                <td style="min-width: 100px;">{{ valor|floatformat:2 }}</td>
               {% endif %}
             {% endfor %}
           </tr>

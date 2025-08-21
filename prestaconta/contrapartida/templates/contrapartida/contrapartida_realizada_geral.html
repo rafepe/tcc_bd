@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block corpo %}
+
+
+<div class="container mt-4">
+<h2>Contrapartidas Realizadas</h2>
+<hr>
+<form method="get" style="margin-bottom: 20px;">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+        <!-- Botão Semestre Anterior -->
+        <form method="get" class="me-2">
+            {% if semestre == 1 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
+                <input type="hidden" name="semestre" value="2">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="1">
+            {% endif %}
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </button>
+        </form>
+        
+        <!-- Texto do semestre atual -->
+        <div class="mx-3">
+            <h4 class="mb-0 text-primary">{{ semestre }}º Semestre de {{ ano }}</h4>
+            <small class="text-muted">
+                {% if semestre == 1 %}Janeiro - Junho{% else %}Julho - Dezembro{% endif %}
+            </small>
+        </div>
+        
+        <!-- Botão Semestre Seguinte -->
+        <form method="get" class="ms-2">
+            {% if semestre == 2 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
+                <input type="hidden" name="semestre" value="1">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="2">
+            {% endif %}
+            <button type="submit" class="btn btn-outline-secondary">
+                Próximo <i class="fas fa-chevron-right"></i>
+            </button>
+        </form>
+    </div>
+    
+    <!-- Botão de atualizar -->
+    <button type="button" class="btn btn-outline-info" onclick="location.reload()">
+        <i class="fas fa-sync-alt"></i> Atualizar
+    </button>
+</div>
+
+</form>
+{% if dados_tabela %}
+{% for item in dados_tabela %}
+<h3>{{ item.projeto.nome }} - {{ item.projeto.codigo }}</h3>
+<div style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
+  <table style="border-collapse: collapse; min-width: max-content; width: 100%;">
+    <thead>
+      <tr>
+        <th style="position: sticky; left: 0; background-color: #f9f9f9; z-index: 2;">Tipo</th>
+        {% for mes in item.ano_mes %}
+        <th style="min-width: 150; text-align: right;">{{ mes }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for linha in item.linhas %}
+      {% if linha.tipo == "Total" %}
+      <tr style="border-top: 2px solid #ccc;">
+        {% else %}
+      <tr>
+        {% endif %}
+        <td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;">
+          {{ linha.tipo }}
+        </td>
+
+        {% for valor in linha.valores %}
+        {% if linha.tipo == "Saldo" %}
+        <td style="font-weight: bold;
+                           background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %};
+                           color: {% if valor < 0 %}#721c24{% else %}#155724{% endif %};
+                           min-width: 150px;  text-align: right;">
+          {{ valor|floatformat:2 }}
+        </td>
+        {% else %}
+        <td style="min-width: 150px; text-align: right;">{{ valor|floatformat:2 }}</td>
+        {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <br>
+</div>
+{% endfor %}
+{% elif request.GET %}
+<p><em>Nenhum resultado encontrado para os filtros selecionados.</em></p>
+{% endif %}
+</div>
+{% endblock %}
