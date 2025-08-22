@@ -920,6 +920,7 @@ def gerar_docx_equipamento(request, id):
         raise Http404("Não há itens para esta declaração.")
     base_path = os.path.join(settings.BASE_DIR, "contrapartida", "static", "base_equipamento.docx")
     doc = Document(base_path)
+
     section = doc.sections[0]
     section.orientation = WD_ORIENT.PORTRAIT
     section.page_width = Cm(21.0)
@@ -938,13 +939,14 @@ def gerar_docx_equipamento(request, id):
 
     meses = ["", "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
              "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"]
-
+    
     p = doc.add_paragraph("DECLARAÇÃO DE USO DE EQUIPAMENTOS")
     p.runs[0].bold = True
     p.runs[0].font.size = Pt(14)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     p = doc.add_paragraph(f"MÊS DE COMPETÊNCIA: {meses[declaracao.mes]} DE {declaracao.ano}")
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.runs[0].bold = True
 
     doc.add_paragraph("")
@@ -959,7 +961,7 @@ def gerar_docx_equipamento(request, id):
         # tabela única
         table = doc.add_table(rows=2, cols=5)
         table.style = "Table Grid"
-        table.autofit = False
+        table.autofit = True
 
         # faixa azul do equipamento (linha 0, mesclada)
         faixa = table.rows[0].cells[0].merge(
