@@ -833,125 +833,6 @@ def gerar_docx_so(request, declaracao_id):
     response['Content-Disposition'] = f'attachment; filename="SO_{projeto_nome}_{mes}_{ano}.docx"'
     doc.save(response)
     return response
-'''
-def gerar_docx_equipamento(request, declaracao_id):
-    declaracao = declaracao_contrapartida_equipamento.objects.filter(id=declaracao_id)
-    declaracao_itens = declaracao_contrapartida_equipamento_item.objects.filter(id=declaracao_id)
-    print(declaracao_itens)
-    ano = declaracao.first().ano if declaracao_itens.exists() else None
-    print('ano')
-    print(ano)
-    mes = declaracao.first().mes if declaracao_itens.exists() else None
-
-    # Nome do mês por extenso
-    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
-
-    if not declaracao:
-        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
-    
-
-    # Caminho para o base_so.docx
-    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_equipamento.docx')
-    doc = Document(caminho_docx)
-
-    # Substitui os campos no texto
-    for p in doc.paragraphs:
-        p.text = (
-            p.text
-            .replace('{{mes_selecionado}}', mes_nome)
-            .replace('{{ano_selecionado}}', str(ano))
-            .replace('{{nome_projeto}}', projeto_nome)
-            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
-        )
-    #itens = declaracao_itens.itens.all() if declaracao_itens else []
-    itens = list(declaracao_itens) if declaracao_itens.exists() else []
-   
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-
-    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
-    for i, paragraph in enumerate(doc.paragraphs):
-        if '{{tabela_itens}}' in paragraph.text:
-            # Remove o marcador
-            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
-
-
-            # Insere a tabela logo depois
-            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
-            table.style = 'Table Grid'
-
-            # Cabeçalho
-            hdr_cells = table.rows[0].cells
-            hdr_cells[0].text = 'Descrição'
-            hdr_cells[1].text = 'Quantidade'
-            hdr_cells[2].text = 'Unidade'
-            hdr_cells[3].text = 'Valor Unitário'
-            hdr_cells[4].text = 'Valor Total'
-            hdr_cells[5].text = 'Tipo de Equipamento'
-            hdr_cells[6].text = 'Observações'
-
-
-            # Preenche as linhas
-            for item in itens:
-                row_cells = table.add_row().cells
-                row_cells[0].text = item.descricao
-                row_cells[1].text = str(item.quantidade)
-                row_cells[2].text = item.unidade
-                row_cells[3].text = f"R$ {item.valor_unitario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                row_cells[4].text = f"R$ {item.valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                row_cells[5].text = item.tipo_equipamento
-                row_cells[6].text = item.observacoes or ''
-
-
-            break  # Para após inserir a tabela
-
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-
-    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-
-    # Adiciona uma tabela 2x2
-    table = doc.add_table(rows=1, cols=1)
-    table.style = 'Table Grid'  # ou outro estilo, ou personalize
-
-    # Primeira linha (nomes)
-    row = table.rows[0]
-    row.cells[0].text = "Telma Woerle de Lima Soares"
-
-    # Segunda linha
-    row = table.add_row()
-    row.cells[0].text = "Diretora da Unidade Embrapii - CEIA/UFG"
-
-    # Ajusta alinhamento
-    for r in table.rows:
-        for cell in r.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
-                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
-
-    # Remove bordas para tabela invisível (opcional)
-    tbl = table._tbl
-    for cell in tbl.iter_tcs():
-        tcPr = cell.tcPr
-        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-            element = OxmlElement(f'w:{border}')
-            element.set(qn('w:val'), 'nil')
-            tcPr.append(element)
-
-
-
-    # Resposta
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-    response['Content-Disposition'] = f'attachment; filename="Equipamento_{projeto_nome}_{mes}_{ano}.docx"'
-    doc.save(response)
-    return response
-'''
 
 from datetime import datetime
 import os
@@ -965,101 +846,206 @@ from docx.oxml.ns import qn
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from .models import declaracao_contrapartida_equipamento, declaracao_contrapartida_equipamento_item
 
-def gerar_docx_equipamento(request, id):
-    # Busca a declaração
-    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
+# views.py
+from io import BytesIO
+from itertools import groupby
+from decimal import Decimal
 
-    # Recupera os itens relacionados à declaração
-    itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
+from django.http import HttpResponse, Http404
+from django.shortcuts import get_object_or_404
+from django.utils.timezone import now
 
-    if not itens.exists():
-        return HttpResponse("Nenhum item encontrado para esta declaração.")
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.section import WD_ORIENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
-    # Dados principais
-    mes = declaracao.mes
-    ano = declaracao.ano
-    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
-    total_valor_cp = itens.aggregate(total=Sum('valor_cp'))['total'] or 0
+from .models import (
+    declaracao_contrapartida_equipamento,
+    equipamento as Equipamento,
+)
 
-    # Nome do primeiro projeto apenas para nome do arquivo
-    nome_projeto = itens.first().projeto
+# ---------- helpers ----------
+def _set_cell_shading(cell, hex_color):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), hex_color)
+    tc_pr.append(shd)
 
-    # Caminho para o template base
-    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_equipamento.docx')
-    doc = Document(caminho_docx)
+def _set_cell_borders(cell, color="000000", size="8"):
+    tc_pr = cell._tc.get_or_add_tcPr()
+    tc_borders = tc_pr.find(qn('w:tcBorders'))
+    if tc_borders is None:
+        tc_borders = OxmlElement('w:tcBorders')
+        tc_pr.append(tc_borders)
+    for edge in ("top", "left", "bottom", "right"):
+        tag = OxmlElement(f"w:{edge}")
+        tag.set(qn('w:val'), 'single')
+        tag.set(qn('w:sz'), size)  # 8 ≈ 0,5pt
+        tag.set(qn('w:space'), "0")
+        tag.set(qn('w:color'), color)
+        tc_borders.append(tag)
 
-    # Substitui os campos no texto
-    for p in doc.paragraphs:
-        p.text = (
-            p.text
-            .replace('{{mes_selecionado}}', mes_nome)
-            .replace('{{ano_selecionado}}', str(ano))
-            .replace('{{nome_projeto}}', nome_projeto)
-            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        )
+def _fmt_moeda_br_decimal(v: Decimal | float | int | None) -> str:
+    if v is None:
+        v = Decimal("0")
+    v = Decimal(v)
+    s = f"{v:,.2f}"  # 1,234.56
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {s}"
 
-    # Insere a tabela onde há o marcador {{tabela_itens}}
-    for paragraph in doc.paragraphs:
-        if '{{tabela_itens}}' in paragraph.text:
-            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
-
-            table = doc.add_table(rows=1, cols=6)
-            table.style = 'Table Grid'
-
-            # Cabeçalho da tabela
-            hdr_cells = table.rows[0].cells
-            hdr_cells[0].text = 'Projeto'
-            hdr_cells[1].text = 'Código (PEIA)'
-            hdr_cells[2].text = 'Equipamento'
-            hdr_cells[3].text = 'Descrição'
-            hdr_cells[4].text = 'Horas Alocadas'
-            hdr_cells[5].text = 'Valor da Contrapartida'
-
-            for item in itens:
-                row_cells = table.add_row().cells
-                row_cells[0].text = item.projeto
-                row_cells[1].text = item.codigo
-                row_cells[2].text = item.equipamento
-                row_cells[3].text = item.descricao or ''
-                row_cells[4].text = str(item.horas_alocadas)
-                row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-            break  # só substitui o primeiro marcador encontrado
-
-    # Espaço extra
-    for _ in range(5):
-        doc.add_paragraph('')
-
-    # Tabela com assinatura
-    table = doc.add_table(rows=1, cols=1)
-    table.style = 'Table Grid'
-    row = table.rows[0]
-    row.cells[0].text = "Telma Woerle de Lima Soares"
-    row = table.add_row()
-    row.cells[0].text = "Diretora da Unidade Embrapii - CEIA/UFG"
-
-    # Alinhamento central
-    for r in table.rows:
-        for cell in r.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-    # Remover bordas da tabela
-    tbl = table._tbl
-    for cell in tbl.iter_tcs():
-        tcPr = cell.tcPr
-        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-            element = OxmlElement(f'w:{border}')
-            element.set(qn('w:val'), 'nil')
-            tcPr.append(element)
-
-    # Resposta com o arquivo
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+def _nota_equipamento_por_nome(nome_equip: str) -> str | None:
+    eq = Equipamento.objects.filter(nome__iexact=nome_equip).first()
+    if not eq:
+        return None
+    aquis = eq.valor_aquisicao or Decimal("0")
+    nos = eq.quantidade_nos or 1
+    custo_unid = Decimal(eq.valor_hora or 0)
+    unidade = "GPU" if eq.nome.upper().startswith("DGX") else "nó"
+    return (
+        f"valor de compra original de {_fmt_moeda_br_decimal(aquis)} "
+        f"e um custo por {unidade} de {_fmt_moeda_br_decimal(custo_unid)} "
+        f"onde o equipamento conta com {nos} {unidade + ('s' if nos != 1 else '')}"
     )
-    response['Content-Disposition'] = f'attachment; filename="Declaracao_Equipamento_{mes}_{ano}.docx"'
-    doc.save(response)
-    return response
+
+# ---------- VIEW ----------
+def gerar_docx_equipamento(request, id):
+    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
+    itens = declaracao.itens.all().order_by("equipamento", "projeto", "codigo")
+    if not itens.exists():
+        raise Http404("Não há itens para esta declaração.")
+    base_path = os.path.join(settings.BASE_DIR, "contrapartida", "static", "base_equipamento.docx")
+    doc = Document(base_path)
+    section = doc.sections[0]
+    section.orientation = WD_ORIENT.PORTRAIT
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
+    section.left_margin = Cm(2)
+    section.right_margin = Cm(2)
+    section.top_margin = Cm(2)
+    section.bottom_margin = Cm(2)
+    section.header_distance = Cm(4.63)  # distância da borda ao cabeçalho
+
+
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
+    style.font.size = Pt(11)
+
+    meses = ["", "JANEIRO","FEVEREIRO","MARÇO","ABRIL","MAIO","JUNHO",
+             "JULHO","AGOSTO","SETEMBRO","OUTUBRO","NOVEMBRO","DEZEMBRO"]
+
+    p = doc.add_paragraph("DECLARAÇÃO DE USO DE EQUIPAMENTOS")
+    p.runs[0].bold = True
+    p.runs[0].font.size = Pt(14)
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    p = doc.add_paragraph(f"MÊS DE COMPETÊNCIA: {meses[declaracao.mes]} DE {declaracao.ano}")
+    p.runs[0].bold = True
+
+    doc.add_paragraph("")
+
+    # largura das colunas (total ~16 cm úteis)
+    col_widths = [Cm(3.5), Cm(5.5), Cm(2.5), Cm(8.0), Cm(3.5)]
+
+    for equip_nome, grupo in groupby(itens, key=lambda i: i.equipamento):
+        grupo = list(grupo)
+        nota = _nota_equipamento_por_nome(equip_nome)
+
+        # tabela única
+        table = doc.add_table(rows=2, cols=5)
+        table.style = "Table Grid"
+        table.autofit = False
+
+        # faixa azul do equipamento (linha 0, mesclada)
+        faixa = table.rows[0].cells[0].merge(
+            table.rows[0].cells[1]
+        ).merge(
+            table.rows[0].cells[2]
+        ).merge(
+            table.rows[0].cells[3]
+        ).merge(
+            table.rows[0].cells[4]
+        )
+        _set_cell_shading(faixa, "1F4E79")
+        _set_cell_borders(faixa, color="1F4E79")
+        par = faixa.paragraphs[0]
+        run = par.add_run(f"EQUIPAMENTO: {equip_nome}")
+        if nota:
+            run.add_text(" *")
+        run.bold = True
+        run.font.color.rgb = RGBColor(255, 255, 255)
+
+        # cabeçalho (linha 1)
+        headers = ["CÓDIGO", "TÍTULO DO PROJETO", "HORAS NO MÊS",
+                   "DESCRIÇÃO DAS ATIVIDADES", "VALOR DA CONTRAPARTIDA"]
+        for j, text in enumerate(headers):
+            c = table.rows[1].cells[j]
+            c.width = col_widths[j]
+            _set_cell_shading(c, "D9D9D9")
+            _set_cell_borders(c)
+            par = c.paragraphs[0]
+            par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = par.add_run(text)
+            run.bold = True
+
+        # linhas de itens
+        total_equip = Decimal("0")
+        for item in grupo:
+            row = table.add_row()
+            for j, w in enumerate(col_widths):
+                row.cells[j].width = w
+            row.cells[0].text = item.codigo or ""
+            row.cells[1].text = item.projeto or ""
+            row.cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            row.cells[2].text = str(item.horas_alocadas or 0)
+            row.cells[3].text = item.descricao or ""
+            row.cells[4].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            row.cells[4].text = _fmt_moeda_br_decimal(item.valor_cp or 0)
+            for c in row.cells: _set_cell_borders(c)
+            total_equip += Decimal(item.valor_cp or 0)
+
+        # linha total
+        total_row = table.add_row()
+        merged = total_row.cells[0].merge(total_row.cells[1]).merge(
+                 total_row.cells[2]).merge(total_row.cells[3])
+        _set_cell_shading(merged, "EFEFEF")
+        _set_cell_borders(merged)
+        merged.paragraphs[0].add_run("TOTAL DA CONTRAPARTIDA").bold = True
+        val_cell = total_row.cells[4]
+        _set_cell_shading(val_cell, "EFEFEF")
+        _set_cell_borders(val_cell)
+        par = val_cell.paragraphs[0]
+        par.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        par.add_run(_fmt_moeda_br_decimal(total_equip)).bold = True
+
+        # nota com asterisco
+        if nota:
+            doc.add_paragraph(f"(*) {nota}").runs[0].italic = True
+
+        doc.add_paragraph("")
+
+    # total geral
+    total_geral = sum(Decimal(i.valor_cp or 0) for i in itens)
+    par = doc.add_paragraph("TOTAL GERAL DA CONTRAPARTIDA: ")
+    par.runs[0].bold = True
+    par.add_run(_fmt_moeda_br_decimal(total_geral)).bold = True
+
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="{declaracao.ano}-{declaracao.mes:02d}-Equipamentos.docx"'
+    )
+    return resp
 
 from django.db.models.functions import ExtractMonth
 from django.db.models import Q
