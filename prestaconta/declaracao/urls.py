@@ -19,19 +19,18 @@ urlpatterns = [
     path('declaracao/<int:declaracao_id>/pdf/', views.download_declaracao, name='download_declaracao'),
     path('declaracao/download/', views.download_declaracao_mes, name='download_declaracao_mes'),
     path('declaracao/gerar/', views.gerar_declaracao_contrapartida_rh, name='gerar_declaracao_contrapartida_rh'),
-    path('declaracao/menu/', views.central_declaracoes, name='central_declaracoes'),
-    path('declaracoes-menu/', declaracoes_menu, name='declaracoes_menu'),
     path('gerar_declaracao_contrapartida_equipamento/<int:projeto_id>/<int:mes>/<int:ano>/', views.gerar_declaracao_contrapartida_equipamento, name='gerar_declaracao_contrapartida_equipamento'),
     path('gerar_declaracao_contrapartida_pesquisa/<int:projeto_id>/<int:mes>/<int:ano>/', views.gerar_declaracao_contrapartida_pesquisa, name='gerar_declaracao_contrapartida_pesquisa'),
     path('gerar_declaracao_contrapartida_rh/<int:projeto_id>/<int:mes>/<int:ano>/', views.gerar_declaracao_contrapartida_rh, name='gerar_declaracao_contrapartida_rh'),
     path('gerar_declaracao_contrapartida_so/<int:projeto_id>/<int:mes>/<int:ano>/', views.gerar_declaracao_contrapartida_so, name='gerar_declaracao_contrapartida_so'),
-    path('gerar-docx-rh/<int:declaracao_id>/', views.gerar_docx_rh, name='gerar_docx_rh'),
     path('gerar-docx-equipamento/<int:id>/', views.gerar_docx_equipamento, name='gerar_docx_equipamento'),
+    path('gerar-docx-pesquisa/<int:declaracao_id>/', views.gerar_docx_pesquisa, name='gerar_docx_pesquisa'),
+    path('gerar-docx-rh/<int:declaracao_id>/', views.gerar_docx_rh, name='gerar_docx_rh'),
+    path('gerar-docx-so/<int:declaracao_id>/', views.gerar_docx_so, name='gerar_docx_so'),
     path('menu/', declaracoes_menu, name='declaracoes_menu'),
     path('remover_contrapartida_equipamento/<int:pk>/', views.declaracao_contrapartida_equipamento_delete.as_view(), name='remover_declaracao_contrapartida_equipamento'),
     path('remover_contrapartida_pesquisa/<int:pk>/', views.declaracao_contrapartida_pesquisa_delete.as_view(), name='remover_declaracao_contrapartida_pesquisa'),
     path('remover_contrapartida_rh/<int:pk>/', views.declaracao_contrapartida_rh_delete.as_view(), name='remover_declaracao_contrapartida_rh'),
     path('remover_contrapartida_so/<int:pk>/', views.declaracao_contrapartida_so_delete.as_view(), name='remover_declaracao_contrapartida_so'),
-
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

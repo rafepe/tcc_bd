@@ -3,9 +3,7 @@ from declaracao.models import projeto, declaracao_contrapartida_pesquisa, declar
 from datetime import date
 
 def declaracoes_menu(request):
-    print('views_folder/declaracoes_menu.py')
-    print('declaracoes_menu')
-
+    # Determina o semestre e ano padrão (semestre anterior ao atual)
     hoje = date.today()
     ano_atual = hoje.year
     semestre_atual = 1 if hoje.month <= 6 else 2

@@ -1,9 +1,6 @@
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.utils import timezone
 from decimal import Decimal
-
-
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import os
@@ -185,7 +182,6 @@ class contrapartida_so_projeto(models.Model):
         verbose_name = "Contrapartida SO"
         verbose_name_plural = "Contrapartidas SO"
         ordering = ['ano','mes']
-        #db_table = 'contrapartida_so_proj'
 
 class contrapartida_rh(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
@@ -205,4 +201,4 @@ class contrapartida_rh(models.Model):
 
     def __str__(self):
         return f"{self.id_projeto} - {self.id_salario}"
-    
+        
