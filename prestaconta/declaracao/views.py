@@ -1,15 +1,32 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic import TemplateView
-from django.contrib import messages
+from .models import * 
+from .tables import *
+from contrapartida.models import *
+from datetime import datetime
+from decimal import Decimal
 from django_tables2 import RequestConfig
-from django.urls import reverse
-from .models import declaracao_contrapartida_pesquisa, declaracao_contrapartida_pesquisa_item,declaracao_contrapartida_so,declaracao_contrapartida_rh,declaracao_contrapartida_rh_item,declaracao_contrapartida_equipamento,declaracao_contrapartida_equipamento_item
-from contrapartida.models import contrapartida_pesquisa,projeto,contrapartida_so_projeto,contrapartida_rh,contrapartida_equipamento
-from .tables import declaracao_contrapartida_pesquisa_item_table,declaracao_contrapartida_rh_item_table,declaracao_contrapartida_equipamento_item_table
-from django.http import HttpResponse, FileResponse,HttpResponseRedirect,HttpResponseNotAllowed
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView, UpdateView, DeleteView,View
-#from .views_folder.declaracoes_menu import declaracoes_menu
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models.functions import ExtractMonth
+from django.http import HttpResponse, Http404, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import get_template
+from django.urls import reverse, reverse_lazy
+from django.utils.timezone import now
+from django.views.generic import TemplateView
+from django.views.generic.edit import DeleteView
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Pt, Cm, RGBColor
+from io import BytesIO
+from itertools import groupby
+import os
 
 
 def gerar_declaracoes(request):
@@ -30,8 +47,6 @@ def gerar_declaracoes(request):
     print(contexto)
     return render(request, 'declaracao/gerar_declaracoes.html', contexto)
 
-
-###############
 
 def declaracoes_menu(request):
     from datetime import date
@@ -200,10 +215,6 @@ class declaracao_contrapartida_pesquisa_delete(DeleteView):
             ano=self.object.ano
         )
 
-###############
-#     SO      #
-###############
-
 def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
 
     try:
@@ -293,9 +304,6 @@ class declaracao_contrapartida_so_delete(DeleteView):
             ano=self.object.ano
         )
 
-###############
-#     RH      #
-###############
 def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
 
     try:
@@ -402,9 +410,6 @@ class declaracao_contrapartida_rh_delete(DeleteView):
             ano=self.object.ano
         )
 
-###############
-# EQUIPAMENTO #
-###############
 def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
 
     try:
@@ -492,8 +497,6 @@ def get_context_data(self, **kwargs):
 
     return context
 
-
-
 class declaracao_contrapartida_equipamento_delete(DeleteView):
 
     def dispatch(self, request, *args, **kwargs):
@@ -509,91 +512,6 @@ class declaracao_contrapartida_equipamento_delete(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('declaracoes_menu')
-
-##################################
-
-from django.shortcuts import render
-from .models import projeto, declaracao_contrapartida_rh, declaracao_contrapartida_equipamento  # e outros modelos
-from datetime import datetime
-
-
-######################
-from datetime import date
-def menutai(request):
-    print('menutai')
-    nome_projeto = request.GET.get('projeto')
-    mes = request.GET.get('mes')
-    #ano = request.GET.get('ano')
-    
-    hoje = date.today()
-    ano_atual = hoje.year
-    semestre_atual = 1 if hoje.month <= 6 else 2
-
-    if semestre_atual == 1:
-        semestre = 2
-        ano = ano_atual - 1
-    else:
-        semestre = 1
-        ano = ano_atual
-
-    ano = int(request.GET.get('ano', ano))
-    semestre = int(request.GET.get('semestre', semestre))
-
-    if semestre == 1:
-        data_ini_semestre = date(ano, 1, 1)
-        data_fim_semestre = date(ano, 6, 30)
-        meses = list(range(1, 7))
-    else:
-        data_ini_semestre = date(ano, 7, 1)
-        data_fim_semestre = date(ano, 12, 31)
-        meses = list(range(7, 13))
-
-    projetos = projeto.objects.filter(
-        ativo=True,
-        data_inicio__lte=data_fim_semestre,
-        data_fim__gte=data_ini_semestre
-    ).order_by('nome')
-    #print(projetos)
-
-    projeto_obj = None
-    if nome_projeto:
-        projeto_obj = projeto.objects.filter(nome=nome_projeto).first()
-
-    declaracoes = {}
-    if projeto_obj and mes and ano:
-        declaracoes = {
-            'pesquisa': declaracao_contrapartida_pesquisa.objects.filter(id_projeto=projeto_obj.id, mes=mes, ano=ano).first(),
-            'rh': declaracao_contrapartida_rh.objects.filter(id_projeto=projeto_obj.id, mes=mes, ano=ano).first(),
-            'so': declaracao_contrapartida_so.objects.filter(id_projeto=projeto_obj.id, mes=mes, ano=ano).first(),
-            'equipamento': declaracao_contrapartida_equipamento.objects.filter(id_projeto=projeto_obj.id, mes=mes, ano=ano).first(),
-        }
-
-    tipos = ["pesquisa","so","rh","equipamento"]    
-
-    contexto = {
-        'projeto': projeto_obj,
-        'mes': mes,
-        'ano': ano,
-        'semestre': semestre,
-        'declaracoes': declaracoes,
-        'tipos':tipos,
-        'projetos': projetos
-
-    }
-
-    return render(request, 'declaracao/menutai.html', contexto)
-
-
-
-##################################
-from django.http import HttpResponse
-from docx import Document
-from datetime import datetime
-import os
-from django.conf import settings
-from .models import declaracao_contrapartida_rh
-from .models import declaracao_contrapartida_rh_item
-from django.db.models import Sum
 
 def gerar_docx_rh(request, declaracao_id):
     declaracao_itens = declaracao_contrapartida_rh_item.objects.filter(declaracao_id=declaracao_id)
@@ -712,121 +630,122 @@ def gerar_docx_rh(request, declaracao_id):
     doc.save(response)
     return response
 
+from django.http import HttpResponse
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+from docx import Document
+from datetime import datetime
+from django.db.models import Sum
+import os
+
+from .models import declaracao_contrapartida_so
 
 def gerar_docx_so(request, declaracao_id):
-    declaracao_itens = declaracao_contrapartida_so_item.objects.filter(declaracao_id=declaracao_id)
-    print(declaracao_itens)
-    ano = declaracao_itens.first().salario_ano if declaracao_itens.exists() else None
-    print('ano')
-    print(ano)
-    mes = declaracao_itens.first().salario_mes if declaracao_itens.exists() else None
+    # 1) Busca a declaração
+    declaracao = get_object_or_404(declaracao_contrapartida_so, id=declaracao_id)
 
-    # Nome do mês por extenso
+    ano = declaracao.ano
+    mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+    projeto_nome = declaracao.projeto
+    total_valor_cp = declaracao.total or 0.0  # usa o campo total da declaração
 
-    if not declaracao_itens:
-        return HttpResponse("Nenhuma declaração encontrada para esse mês e ano.")
-    
-    if declaracao_itens.exists():
-        projeto_nome = declaracao_itens.first().declaracao.projeto
-        total_valor_cp = declaracao_itens.aggregate(total=Sum('valor_cp'))['total'] or 0
+    # 2) Tenta detectar itens (opcional)
+    itens_qs = None
+    colunas_itens = None
+    try:
+        # Se houver um related_name='itens', use-o
+        if hasattr(declaracao, 'itens'):
+            itens_qs = declaracao.itens.all()
+            # Tenta inferir colunas comuns (ajuste conforme seu model de itens de SO)
+            sample = itens_qs.first()
+            if sample:
+                # monte as colunas dinamicamente, priorizando nomes comuns
+                colunas_itens = []
+                if hasattr(sample, 'descricao'): colunas_itens.append(('Descrição', 'descricao'))
+                if hasattr(sample, 'quantidade'): colunas_itens.append(('Qtd.', 'quantidade'))
+                if hasattr(sample, 'valor_unitario'): colunas_itens.append(('Valor Unitário', 'valor_unitario'))
+                if hasattr(sample, 'valor_cp'): colunas_itens.append(('Valor CP', 'valor_cp'))
+                # fallback mínimo
+                if not colunas_itens:
+                    # tenta um fallback genérico
+                    colunas_itens = [('Item', 'descricao' if hasattr(sample, 'descricao') else 'id'),
+                                     ('Valor CP', 'valor_cp' if hasattr(sample, 'valor_cp') else None)]
+    except Exception:
+        itens_qs = None
+        colunas_itens = None
 
-    # Caminho para o base_so.docx
-    caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_so.docx')
+    # 3) Abre DOCX base
+    caminho_base_preferido = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_so.docx')
+    caminho_fallback = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
+    caminho_docx = caminho_base_preferido if os.path.exists(caminho_base_preferido) else caminho_fallback
     doc = Document(caminho_docx)
 
-    # Substitui os campos no texto
+    # 4) Substituição de placeholders em parágrafos
+    def br_currency(v):
+        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def apply_replacements_to_text(text):
+        return (text
+                .replace('{{mes_selecionado}}', mes_nome)
+                .replace('{{ano_selecionado}}', str(ano))
+                .replace('{{nome_projeto}}', projeto_nome)
+                .replace('{{valor_total}}', br_currency(total_valor_cp)))
+
     for p in doc.paragraphs:
-        p.text = (
-            p.text
-            .replace('{{mes_selecionado}}', mes_nome)
-            .replace('{{ano_selecionado}}', str(ano))
-            .replace('{{nome_projeto}}', projeto_nome)
-            .replace('{{valor_total}}', f"{total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
-        )
-    #itens = declaracao_itens.itens.all() if declaracao_itens else []
-    itens = list(declaracao_itens) if declaracao_itens.exists() else []
-   
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+        if p.text:
+            p.text = apply_replacements_to_text(p.text)
 
-    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
-    for i, paragraph in enumerate(doc.paragraphs):
-        if '{{tabela_itens}}' in paragraph.text:
-            # Remove o marcador
-            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+    # 5) Substituir também em células de tabelas existentes
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    if p.text:
+                        p.text = apply_replacements_to_text(p.text)
 
+    # 6) Inserir tabela de itens, se houver marcador e itens inferidos
+    marcador_encontrado = False
+    if itens_qs is not None and colunas_itens:
+        for paragraph in doc.paragraphs:
+            if '{{tabela_itens}}' in paragraph.text:
+                marcador_encontrado = True
+                paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
 
-            # Insere a tabela logo depois
-            table = doc.add_table(rows=1, cols=7) if hasattr(doc, 'tables') else doc.add_table(rows=1, cols=7)
-            table.style = 'Table Grid'
+                # Cria tabela com número de colunas conforme colunas_itens
+                table = doc.add_table(rows=1, cols=len(colunas_itens))
+                table.style = 'Table Grid'
 
-            # Cabeçalho
-            hdr_cells = table.rows[0].cells
-            hdr_cells[0].text = 'Nome do Bolsista'
-            hdr_cells[1].text = 'CPF'
-            hdr_cells[2].text = 'Função'
-            hdr_cells[3].text = 'Horas alocadas'
-            hdr_cells[4].text = 'Salário'
-            hdr_cells[5].text = 'Valor CP'
-            hdr_cells[6].text = 'Valor Hora'
+                # Cabeçalho
+                hdr_cells = table.rows[0].cells
+                for i, (rotulo, _) in enumerate(colunas_itens):
+                    hdr_cells[i].text = rotulo
 
-            # Preenche as linhas
-            for item in itens:
-                row_cells = table.add_row().cells
-                row_cells[0].text = item.nome
-                row_cells[1].text = item.cpf
-                row_cells[2].text = item.funcao
-                row_cells[3].text = str(item.horas_alocadas)
-                row_cells[4].text = f"R$ {item.salario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                row_cells[6].text = f"R$ {item.valor_hora:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                # Linhas
+                for item in itens_qs:
+                    row = table.add_row().cells
+                    for i, (_, attr) in enumerate(colunas_itens):
+                        if attr is None:
+                            row[i].text = ''
+                        else:
+                            val = getattr(item, attr, '')
+                            if 'valor' in (attr or '').lower():
+                                try:
+                                    row[i].text = br_currency(val)
+                                except Exception:
+                                    row[i].text = str(val)
+                            else:
+                                row[i].text = str(val)
+                break
 
-            break  # Para após inserir a tabela
-    p = doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
-    p = doc.add_paragraph('(**) Mês da competência do contracheque.')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
-    p = doc.add_paragraph('')
+    # Se havia marcador mas não há itens, apenas remove o marcador
+    if not marcador_encontrado:
+        for p in doc.paragraphs:
+            if '{{tabela_itens}}' in p.text:
+                p.text = p.text.replace('{{tabela_itens}}', '')
+                break
 
-    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-
-    # Adiciona uma tabela 2x2
-    table = doc.add_table(rows=2, cols=2)
-    table.style = 'Table Grid'  # ou outro estilo, ou personalize
-
-    # Primeira linha (nomes)
-    row = table.rows[0]
-    row.cells[0].text = "Anderson Soares"
-    row.cells[1].text = "Telma Woerle de Lima Soares"
-
-    # Segunda linha (cargos)
-    row = table.rows[1]
-    row.cells[0].text = "Coordenador do projeto"
-    row.cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
-
-    # Ajusta alinhamento
-    for r in table.rows:
-        for cell in r.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
-                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
-
-    # Remove bordas para tabela invisível (opcional)
-    tbl = table._tbl
-    for cell in tbl.iter_tcs():
-        tcPr = cell.tcPr
-        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-            element = OxmlElement(f'w:{border}')
-            element.set(qn('w:val'), 'nil')
-            tcPr.append(element)
-
-
-
-    # Resposta
+    # 8) Resposta
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
@@ -834,40 +753,6 @@ def gerar_docx_so(request, declaracao_id):
     doc.save(response)
     return response
 
-from datetime import datetime
-import os
-from django.conf import settings
-from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
-from django.db.models import Sum
-from docx import Document
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from .models import declaracao_contrapartida_equipamento, declaracao_contrapartida_equipamento_item
-
-# views.py
-from io import BytesIO
-from itertools import groupby
-from decimal import Decimal
-
-from django.http import HttpResponse, Http404
-from django.shortcuts import get_object_or_404
-from django.utils.timezone import now
-
-from docx import Document
-from docx.shared import Pt, Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.section import WD_ORIENT
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-
-from .models import (
-    declaracao_contrapartida_equipamento,
-    equipamento as Equipamento,
-)
-
-# ---------- helpers ----------
 def _set_cell_shading(cell, hex_color):
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
@@ -912,7 +797,6 @@ def _nota_equipamento_por_nome(nome_equip: str) -> str | None:
         f"onde o equipamento conta com {nos} {unidade + ('s' if nos != 1 else '')}"
     )
 
-# ---------- VIEW ----------
 def gerar_docx_equipamento(request, id):
     declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
     itens = declaracao.itens.all().order_by("equipamento", "projeto", "codigo")
@@ -1049,8 +933,131 @@ def gerar_docx_equipamento(request, id):
     )
     return resp
 
-from django.db.models.functions import ExtractMonth
-from django.db.models import Q
+def gerar_docx_pesquisa(request, declaracao_id):
+    # 1) Busca a declaração e itens
+    declaracao = get_object_or_404(declaracao_contrapartida_pesquisa, id=declaracao_id)
+    itens_qs = declaracao.itens.all()
+
+    if not itens_qs.exists():
+        return HttpResponse("Nenhum item encontrado para esta declaração de Pesquisa.")
+
+    # 2) Metadados (mês/ano/projeto)
+    ano = declaracao.ano
+    mes = declaracao.mes
+    mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
+    projeto_nome = declaracao.projeto
+
+    total_valor_cp = itens_qs.aggregate(total=Sum('valor_cp'))['total'] or 0
+
+    # 3) Abre o DOCX base (use um arquivo próprio p/ Pesquisa; cai no base_rh.docx se não existir)
+    caminho_base_preferido = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_pesquisa.docx')
+    caminho_fallback = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
+    caminho_docx = caminho_base_preferido if os.path.exists(caminho_base_preferido) else caminho_fallback
+
+    doc = Document(caminho_docx)
+
+    # 4) Substituição simples em parágrafos
+    for p in doc.paragraphs:
+        if p.text:
+            p.text = (
+                p.text
+                .replace('{{mes_selecionado}}', mes_nome)
+                .replace('{{ano_selecionado}}', str(ano))
+                .replace('{{nome_projeto}}', projeto_nome)
+                .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+            )
+
+    # 5) Também substitui placeholders em células de tabelas, se existirem
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    if p.text:
+                        p.text = (
+                            p.text
+                            .replace('{{mes_selecionado}}', mes_nome)
+                            .replace('{{ano_selecionado}}', str(ano))
+                            .replace('{{nome_projeto}}', projeto_nome)
+                            .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
+                        )
+
+    # 6) Insere a tabela de itens no marcador {{tabela_itens}}
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    def inserir_tabela_itens(ap_depois):
+        # Cria tabela 6 colunas: Nome | CPF | Função | Horas | Salário | Valor CP
+        table = doc.add_table(rows=1, cols=6)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text = 'Nome do Pesquisador'
+        hdr[1].text = 'CPF'
+        hdr[2].text = 'Função'
+        hdr[3].text = 'Horas alocadas'
+        hdr[4].text = 'Salário'
+        hdr[5].text = 'Valor CP'
+
+        for item in itens_qs:
+            row = table.add_row().cells
+            row[0].text = item.nome
+            row[1].text = item.cpf
+            row[2].text = item.funcao
+            row[3].text = str(item.horas_alocadas)
+            row[4].text = f"R$ {item.salario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            row[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        # Move a tabela logo após o parágrafo do marcador
+        ap_depois._element.addnext(table._tbl)
+
+    marcador_encontrado = False
+    for paragraph in doc.paragraphs:
+        if '{{tabela_itens}}' in paragraph.text:
+            marcador_encontrado = True
+            paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
+            inserir_tabela_itens(paragraph)
+            break
+
+    # Se não houver marcador, apenas anexa a tabela ao final
+    if not marcador_encontrado:
+        # Adiciona um parágrafo e insere a tabela depois dele
+        p_anchor = doc.add_paragraph()
+        inserir_tabela_itens(p_anchor)
+
+    # 7) Observações de rodapé (ajuste o texto conforme sua política)
+    doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
+    doc.add_paragraph('(**) Mês da competência do contracheque.')
+
+    # 8) Tabela de assinaturas (invisível) – igual ao seu RH
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    table_ass = doc.add_table(rows=2, cols=2)
+    table_ass.style = 'Table Grid'
+
+    table_ass.rows[0].cells[0].text = "Anderson Soares"
+    table_ass.rows[0].cells[1].text = "Telma Woerle de Lima Soares"
+    table_ass.rows[1].cells[0].text = "Coordenador do Projeto"
+    table_ass.rows[1].cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
+
+    for r in table_ass.rows:
+        for cell in r.cells:
+            for p in cell.paragraphs:
+                p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    # Remove bordas da tabela de assinatura (opcional)
+    tbl = table_ass._tbl
+    for cell in tbl.iter_tcs():
+        tcPr = cell.tcPr
+        for border in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            element = OxmlElement(f'w:{border}')
+            element.set(qn('w:val'), 'nil')
+            tcPr.append(element)
+
+    # 9) Resposta
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="PESQUISA_{projeto_nome}_{mes}_{ano}.docx"'
+    doc.save(response)
+    return response
 
 def central_declaracoes(request):
     projeto_id = request.GET.get('projeto_id')
@@ -1088,18 +1095,6 @@ def central_declaracoes(request):
     }
     return render(request, 'declaracao/central.html', context)
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.urls import reverse
-from django.http import HttpResponse, JsonResponse
-from django.db.models.functions import ExtractMonth
-from django.db.models import Q
-from django.template.loader import get_template
-from django.conf import settings
-import os
-
-
-# Views auxiliares que estavam faltando
 def visualizar_declaracao(request, declaracao_id):
     print('entrou em visualizar_declaracao')
     """
@@ -1114,7 +1109,6 @@ def visualizar_declaracao(request, declaracao_id):
     }
     
     return render(request, 'declaracao/visualizar.html', context)
-
 
 def download_declaracao(request, declaracao_id):
     """
@@ -1165,7 +1159,6 @@ def download_declaracao(request, declaracao_id):
             'itens': itens,
         })
 
-
 def editar_declaracao(request, declaracao_id):
     """
     View para editar uma declaração
@@ -1199,9 +1192,6 @@ def editar_declaracao(request, declaracao_id):
     
     return render(request, 'declaracao/editar.html', context)
 
-
-
-# Funções auxiliares
 def redirect_to_central(projeto_id, ano, semestre, projeto_nome=None, mes=None):
     """
     Função auxiliar para redirecionamento para a central
@@ -1218,7 +1208,6 @@ def redirect_to_central(projeto_id, ano, semestre, projeto_nome=None, mes=None):
         
     return redirect(f'{url}{params}')
 
-
 def get_nome_mes(numero_mes):
     
     """
@@ -1230,15 +1219,6 @@ def get_nome_mes(numero_mes):
         9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
     }
     return meses.get(numero_mes, f'Mês {numero_mes}')
-
-
-######
-
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-import json
 
 @login_required
 def ajax_dados_projeto(request):
@@ -1273,7 +1253,7 @@ def ajax_dados_projeto(request):
             'rh': verificar_declaracao_rh(projeto_obj.id, mes, ano),
             'pesquisa': verificar_declaracao_pesquisa(projeto_obj.id, mes, ano),
             'so': verificar_declaracao_so(projeto_obj.id, mes, ano),
-            'equipamentos': verificar_declaracao_equipamentos(projeto_obj, mes, ano),
+            'equipamentos': verificar_declaracao_equipamentos(mes, ano),
             }
     
     resposta = {
@@ -1288,7 +1268,6 @@ def ajax_dados_projeto(request):
     }
     
     return JsonResponse(resposta)
-
 
 def verificar_declaracao_rh(projeto_obj, mes, ano):
     """
@@ -1332,18 +1311,19 @@ def verificar_declaracao_rh(projeto_obj, mes, ano):
         'quantidade_registros': registros_contrapartida.count()
     }
 
-
 def verificar_declaracao_pesquisa(projeto_obj, mes, ano):
     """
     Verifica status da declaração de contrapartida Pesquisa para um mês específico
     """
+    print('verificar_declaracao_pesquisa')
     # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_pesquisa.objects.filter(
         id_projeto=projeto_obj,
         mes=mes,
         ano=ano
     ).first()
-    
+    print('declaracao_existente pesquisa')
+    print(declaracao_existente)
     if declaracao_existente:
         return {
             'existe': True,
@@ -1409,7 +1389,7 @@ def verificar_declaracao_so(projeto_obj, mes, ano):
         'quantidade_registros': registros_contrapartida.count()
     }
 
-def verificar_declaracao_equipamentos(projeto_obj, mes, ano):
+def verificar_declaracao_equipamentos(mes, ano):
     """
     Verifica status da declaração de contrapartida Equipamentos para um mês específico
     """
@@ -1423,7 +1403,7 @@ def verificar_declaracao_equipamentos(projeto_obj, mes, ano):
         # Verificar se há itens associados ao projeto específico
         itens_projeto = declaracao_contrapartida_equipamento_item.objects.filter(
             declaracao=declaracao_existente,
-            projeto=projeto_obj.nome
+            #projeto=projeto_obj.nome
         )
         valor_total = sum(item.valor_cp for item in itens_projeto) if itens_projeto.exists() else 0
         
@@ -1437,7 +1417,7 @@ def verificar_declaracao_equipamentos(projeto_obj, mes, ano):
     
     # Verificar se existem dados para gerar declaração
     registros_contrapartida = contrapartida_equipamento.objects.filter(
-        id_projeto=projeto_obj,
+        #id_projeto=projeto_obj,
         mes=mes,
         ano=ano
     )
@@ -1452,7 +1432,6 @@ def verificar_declaracao_equipamentos(projeto_obj, mes, ano):
         'valor_potencial': float(valor_potencial),
         'quantidade_registros': registros_contrapartida.count()
     }
-
 
 @login_required
 def download_declaracao_mes(request):
