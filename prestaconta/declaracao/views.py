@@ -7,7 +7,6 @@ from django_tables2 import RequestConfig
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.db.models import Sum
 from django.db.models.functions import ExtractMonth
 from django.http import HttpResponse, Http404, JsonResponse
@@ -19,15 +18,13 @@ from django.views.generic import TemplateView
 from django.views.generic.edit import DeleteView
 from docx import Document
 from docx.enum.section import WD_ORIENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, Cm, RGBColor
 from io import BytesIO
 from itertools import groupby
 import os
-
 
 def gerar_declaracoes(request):
     nome_projeto = request.GET.get('projeto')
@@ -44,19 +41,15 @@ def gerar_declaracoes(request):
         'ano': ano,
     }
 
-    print(contexto)
     return render(request, 'declaracao/gerar_declaracoes.html', contexto)
-
 
 def declaracoes_menu(request):
     from datetime import date
     
-    # Obter parâmetros da requisição
     nome_projeto = request.GET.get('projeto')
     mes = request.GET.get('mes')
     ano = request.GET.get('ano')
     
-    # Definir semestre e ano padrão se não fornecidos
     hoje = date.today()
     ano_atual = hoje.year
     semestre_atual = 1 if hoje.month <= 6 else 2
@@ -71,7 +64,6 @@ def declaracoes_menu(request):
     ano = int(request.GET.get('ano', ano_default))
     semestre = int(request.GET.get('semestre', semestre))
 
-    # Filtrar projetos ativos no semestre
     if semestre == 1:
         data_ini_semestre = date(ano, 1, 1)
         data_fim_semestre = date(ano, 6, 30)
@@ -120,7 +112,6 @@ def gerar_declaracao_contrapartida_pesquisa(request, projeto_id, mes, ano):
         messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_pesquisa.objects.filter(
         projeto=projeto_selecionado, mes=mes, ano=ano
     ).first()
@@ -130,7 +121,6 @@ def gerar_declaracao_contrapartida_pesquisa(request, projeto_id, mes, ano):
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
-    # Criar declaração
     declaracao = declaracao_contrapartida_pesquisa.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_selecionado.nome,
@@ -207,8 +197,6 @@ class declaracao_contrapartida_pesquisa_delete(DeleteView):
     success_url='/declaracao/menu/?projeto={projeto}&mes={mes}&ano={ano}'
 
     def get_success_url(self):
-        # Substitui {projeto}, {mes}, {ano} no success_url usando os atributos do objeto
-        print(self.object)
         return self.success_url.format(
             projeto=self.object.projeto,
             mes=self.object.mes,
@@ -223,7 +211,6 @@ def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
         messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_so.objects.filter(
         projeto=projeto_selecionado, mes=mes, ano=ano
     ).first()
@@ -233,7 +220,6 @@ def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
-    # Criar declaração
     declaracao = declaracao_contrapartida_so.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_selecionado.nome,
@@ -241,16 +227,13 @@ def gerar_declaracao_contrapartida_so(request, projeto_id, mes, ano):
         mes=mes,    	
         ano=ano,
     )
-    print('declaracao')
-    print(declaracao.id_projeto)
+
 
     registros = contrapartida_so_projeto.objects.filter(
         id_projeto=projeto_selecionado,
         mes=mes,
         ano=ano
     )
-    print('registros')
-    print(projeto_selecionado)
 
     if not registros.exists():
         messages.warning(request, "Nenhum dado encontrado para gerar a declaração.")
@@ -296,8 +279,6 @@ class declaracao_contrapartida_so_delete(DeleteView):
     success_url='/declaracao/menu/?projeto={projeto}&mes={mes}&ano={ano}'
 
     def get_success_url(self):
-        # Substitui {projeto}, {mes}, {ano} no success_url usando os atributos do objeto
-        print(self.object)
         return self.success_url.format(
             projeto=self.object.projeto,
             mes=self.object.mes,
@@ -312,7 +293,6 @@ def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
         messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_rh.objects.filter(
         projeto=projeto_selecionado.nome, mes=mes, ano=ano
     ).first()
@@ -322,7 +302,6 @@ def gerar_declaracao_contrapartida_rh(request, projeto_id, mes, ano):
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
-    # Criar declaração
     declaracao = declaracao_contrapartida_rh.objects.create(
         id_projeto=projeto_id,
         projeto=projeto_selecionado.nome,
@@ -401,9 +380,6 @@ class declaracao_contrapartida_rh_delete(DeleteView):
     success_url='/declaracao/menu/?projeto={projeto}&mes={mes}&ano={ano}'
 
     def get_success_url(self):
-        # Substitui {projeto}, {mes}, {ano} no success_url usando os atributos do objeto
-        print('get_success')
-        print(self.object)
         return self.success_url.format(
             projeto=self.object.projeto,
             mes=self.object.mes,
@@ -418,7 +394,6 @@ def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
         messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_equipamento.objects.filter(
          mes=mes, ano=ano
     ).first()
@@ -428,7 +403,6 @@ def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
-    # Criar declaração
     declaracao = declaracao_contrapartida_equipamento.objects.create(
         mes=mes,    	
         ano=ano,
@@ -484,7 +458,7 @@ class declaracao_contrapartida_equipamento_view(TemplateView):
 def get_context_data(self, **kwargs):
     context = super().get_context_data(**kwargs)
 
-    id_declaracao = self.kwargs.get('id_declaracao')  # 👈 agora bate com o path
+    id_declaracao = self.kwargs.get('id_declaracao')
     declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id_declaracao)
 
     itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
@@ -527,11 +501,9 @@ def gerar_docx_rh(request, declaracao_id):
         projeto_nome = declaracao_itens.first().declaracao.projeto
         total_valor_cp = declaracao_itens.aggregate(total=Sum('valor_cp'))['total'] or 0
 
-    # Caminho para o base_rh.docx
     caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
     doc = Document(caminho_docx)
 
-    # Substitui os campos no texto
     for p in doc.paragraphs:
         p.text = (
             p.text
@@ -540,24 +512,15 @@ def gerar_docx_rh(request, declaracao_id):
             .replace('{{nome_projeto}}', projeto_nome)
             .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
         )
-    #itens = declaracao_itens.itens.all() if declaracao_itens else []
     itens = list(declaracao_itens) if declaracao_itens.exists() else []
    
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-
-    # Encontra o marcador {{tabela_itens}} e substitui pelo conteúdo da tabela
     for i, paragraph in enumerate(doc.paragraphs):
         if '{{tabela_itens}}' in paragraph.text:
-            # Remove o marcador
             paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
 
-
-            # Insere a tabela logo depois
             table = doc.add_table(rows=1, cols=7)
             table.style = 'Table Grid'
 
-            # Cabeçalho
             hdr_cells = table.rows[0].cells
             hdr_cells[0].text = 'Nome do Bolsista'
             hdr_cells[1].text = 'CPF'
@@ -567,7 +530,6 @@ def gerar_docx_rh(request, declaracao_id):
             hdr_cells[5].text = 'Valor CP'
             hdr_cells[6].text = 'Valor Hora'
 
-            # Preenche as linhas
             for item in itens:
                 row_cells = table.add_row().cells
                 row_cells[0].text = item.nome
@@ -578,7 +540,7 @@ def gerar_docx_rh(request, declaracao_id):
                 row_cells[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 row_cells[6].text = f"R$ {item.valor_hora:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-            break  # Para após inserir a tabela
+            break  
     p = doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
     p = doc.add_paragraph('(**) Mês da competência do contracheque.')
     p = doc.add_paragraph('')
@@ -590,28 +552,22 @@ def gerar_docx_rh(request, declaracao_id):
 
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
-    # Adiciona uma tabela 2x2
     table = doc.add_table(rows=2, cols=2)
-    table.style = 'Table Grid'  # ou outro estilo, ou personalize
+    table.style = 'Table Grid'
 
-    # Primeira linha (nomes)
     row = table.rows[0]
     row.cells[0].text = "Anderson Soares"
     row.cells[1].text = "Telma Woerle de Lima Soares"
 
-    # Segunda linha (cargos)
     row = table.rows[1]
     row.cells[0].text = "Coordenador do Projeto"
     row.cells[1].text = "Diretora da Unidade Embrapii - CEIA/UFG"
 
-    # Ajusta alinhamento
     for r in table.rows:
         for cell in r.cells:
             for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # centraliza verticalmente
-                # Se quiser alinhamento esquerdo/direito, pode usar LEFT ou RIGHT
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # Remove bordas para tabela invisível (opcional)
     tbl = table._tbl
     for cell in tbl.iter_tcs():
         tcPr = cell.tcPr
@@ -622,7 +578,6 @@ def gerar_docx_rh(request, declaracao_id):
 
 
 
-    # Resposta
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
@@ -630,58 +585,39 @@ def gerar_docx_rh(request, declaracao_id):
     doc.save(response)
     return response
 
-from django.http import HttpResponse
-from django.conf import settings
-from django.shortcuts import get_object_or_404
-from docx import Document
-from datetime import datetime
-from django.db.models import Sum
-import os
-
-from .models import declaracao_contrapartida_so
-
 def gerar_docx_so(request, declaracao_id):
-    # 1) Busca a declaração
     declaracao = get_object_or_404(declaracao_contrapartida_so, id=declaracao_id)
 
     ano = declaracao.ano
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
     projeto_nome = declaracao.projeto
-    total_valor_cp = declaracao.total or 0.0  # usa o campo total da declaração
+    total_valor_cp = declaracao.total or 0.0
 
-    # 2) Tenta detectar itens (opcional)
     itens_qs = None
     colunas_itens = None
     try:
-        # Se houver um related_name='itens', use-o
         if hasattr(declaracao, 'itens'):
             itens_qs = declaracao.itens.all()
-            # Tenta inferir colunas comuns (ajuste conforme seu model de itens de SO)
             sample = itens_qs.first()
             if sample:
-                # monte as colunas dinamicamente, priorizando nomes comuns
                 colunas_itens = []
                 if hasattr(sample, 'descricao'): colunas_itens.append(('Descrição', 'descricao'))
                 if hasattr(sample, 'quantidade'): colunas_itens.append(('Qtd.', 'quantidade'))
                 if hasattr(sample, 'valor_unitario'): colunas_itens.append(('Valor Unitário', 'valor_unitario'))
                 if hasattr(sample, 'valor_cp'): colunas_itens.append(('Valor CP', 'valor_cp'))
-                # fallback mínimo
                 if not colunas_itens:
-                    # tenta um fallback genérico
                     colunas_itens = [('Item', 'descricao' if hasattr(sample, 'descricao') else 'id'),
                                      ('Valor CP', 'valor_cp' if hasattr(sample, 'valor_cp') else None)]
     except Exception:
         itens_qs = None
         colunas_itens = None
 
-    # 3) Abre DOCX base
     caminho_base_preferido = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_so.docx')
     caminho_fallback = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
     caminho_docx = caminho_base_preferido if os.path.exists(caminho_base_preferido) else caminho_fallback
     doc = Document(caminho_docx)
 
-    # 4) Substituição de placeholders em parágrafos
     def br_currency(v):
         return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -696,7 +632,6 @@ def gerar_docx_so(request, declaracao_id):
         if p.text:
             p.text = apply_replacements_to_text(p.text)
 
-    # 5) Substituir também em células de tabelas existentes
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -704,7 +639,6 @@ def gerar_docx_so(request, declaracao_id):
                     if p.text:
                         p.text = apply_replacements_to_text(p.text)
 
-    # 6) Inserir tabela de itens, se houver marcador e itens inferidos
     marcador_encontrado = False
     if itens_qs is not None and colunas_itens:
         for paragraph in doc.paragraphs:
@@ -712,16 +646,13 @@ def gerar_docx_so(request, declaracao_id):
                 marcador_encontrado = True
                 paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
 
-                # Cria tabela com número de colunas conforme colunas_itens
                 table = doc.add_table(rows=1, cols=len(colunas_itens))
                 table.style = 'Table Grid'
 
-                # Cabeçalho
                 hdr_cells = table.rows[0].cells
                 for i, (rotulo, _) in enumerate(colunas_itens):
                     hdr_cells[i].text = rotulo
 
-                # Linhas
                 for item in itens_qs:
                     row = table.add_row().cells
                     for i, (_, attr) in enumerate(colunas_itens):
@@ -738,14 +669,12 @@ def gerar_docx_so(request, declaracao_id):
                                 row[i].text = str(val)
                 break
 
-    # Se havia marcador mas não há itens, apenas remove o marcador
     if not marcador_encontrado:
         for p in doc.paragraphs:
             if '{{tabela_itens}}' in p.text:
                 p.text = p.text.replace('{{tabela_itens}}', '')
                 break
 
-    # 8) Resposta
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
@@ -770,7 +699,7 @@ def _set_cell_borders(cell, color="000000", size="8"):
     for edge in ("top", "left", "bottom", "right"):
         tag = OxmlElement(f"w:{edge}")
         tag.set(qn('w:val'), 'single')
-        tag.set(qn('w:sz'), size)  # 8 ≈ 0,5pt
+        tag.set(qn('w:sz'), size)
         tag.set(qn('w:space'), "0")
         tag.set(qn('w:color'), color)
         tc_borders.append(tag)
@@ -779,7 +708,7 @@ def _fmt_moeda_br_decimal(v: Decimal | float | int | None) -> str:
     if v is None:
         v = Decimal("0")
     v = Decimal(v)
-    s = f"{v:,.2f}"  # 1,234.56
+    s = f"{v:,.2f}"
     s = s.replace(",", "X").replace(".", ",").replace("X", ".")
     return f"R$ {s}"
 
@@ -835,19 +764,16 @@ def gerar_docx_equipamento(request, id):
 
     doc.add_paragraph("")
 
-    # largura das colunas (total ~16 cm úteis)
     col_widths = [Cm(3.5), Cm(5.5), Cm(2.5), Cm(8.0), Cm(3.5)]
 
     for equip_nome, grupo in groupby(itens, key=lambda i: i.equipamento):
         grupo = list(grupo)
         nota = _nota_equipamento_por_nome(equip_nome)
 
-        # tabela única
         table = doc.add_table(rows=2, cols=5)
         table.style = "Table Grid"
         table.autofit = True
 
-        # faixa azul do equipamento (linha 0, mesclada)
         faixa = table.rows[0].cells[0].merge(
             table.rows[0].cells[1]
         ).merge(
@@ -866,7 +792,6 @@ def gerar_docx_equipamento(request, id):
         run.bold = True
         run.font.color.rgb = RGBColor(255, 255, 255)
 
-        # cabeçalho (linha 1)
         headers = ["CÓDIGO", "TÍTULO DO PROJETO", "HORAS NO MÊS",
                    "DESCRIÇÃO DAS ATIVIDADES", "VALOR DA CONTRAPARTIDA"]
         for j, text in enumerate(headers):
@@ -879,7 +804,6 @@ def gerar_docx_equipamento(request, id):
             run = par.add_run(text)
             run.bold = True
 
-        # linhas de itens
         total_equip = Decimal("0")
         for item in grupo:
             row = table.add_row()
@@ -895,7 +819,6 @@ def gerar_docx_equipamento(request, id):
             for c in row.cells: _set_cell_borders(c)
             total_equip += Decimal(item.valor_cp or 0)
 
-        # linha total
         total_row = table.add_row()
         merged = total_row.cells[0].merge(total_row.cells[1]).merge(
                  total_row.cells[2]).merge(total_row.cells[3])
@@ -909,13 +832,11 @@ def gerar_docx_equipamento(request, id):
         par.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         par.add_run(_fmt_moeda_br_decimal(total_equip)).bold = True
 
-        # nota com asterisco
         if nota:
             doc.add_paragraph(f"(*) {nota}").runs[0].italic = True
 
         doc.add_paragraph("")
 
-    # total geral
     total_geral = sum(Decimal(i.valor_cp or 0) for i in itens)
     par = doc.add_paragraph("TOTAL GERAL DA CONTRAPARTIDA: ")
     par.runs[0].bold = True
@@ -934,14 +855,14 @@ def gerar_docx_equipamento(request, id):
     return resp
 
 def gerar_docx_pesquisa(request, declaracao_id):
-    # 1) Busca a declaração e itens
+    # Busca a declaração e itens
     declaracao = get_object_or_404(declaracao_contrapartida_pesquisa, id=declaracao_id)
     itens_qs = declaracao.itens.all()
 
     if not itens_qs.exists():
         return HttpResponse("Nenhum item encontrado para esta declaração de Pesquisa.")
 
-    # 2) Metadados (mês/ano/projeto)
+    # Metadados (mês/ano/projeto)
     ano = declaracao.ano
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
@@ -949,14 +870,14 @@ def gerar_docx_pesquisa(request, declaracao_id):
 
     total_valor_cp = itens_qs.aggregate(total=Sum('valor_cp'))['total'] or 0
 
-    # 3) Abre o DOCX base (use um arquivo próprio p/ Pesquisa; cai no base_rh.docx se não existir)
+    # Abre o DOCX base (use um arquivo próprio p/ Pesquisa; cai no base_rh.docx se não existir)
     caminho_base_preferido = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_pesquisa.docx')
     caminho_fallback = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
     caminho_docx = caminho_base_preferido if os.path.exists(caminho_base_preferido) else caminho_fallback
 
     doc = Document(caminho_docx)
 
-    # 4) Substituição simples em parágrafos
+    # Substituição simples em parágrafos
     for p in doc.paragraphs:
         if p.text:
             p.text = (
@@ -967,7 +888,7 @@ def gerar_docx_pesquisa(request, declaracao_id):
                 .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
             )
 
-    # 5) Também substitui placeholders em células de tabelas, se existirem
+    # Também substitui placeholders em células de tabelas, se existirem
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -981,7 +902,7 @@ def gerar_docx_pesquisa(request, declaracao_id):
                             .replace('{{valor_total}}', f"R$ {total_valor_cp:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."))
                         )
 
-    # 6) Insere a tabela de itens no marcador {{tabela_itens}}
+    # Insere a tabela de itens no marcador {{tabela_itens}}
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
@@ -1006,7 +927,6 @@ def gerar_docx_pesquisa(request, declaracao_id):
             row[4].text = f"R$ {item.salario:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             row[5].text = f"R$ {item.valor_cp:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-        # Move a tabela logo após o parágrafo do marcador
         ap_depois._element.addnext(table._tbl)
 
     marcador_encontrado = False
@@ -1017,17 +937,14 @@ def gerar_docx_pesquisa(request, declaracao_id):
             inserir_tabela_itens(paragraph)
             break
 
-    # Se não houver marcador, apenas anexa a tabela ao final
     if not marcador_encontrado:
-        # Adiciona um parágrafo e insere a tabela depois dele
         p_anchor = doc.add_paragraph()
         inserir_tabela_itens(p_anchor)
 
-    # 7) Observações de rodapé (ajuste o texto conforme sua política)
     doc.add_paragraph('(*) Valor das horas é o produto da multiplicação entre o nº de horas e o quociente da divisão do valor do salário por 160.')
     doc.add_paragraph('(**) Mês da competência do contracheque.')
 
-    # 8) Tabela de assinaturas (invisível) – igual ao seu RH
+    # Tabela de assinaturas
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     table_ass = doc.add_table(rows=2, cols=2)
     table_ass.style = 'Table Grid'
@@ -1042,7 +959,7 @@ def gerar_docx_pesquisa(request, declaracao_id):
             for p in cell.paragraphs:
                 p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # Remove bordas da tabela de assinatura (opcional)
+    # Remove bordas da tabela de assinatura
     tbl = table_ass._tbl
     for cell in tbl.iter_tcs():
         tcPr = cell.tcPr
@@ -1051,7 +968,6 @@ def gerar_docx_pesquisa(request, declaracao_id):
             element.set(qn('w:val'), 'nil')
             tcPr.append(element)
 
-    # 9) Resposta
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
@@ -1063,13 +979,10 @@ def central_declaracoes(request):
     projeto_id = request.GET.get('projeto_id')
     ano = request.GET.get('ano')
     semestre = request.GET.get('semestre')
-    print('central_dec')
 
     if not (projeto_id and ano and semestre):
-        # caso queira, retorne vazio ou erro
         meses_data = []
     else:
-        # meses do semestre
         meses_semestre = [1, 2, 3, 4, 5, 6] if semestre == '1' else [7, 8, 9, 10, 11, 12]
 
         meses_data = []
@@ -1080,11 +993,9 @@ def central_declaracoes(request):
                 data__month=mes,
             )
 
-            # Você pode montar um dict com as informações necessárias para a tabela.
-            # Exemplo simplificado:
             meses_data.append({
                 'mes': mes,
-                'contrapartidas': registros_mes,  # pode ajustar conforme a estrutura
+                'contrapartidas': registros_mes, 
             })
 
     context = {
@@ -1096,7 +1007,6 @@ def central_declaracoes(request):
     return render(request, 'declaracao/central.html', context)
 
 def visualizar_declaracao(request, declaracao_id):
-    print('entrou em visualizar_declaracao')
     """
     View para visualizar uma declaração específica
     """
@@ -1117,9 +1027,7 @@ def download_declaracao(request, declaracao_id):
     declaracao = get_object_or_404(declaracao_contrapartida_rh, id=declaracao_id)
     itens = declaracao_contrapartida_rh_item.objects.filter(declaracao=declaracao).order_by('nome')
     
-    # Implementação básica - você pode usar reportlab, weasyprint, etc.
     try:
-        # Se você tem reportlab instalado
         from reportlab.pdfgen import canvas
         from reportlab.lib.pagesizes import letter
         from django.http import HttpResponse
@@ -1152,7 +1060,6 @@ def download_declaracao(request, declaracao_id):
         return response
         
     except ImportError:
-        # Fallback para HTML se não tiver biblioteca de PDF
         messages.warning(request, "Biblioteca de PDF não disponível. Mostrando versão HTML.")
         return render(request, 'declaracao/pdf.html', {
             'declaracao': declaracao,
@@ -1167,8 +1074,6 @@ def editar_declaracao(request, declaracao_id):
     itens = declaracao_contrapartida_rh_item.objects.filter(declaracao=declaracao).order_by('nome')
     
     if request.method == 'POST':
-        # Lógica de edição aqui
-        # Por exemplo, atualizar valores dos itens
         for item in itens:
             novo_valor = request.POST.get(f'valor_cp_{item.id}')
             if novo_valor:
@@ -1178,7 +1083,6 @@ def editar_declaracao(request, declaracao_id):
                 except ValueError:
                     pass
         
-        # Recalcular total
         declaracao.total = sum(item.valor_cp for item in itens)
         declaracao.save()
         
@@ -1203,8 +1107,6 @@ def redirect_to_central(projeto_id, ano, semestre, projeto_nome=None, mes=None):
         params += f'&projeto={projeto_nome}'
     if mes:
         params += f'&mes={mes}'
-    
-    print(f'{url}{params}')
         
     return redirect(f'{url}{params}')
 
@@ -1222,14 +1124,12 @@ def get_nome_mes(numero_mes):
 
 @login_required
 def ajax_dados_projeto(request):
-    print('entrou ajax_dados')
     """
     View AJAX para carregar dados de um projeto específico por semestre
     """
     projeto_id = request.GET.get('projeto_id')
     semestre = int(request.GET.get('semestre', 1))
     ano = int(request.GET.get('ano'))
-    print(projeto_id)
     
     if not projeto_id:
         return JsonResponse({'error': 'Projeto não especificado'}, status=400)
@@ -1239,14 +1139,9 @@ def ajax_dados_projeto(request):
     except projeto.DoesNotExist:
         return JsonResponse({'error': 'Projeto não encontrado'}, status=404)
     
-    # Determinar meses do semestre
     meses_semestre = [1, 2, 3, 4, 5, 6] if semestre == 1 else [7, 8, 9, 10, 11, 12]
     
     dados_meses = {}
-    print('projeto_obj completo')
-    print(projeto_obj)
-    print('------ agora projeto_obj.id')
-    print(projeto_obj.id)
     
     for mes in meses_semestre:
         dados_meses[mes] = {
@@ -1273,16 +1168,11 @@ def verificar_declaracao_rh(projeto_obj, mes, ano):
     """
     Verifica status da declaração de contrapartida RH para um mês específico
     """
-    # Verificar se já existe declaração
-    #print(projeto_obj)
     declaracao_existente = declaracao_contrapartida_rh.objects.filter(
         id_projeto=projeto_obj,
         mes=mes,
         ano=ano
     ).first()
-    print('verificar declaracao_rh')
-    print(declaracao_existente)
-    #rint(declaracao_existente.id_projeto)
     
     if declaracao_existente:
         return {
@@ -1293,7 +1183,6 @@ def verificar_declaracao_rh(projeto_obj, mes, ano):
             'data_criacao': declaracao_existente.data_geracao.strftime('%d/%m/%Y %H:%M') if declaracao_existente.data_geracao else None
         }
     
-    # Verificar se existem dados para gerar declaração
     registros_contrapartida = contrapartida_rh.objects.filter(
         id_projeto=projeto_obj,
         id_salario__mes=mes,
@@ -1315,15 +1204,11 @@ def verificar_declaracao_pesquisa(projeto_obj, mes, ano):
     """
     Verifica status da declaração de contrapartida Pesquisa para um mês específico
     """
-    print('verificar_declaracao_pesquisa')
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_pesquisa.objects.filter(
         id_projeto=projeto_obj,
         mes=mes,
         ano=ano
     ).first()
-    print('declaracao_existente pesquisa')
-    print(declaracao_existente)
     if declaracao_existente:
         return {
             'existe': True,
@@ -1333,7 +1218,6 @@ def verificar_declaracao_pesquisa(projeto_obj, mes, ano):
             'data_criacao': declaracao_existente.data_geracao.strftime('%d/%m/%Y %H:%M') if declaracao_existente.data_geracao else None
         }
     
-    # Verificar se existem dados para gerar declaração
     registros_contrapartida = contrapartida_pesquisa.objects.filter(
         id_projeto=projeto_obj,
         id_salario__mes=mes,
@@ -1355,7 +1239,6 @@ def verificar_declaracao_so(projeto_obj, mes, ano):
     """
     Verifica status da declaração de contrapartida SO para um mês específico
     """
-    # Verificar se já existe declaração
     declaracao_existente = declaracao_contrapartida_so.objects.filter(
         id_projeto=projeto_obj,
         mes=mes,
@@ -1371,7 +1254,6 @@ def verificar_declaracao_so(projeto_obj, mes, ano):
             'data_criacao': declaracao_existente.data_geracao.strftime('%d/%m/%Y %H:%M') if declaracao_existente.data_geracao else None
         }
     
-    # Verificar se existem dados para gerar declaração
     registros_contrapartida = contrapartida_so_projeto.objects.filter(
         id_projeto=projeto_obj,
         mes=mes,
@@ -1393,17 +1275,14 @@ def verificar_declaracao_equipamentos(mes, ano):
     """
     Verifica status da declaração de contrapartida Equipamentos para um mês específico
     """
-    # Verificar se já existe declaração para o mês e ano
     declaracao_existente = declaracao_contrapartida_equipamento.objects.filter(
         mes=mes,
         ano=ano
     ).first()
     
     if declaracao_existente:
-        # Verificar se há itens associados ao projeto específico
         itens_projeto = declaracao_contrapartida_equipamento_item.objects.filter(
             declaracao=declaracao_existente,
-            #projeto=projeto_obj.nome
         )
         valor_total = sum(item.valor_cp for item in itens_projeto) if itens_projeto.exists() else 0
         
@@ -1415,9 +1294,7 @@ def verificar_declaracao_equipamentos(mes, ano):
             'data_criacao': declaracao_existente.data_geracao.strftime('%d/%m/%Y %H:%M') if declaracao_existente.data_geracao else None
         }
     
-    # Verificar se existem dados para gerar declaração
     registros_contrapartida = contrapartida_equipamento.objects.filter(
-        #id_projeto=projeto_obj,
         mes=mes,
         ano=ano
     )
@@ -1447,18 +1324,15 @@ def download_declaracao_mes(request):
     except projeto.DoesNotExist:
         return JsonResponse({'error': 'Projeto não encontrado'}, status=404)
     
-    # Buscar todas as declarações do mês
     declaracoes = {
         'rh': declaracao_contrapartida_rh.objects.filter(
             id_projeto=projeto_id, mes=mes, ano=ano
         ).first(),
-        'custeio': None,  # Adapte conforme seus modelos
-        'equipamentos': None,  # Adapte conforme seus modelos
+        'custeio': None,
+        'equipamentos': None,
     }
     
-    # Se você tem apenas RH por enquanto, redirecione para o PDF específico
     if declaracoes['rh']:
         return redirect('download_declaracao', declaracao_id=declaracoes['rh'].id)
     
-    # Caso contrário, retorne erro
     return JsonResponse({'error': 'Nenhuma declaração encontrada para este mês'}, status=404)
