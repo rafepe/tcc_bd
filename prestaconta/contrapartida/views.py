@@ -1220,7 +1220,7 @@ class contrapartida_rh_create(CreateView):
         salario_obj=form.cleaned_data.get('id_salario')        
         proj = form.cleaned_data.get('id_projeto')  # ou campo que referencia o projeto
         data = date(salario_obj.ano,salario_obj.mes,proj.data_inicio.day)  # substitua 'data' pelo nome do campo real da data
-
+     
         if data and proj:
             if not (proj.data_inicio <= data <= proj.data_fim):
                 form.add_error('id_salario',f"Data fora do período vigência do projeto de {proj.data_inicio.strftime('%m/%Y')} a {proj.data_fim.strftime('%m/%Y')}")
@@ -1228,9 +1228,8 @@ class contrapartida_rh_create(CreateView):
         
         try:
             return super().form_valid(form)
-        except IntegrityError:
-            print(form) ##debug
-            print('entrou aqui debug create rh')
+        except IntegrityError as e:
+            print("DEBUG IntegrityError:", e)
             return HttpResponse("Erro: Já existe uma contrapartida de rh para este projeto e salário.")   
 
     def form_invalid(self, form):
@@ -1558,13 +1557,26 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
 def contrapartida_realizada_geral(request):
     # ano padrão (atual) se não vier ou vier vazio
+    hoje =datetime.today()
+    ano_atual = hoje.year
+
     ano_str = request.GET.get("ano")
-    ano = int(ano_str) if ano_str and ano_str.isdigit() else datetime.today().year
+    semestre_str = request.GET.get("semestre")
+    
+    semestre_atual = 1 if datetime.today().month <= 6 else 2
+
+    if semestre_atual == 1:
+        semestre = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre = 1
+        ano_default = ano_atual
 
     # semestre padrão (atual) se não vier ou vier vazio
-    semestre_atual = 1 if datetime.today().month <= 6 else 2
-    semestre_str = request.GET.get("semestre")
-    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_atual
+    
+    
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
     # semestre=1
     # ano=2024
     # ano = request.GET.get("ano")
@@ -1577,11 +1589,16 @@ def contrapartida_realizada_geral(request):
         inicio_semestre = datetime(ano, 7, 1)
         fim_semestre = datetime(ano, 12, 31)
 
-    # Filtra projetos ativos no semestre
+    
+        # Filtra projetos ativos no semestre
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
         data_fim__gte=inicio_semestre
+
     )
+    
+    projetos=projetos.order_by()
+
 
     dados_tabela = []
 
