@@ -57,7 +57,7 @@ class equipamento(models.Model):
         else:
             value = ((Decimal(0.1)*valor_aquisicao) +  cvc + cma )  /  1440 / quantidade_nos
            
-        return round(value,2) 
+        return round(value,7) 
     
     def __str__(self):
         return self.nome
@@ -182,6 +182,7 @@ class contrapartida_so_projeto(models.Model):
         verbose_name = "Contrapartida SO"
         verbose_name_plural = "Contrapartidas SO"
         ordering = ['ano','mes']
+        #db_table = 'contrapartida_so_proj'
 
 class contrapartida_rh(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
@@ -195,10 +196,8 @@ class contrapartida_rh(models.Model):
             return round((self.horas_alocadas * (self.id_salario.valor / self.id_salario.horas) or 0), 2)
         return 0
     
-
     class Meta:
         unique_together = ('id_projeto', 'id_salario')
 
     def __str__(self):
         return f"{self.id_projeto} - {self.id_salario}"
-        
