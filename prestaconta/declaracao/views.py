@@ -713,7 +713,7 @@ def _fmt_moeda_br_decimal(v: Decimal | float | int | None) -> str:
     return f"R$ {s}"
 
 def _nota_equipamento_por_nome(nome_equip: str) -> str | None:
-    eq = Equipamento.objects.filter(nome__iexact=nome_equip).first()
+    eq = equipamento.objects.filter(nome__iexact=nome_equip).first()
     if not eq:
         return None
     aquis = eq.valor_aquisicao or Decimal("0")
