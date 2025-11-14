@@ -7,9 +7,9 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
-from django.db import IntegrityError
-from django.db.models import Q
-from django.http import HttpResponse, FileResponse
+from django.db import IntegrityError, transaction
+from django.db.models import Q, Sum
+from django.http import HttpResponse, FileResponse, JsonResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
@@ -21,6 +21,8 @@ import csv
 import io
 import os
 import re
+from .forms import ContrapartidaPesquisaFormSet
+
 
 def index(request):
     usuario = request.POST.get('username')
@@ -710,6 +712,108 @@ class contrapartida_pesquisa_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
+
+def contrapartida_pesquisa_criar_multipla(request):
+    """
+    View para criar múltiplas contrapartidas de pesquisa
+    Agora o usuário escolhe o projeto em cada linha do formulário
+    """
+    
+    if request.method == 'POST':
+        formset = ContrapartidaPesquisaFormSet(request.POST)
+        
+        if formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # Salva todas as contrapartidas válidas
+                    instancias_salvas = []
+                    
+                    for form in formset:
+                        if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                            # Cria a instância sem salvar ainda
+                            instance = form.save(commit=False)
+                            
+                            # Valida novamente (segurança extra)
+                            if instance.id_projeto and instance.id_salario:
+                                instance.save()
+                                instancias_salvas.append(instance)
+                    
+                    if instancias_salvas:
+                        messages.success(
+                            request, 
+                            f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) com sucesso!'
+                        )
+                        return redirect('contrapartida_pesquisa_menu')
+                    else:
+                        messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+            
+            except Exception as e:
+                messages.error(request, f'Erro ao salvar: {str(e)}')
+        else:
+            # Exibe erros de validação
+            for i, form_errors in enumerate(formset.errors):
+                if form_errors:
+                    for field, errors in form_errors.items():
+                        for error in errors:
+                            messages.error(request, f'Linha {i+1} - {field}: {error}')
+            
+            # Exibe erros não relacionados a campos específicos
+            if formset.non_form_errors():
+                for error in formset.non_form_errors():
+                    messages.error(request, str(error))
+    
+    else:
+        # GET - exibe formulário vazio
+        formset = ContrapartidaPesquisaFormSet()
+    
+    context = {
+        'formset': formset,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_pesquisa_form_multiplo.html', context)
+
+
+def obter_horas_disponiveis(request):
+    """
+    API para retornar horas disponíveis de um salário (chamada via AJAX)
+    """
+    salario_id = request.GET.get('salario_id')
+    
+    if not salario_id:
+        return JsonResponse({'error': 'ID do salário não fornecido'}, status=400)
+    
+    try:
+        salario_obj = salario.objects.get(id=salario_id)
+        
+        # Calcula horas utilizadas
+        horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
+            id_salario__id_pessoa=salario_obj.id_pessoa,
+            id_salario__mes=salario_obj.mes,
+            id_salario__ano=salario_obj.ano
+        ).aggregate(total=Sum('horas_alocadas'))['total'] or 0
+        
+        horas_usadas_rh = contrapartida_rh.objects.filter(
+            id_salario__id_pessoa=salario_obj.id_pessoa,
+            id_salario__mes=salario_obj.mes,
+            id_salario__ano=salario_obj.ano
+        ).aggregate(total=Sum('horas_alocadas'))['total'] or 0
+        
+        horas_utilizadas = horas_usadas_pesquisa + horas_usadas_rh
+        horas_totais = salario_obj.horas_limite or 0
+        horas_disponiveis = horas_totais - horas_utilizadas
+        
+        return JsonResponse({
+            'horas_totais': float(horas_totais),
+            'horas_utilizadas': float(horas_utilizadas),
+            'horas_disponiveis': float(horas_disponiveis),
+            'pessoa': str(salario_obj.id_pessoa),
+            'periodo': f"{salario_obj.mes}/{salario_obj.ano}"
+        })
+    
+    except salario.DoesNotExist:
+        return JsonResponse({'error': 'Salário não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 ##############################
