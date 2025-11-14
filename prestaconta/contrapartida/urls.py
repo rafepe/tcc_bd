@@ -50,6 +50,9 @@ urlpatterns = [
     path('contrapartida_pesquisa_menu/', views.contrapartida_pesquisa_menu.as_view(), name='contrapartida_pesquisa_menu'),
     path("contrapartida_pesquisa_update/<int:pk>/", views.contrapartida_pesquisa_update.as_view(), name='contrapartida_pesquisa_update'),
     path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
+    path('contrapartida_pesquisa_criar_multipla/',views.contrapartida_pesquisa_criar_multipla,name='contrapartida_pesquisa_criar_multipla'),
+    path('api/horas-disponiveis/',views.obter_horas_disponiveis, name='obter_horas_disponiveis'),
+
 
     path("contrapartida_equipamento_create/", views.contrapartida_equipamento_create.as_view(), name='contrapartida_equipamento_create'),    
     path('contrapartida_equipamento_menu/', views.contrapartida_equipamento_menu.as_view(), name='contrapartida_equipamento_menu'),

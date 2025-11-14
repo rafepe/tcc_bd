@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+
+{% block corpo %}
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <h1>Cadastrar Contrapartidas de Pesquisa</h1>
+        <p class="text-muted">Adicione múltiplas contrapartidas em um único envio</p>
+    </div>
+
+    <form method="POST" id="contrapartida-formset">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div id="formset-container">
+            {% for form in formset %}
+            <div class="formset-row card mb-3 p-3" data-form-index="{{ forloop.counter0 }}">
+                <div class="card-header bg-light mb-3">
+                    <h5 class="mb-0">Contrapartida #{{ forloop.counter }}</h5>
+                </div>
+                
+                <div class="row align-items-end">
+                    <!-- Projeto -->
+                    <div class="col-md-3">
+                        {% bootstrap_field form.id_projeto show_label=True %}
+                    </div>
+                    
+                    <!-- Salário -->
+                    <div class="col-md-3">
+                        {% bootstrap_field form.id_salario show_label=True %}
+                    </div>
+                    
+                    <!-- Função -->
+                    <div class="col-md-2">
+                        {% bootstrap_field form.funcao show_label=True %}
+                    </div>
+                    
+                    <!-- Horas Alocadas -->
+                    <div class="col-md-2">
+                        {% bootstrap_field form.horas_alocadas show_label=True %}
+                    </div>
+                    
+                    <!-- Horas Disponíveis (readonly) -->
+                    <div class="col-md-2">
+                        <label class="form-label">Horas Disponíveis</label>
+                        <input type="text" 
+                               class="form-control horas-restantes" 
+                               readonly 
+                               placeholder="Selecione salário">
+                    </div>
+                </div>
+                
+                <!-- Botão Remover -->
+                <div class="row mt-2">
+                    <div class="col-12 text-end">
+                        <button type="button" 
+                                class="btn btn-danger btn-sm remove-form" 
+                                {% if forloop.first and formset|length == 1 %}disabled{% endif %}>
+                            <i class="bi bi-trash"></i> Remover esta linha
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Campo DELETE escondido -->
+                {{ form.DELETE }}
+                {{ form.id }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-3">
+            <button type="button" class="btn btn-success btn-lg" id="add-form">
+                <i class="bi bi-plus-circle"></i> Adicionar Nova Contrapartida
+            </button>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Salvar Todas as Contrapartidas
+            </button>
+            <a href="{% url 'contrapartida_pesquisa_menu' %}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('formset-container');
+    const addButton = document.getElementById('add-form');
+    const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+    
+    // Função para atualizar horas disponíveis quando salário muda
+    function setupSalarioListener(row) {
+        const salarioSelect = row.querySelector('.salario-select');
+        const horasRestantesInput = row.querySelector('.horas-restantes');
+        
+        if (salarioSelect) {
+            salarioSelect.addEventListener('change', function() {
+                const salarioId = this.value;
+                
+                if (salarioId) {
+                    // Mostra loading
+                    horasRestantesInput.value = 'Carregando...';
+                    
+                    fetch(`{% url 'obter_horas_disponiveis' %}?salario_id=${salarioId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                alert(data.error);
+                                horasRestantesInput.value = '0';
+                            } else {
+                                horasRestantesInput.value = `${data.horas_disponiveis.toFixed(1)}h`;
+                                
+                                // Adiciona tooltip com informações detalhadas
+                                horasRestantesInput.title = 
+                                    `Pessoa: ${data.pessoa}\n` +
+                                    `Período: ${data.periodo}\n` +
+                                    `Total: ${data.horas_totais}h\n` +
+                                    `Utilizadas: ${data.horas_utilizadas}h\n` +
+                                    `Disponíveis: ${data.horas_disponiveis}h`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            horasRestantesInput.value = 'Erro ao carregar';
+                        });
+                } else {
+                    horasRestantesInput.value = '';
+                    horasRestantesInput.title = '';
+                }
+            });
+            
+            // Trigger inicial se já houver valor selecionado
+            if (salarioSelect.value) {
+                salarioSelect.dispatchEvent(new Event('change'));
+            }
+        }
+    }
+    
+    // Configurar listeners para formulários existentes
+    document.querySelectorAll('.formset-row').forEach(row => {
+        setupSalarioListener(row);
+    });
+    
+    // Adicionar nova linha
+    addButton.addEventListener('click', function() {
+        const formCount = parseInt(totalForms.value);
+        const lastRow = container.querySelector('.formset-row:last-child');
+        
+        if (!lastRow) {
+            console.error('Nenhuma linha encontrada para clonar');
+            return;
+        }
+        
+        const newRow = lastRow.cloneNode(true);
+        
+        // Atualiza o número no cabeçalho
+        const header = newRow.querySelector('.card-header h5');
+        if (header) {
+            header.textContent = `Contrapartida #${formCount + 1}`;
+        }
+        
+        // Atualiza índices e limpa valores
+        newRow.querySelectorAll('input, select, textarea').forEach(input => {
+            const name = input.getAttribute('name');
+            if (name) {
+                const newName = name.replace(/form-\d+/, `form-${formCount}`);
+                input.setAttribute('name', newName);
+                input.setAttribute('id', `id_${newName}`);
+                
+                // Limpa valores (exceto hidden fields de controle)
+                if (!name.includes('DELETE') && !name.includes('id')) {
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                }
+            }
+        });
+        
+        // Limpa o campo de horas restantes
+        const horasRestantes = newRow.querySelector('.horas-restantes');
+        if (horasRestantes) {
+            horasRestantes.value = '';
+            horasRestantes.title = '';
+        }
+        
+        // Habilita botão remover
+        const removeBtn = newRow.querySelector('.remove-form');
+        if (removeBtn) {
+            removeBtn.disabled = false;
+        }
+        
+        container.appendChild(newRow);
+        totalForms.value = formCount + 1;
+        
+        setupSalarioListener(newRow);
+        updateRemoveButtons();
+    });
+    
+    // Remover linha
+    container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-form') || e.target.closest('.remove-form')) {
+            const row = e.target.closest('.formset-row');
+            
+            if (!row) return;
+            
+            const deleteInput = row.querySelector('input[name*="DELETE"]');
+            
+            if (deleteInput) {
+                // Marca para exclusão (se vier do banco)
+                deleteInput.checked = true;
+                row.style.display = 'none';
+            } else {
+                // Remove do DOM (se for novo)
+                row.remove();
+                
+                // Atualiza contador
+                const formCount = parseInt(totalForms.value);
+                totalForms.value = Math.max(0, formCount - 1);
+                
+                // Renumera os cabeçalhos
+                document.querySelectorAll('.formset-row:not([style*="display: none"])').forEach((r, idx) => {
+                    const header = r.querySelector('.card-header h5');
+                    if (header) {
+                        header.textContent = `Contrapartida #${idx + 1}`;
+                    }
+                });
+            }
+            
+            updateRemoveButtons();
+        }
+    });
+    
+    function updateRemoveButtons() {
+        const visibleRows = container.querySelectorAll('.formset-row:not([style*="display: none"])');
+        visibleRows.forEach((row, index) => {
+            const removeBtn = row.querySelector('.remove-form');
+            if (removeBtn) {
+                // Desabilita se for a única linha visível
+                removeBtn.disabled = (visibleRows.length === 1);
+            }
+        });
+    }
+    
+    // Inicializa estado dos botões
+    updateRemoveButtons();
+});
+</script>
+
+<style>
+.formset-row {
+    transition: all 0.3s ease;
+}
+
+.formset-row:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.horas-restantes {
+    font-weight: bold;
+    color: #28a745;
+}
+</style>
+{% endblock %}
