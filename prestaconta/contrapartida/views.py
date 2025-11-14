@@ -713,6 +713,10 @@ class contrapartida_pesquisa_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
 
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
 def contrapartida_pesquisa_criar_multipla(request):
     """
     View para criar múltiplas contrapartidas de pesquisa
@@ -814,7 +818,7 @@ def obter_horas_disponiveis(request):
         return JsonResponse({'error': 'Salário não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
+#####################################################################################################################
 
 ##############################
 # CONTRAPARTIDA EQUIPAMENTOS #
