@@ -52,6 +52,8 @@ urlpatterns = [
     path('contrapartida_pesquisa_delete/<int:pk>/', views.contrapartida_pesquisa_delete.as_view(), name='contrapartida_pesquisa_delete'),
     path('contrapartida_pesquisa_criar_multipla/',views.contrapartida_pesquisa_criar_multipla,name='contrapartida_pesquisa_criar_multipla'),
     path('api/horas-disponiveis/',views.obter_horas_disponiveis, name='obter_horas_disponiveis'),
+    #path('api/obter-salarios-por-projeto/', views.obter_salarios_por_projeto, name='obter_salarios_por_projeto'),
+
 
 
     path("contrapartida_equipamento_create/", views.contrapartida_equipamento_create.as_view(), name='contrapartida_equipamento_create'),    

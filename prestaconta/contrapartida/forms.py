@@ -1,16 +1,24 @@
 from django import forms
 from django.forms import formset_factory, BaseFormSet
 from django.db import models
-from .models import contrapartida_pesquisa, salario, contrapartida_rh
+from .models import contrapartida_pesquisa, salario, contrapartida_rh, projeto
 
 class ContrapartidaPesquisaForm(forms.ModelForm):
+    """
+    Formulário sem id_projeto (será passado externamente pela view)
+    """
     class Meta:
         model = contrapartida_pesquisa
-        fields = ['id_projeto', 'id_salario', 'funcao', 'horas_alocadas']
+        fields = ['id_salario', 'funcao', 'horas_alocadas']  # ← Removido id_projeto
         widgets = {
-            'id_projeto': forms.Select(attrs={'class': 'form-control projeto-select'}),
-            'id_salario': forms.Select(attrs={'class': 'form-control salario-select'}),
-            'funcao': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Pesquisador'}),
+            'id_salario': forms.Select(attrs={
+                'class': 'form-control salario-select',
+                'data-horas': ''  # Será preenchido dinamicamente
+            }),
+            'funcao': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'Ex: Pesquisador'
+            }),
             'horas_alocadas': forms.NumberInput(attrs={
                 'class': 'form-control horas-input', 
                 'step': '0.1', 
@@ -19,58 +27,103 @@ class ContrapartidaPesquisaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Recebe projeto para filtrar salários
+        self.projeto = kwargs.pop('projeto', None)
         super().__init__(*args, **kwargs)
-        # Campo readonly para mostrar horas restantes (preenchido via JS)
+        
+        # Filtra salários se projeto foi fornecido
+        if self.projeto:
+            # Filtra salários dentro do período do projeto
+            salarios_filtrados = salario.objects.filter(
+                ano__gte=self.projeto.data_inicio.year,
+                ano__lte=self.projeto.data_fim.year
+            )
+            
+            # Refina por mês se necessário
+            if self.projeto.data_inicio.year == self.projeto.data_fim.year:
+                # Mesmo ano: filtra por mês
+                salarios_filtrados = salarios_filtrados.filter(
+                    mes__gte=self.projeto.data_inicio.month,
+                    mes__lte=self.projeto.data_fim.month
+                )
+            else:
+                # Anos diferentes: lógica mais complexa
+                from django.db.models import Q
+                salarios_filtrados = salarios_filtrados.filter(
+                    Q(ano=self.projeto.data_inicio.year, mes__gte=self.projeto.data_inicio.month) |
+                    Q(ano__gt=self.projeto.data_inicio.year, ano__lt=self.projeto.data_fim.year) |
+                    Q(ano=self.projeto.data_fim.year, mes__lte=self.projeto.data_fim.month)
+                )
+            
+            self.fields['id_salario'].queryset = salarios_filtrados.order_by(
+                'id_pessoa__nome', '-ano', '-mes'
+            )
+        
+        # Campo readonly para mostrar horas restantes
         self.fields['horas_restantes'] = forms.DecimalField(
             required=False,
             disabled=True,
+            label='Horas Disponíveis',
             widget=forms.NumberInput(attrs={
                 'class': 'form-control horas-restantes', 
-                'readonly': 'readonly'
+                'readonly': 'readonly',
+                'placeholder': 'Selecione salário'
             })
         )
 
 
-class BaseContrapartidaPesquisaFormSet(BaseFormSet):  # ← MUDOU: BaseFormSet ao invés de BaseInlineFormSet
+class BaseContrapartidaPesquisaFormSet(BaseFormSet):
     """
     Validação customizada para verificar horas disponíveis por salário
     """
+    def __init__(self, *args, **kwargs):
+        self.projeto = kwargs.pop('projeto', None)
+        super().__init__(*args, **kwargs)
+    
+    def _construct_form(self, i, **kwargs):
+        """
+        Passa o projeto para cada formulário individual
+        """
+        kwargs['projeto'] = self.projeto
+        return super()._construct_form(i, **kwargs)
+    
     def clean(self):
         if any(self.errors):
             return
         
+        if not self.projeto:
+            raise forms.ValidationError('Projeto não especificado.')
+        
         salarios_usados = {}
-        projetos_salarios = set()  # Para verificar unique_together
+        salarios_duplicados = set()
         
         for form in self.forms:
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                id_projeto = form.cleaned_data.get('id_projeto')
                 id_salario = form.cleaned_data.get('id_salario')
                 horas_alocadas = form.cleaned_data.get('horas_alocadas', 0)
                 
-                # Verifica unique_together (projeto, salário)
-                if id_projeto and id_salario:
-                    chave = (id_projeto.id, id_salario.id)
-                    if chave in projetos_salarios:
+                if id_salario:
+                    # Verifica duplicatas no formset
+                    if id_salario.id in salarios_duplicados:
                         raise forms.ValidationError(
-                            f'Você está tentando cadastrar o mesmo salário '
-                            f'({id_salario.id_pessoa}) mais de uma vez para o projeto '
-                            f'{id_projeto.nome}. Cada salário só pode ser cadastrado uma vez por projeto.'
+                            f'O salário de {id_salario.id_pessoa} ({id_salario.mes}/{id_salario.ano}) '
+                            f'foi selecionado mais de uma vez. Cada salário só pode ser '
+                            f'cadastrado uma vez por projeto.'
                         )
-                    projetos_salarios.add(chave)
+                    salarios_duplicados.add(id_salario.id)
                     
-                    # Verifica se já existe no banco (para evitar duplicatas)
+                    # Verifica se já existe no banco para este projeto
                     if contrapartida_pesquisa.objects.filter(
-                        id_projeto=id_projeto, 
+                        id_projeto=self.projeto,
                         id_salario=id_salario
                     ).exists():
                         raise forms.ValidationError(
                             f'Já existe uma contrapartida cadastrada para o salário '
-                            f'{id_salario.id_pessoa} no projeto {id_projeto.nome}.'
+                            f'de {id_salario.id_pessoa} ({id_salario.mes}/{id_salario.ano}) '
+                            f'neste projeto.'
                         )
-                
-                # Acumula horas por salário
-                if id_salario:
+                    
+                    # Acumula horas por salário
                     if id_salario.id not in salarios_usados:
                         salarios_usados[id_salario.id] = {
                             'salario': id_salario,
@@ -111,7 +164,7 @@ class BaseContrapartidaPesquisaFormSet(BaseFormSet):  # ← MUDOU: BaseFormSet a
 ContrapartidaPesquisaFormSet = formset_factory(
     form=ContrapartidaPesquisaForm,
     formset=BaseContrapartidaPesquisaFormSet,
-    extra=1,
+    extra=0,  # Apenas 1 linha inicial
     can_delete=True,
     min_num=1,
     validate_min=True
