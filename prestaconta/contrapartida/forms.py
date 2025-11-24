@@ -1,14 +1,14 @@
 from django import forms
-from django.forms import formset_factory, BaseFormSet
+from django.forms import formset_factory, BaseFormSet,inlineformset_factory
 from django.db import models
 from .models import contrapartida_pesquisa, salario, contrapartida_rh, projeto
 
-class ContrapartidaPesquisaForm(forms.ModelForm):
+class ContrapartidasPesquisaRhForm(forms.ModelForm):
     """
     Formulário sem id_projeto (será passado externamente pela view)
     """
     class Meta:
-        model = contrapartida_pesquisa
+        #model = self.model
         fields = ['id_salario', 'funcao', 'horas_alocadas']  # ← Removido id_projeto
         widgets = {
             'id_salario': forms.Select(attrs={
@@ -72,7 +72,7 @@ class ContrapartidaPesquisaForm(forms.ModelForm):
         )
 
 
-class BaseContrapartidaPesquisaFormSet(BaseFormSet):
+class BaseContrapartidasPesquisaRhFormSet(BaseFormSet):
     """
     Validação customizada para verificar horas disponíveis por salário
     """
@@ -113,7 +113,7 @@ class BaseContrapartidaPesquisaFormSet(BaseFormSet):
                     salarios_duplicados.add(id_salario.id)
                     
                     # Verifica se já existe no banco para este projeto
-                    if contrapartida_pesquisa.objects.filter(
+                    if self.model.objects.filter(
                         id_projeto=self.projeto,
                         id_salario=id_salario
                     ).exists():
@@ -161,11 +161,30 @@ class BaseContrapartidaPesquisaFormSet(BaseFormSet):
 
 
 # Criando o formset
-ContrapartidaPesquisaFormSet = formset_factory(
-    form=ContrapartidaPesquisaForm,
-    formset=BaseContrapartidaPesquisaFormSet,
-    extra=0,  # Apenas 1 linha inicial
-    can_delete=True,
-    min_num=1,
-    validate_min=True
+# ContrapartidaPesquisaFormSet = formset_factory(
+#     form=ContrapartidaPesquisaForm,
+#     formset=BaseContrapartidaPesquisaFormSet,
+#     extra=0,  # Apenas 1 linha inicial
+#     can_delete=True,
+#     min_num=1,
+#     validate_min=True
+# )
+
+
+ContrapartidaPesquisaFormSet= inlineformset_factory(
+    projeto,
+    model=contrapartida_pesquisa,
+    form=ContrapartidasPesquisaRhForm,
+    formset=BaseContrapartidasPesquisaRhFormSet,
+    extra=1,
+    can_delete=True
+)
+
+ContrapartidaRhFormSet= inlineformset_factory(
+    projeto,
+    model=contrapartida_rh,
+    form=ContrapartidasPesquisaRhForm,
+    formset=BaseContrapartidasPesquisaRhFormSet,
+    extra=1,
+    can_delete=True
 )

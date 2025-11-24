@@ -5,7 +5,7 @@
 {% block corpo %}
 <div class="container mt-4">
     <div class="text-center mb-4">
-        <h1>Cadastrar Contrapartidas de Pesquisa</h1>
+        <h1>Cadastrar Contrapartidas de Rh</h1>
         <p class="text-muted">Selecione o projeto e adicione múltiplas contrapartidas</p>
     </div>
 
@@ -38,7 +38,7 @@
                             <input type="hidden" name="id_projeto" value="{{ projeto_obj.id }}">
                             <small class="text-muted">
                                 Projeto selecionado. Para trocar, 
-                                <a href="{% url 'contrapartida_pesquisa_criar_multiplos' %}">clique aqui</a>.
+                                <a href="{% url 'contrapartida_rh_criar_multiplos' %}">clique aqui</a>.
                             </small>
                         {% endif %}
                     </div>
@@ -119,7 +119,7 @@
             <button type="submit" class="btn btn-primary btn-lg">
                 <i class="bi bi-save"></i> Salvar Todas as Contrapartidas
             </button>
-            <a href="{% url 'contrapartida_pesquisa_menu' %}" class="btn btn-secondary btn-lg">
+            <a href="{% url 'contrapartida_rh_menu' %}" class="btn btn-secondary btn-lg">
                 <i class="bi bi-x-circle"></i> Cancelar
             </a>
         </div>
