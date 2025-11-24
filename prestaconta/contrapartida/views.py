@@ -21,7 +21,7 @@ import csv
 import io
 import os
 import re
-from .forms import ContrapartidaPesquisaFormSet
+from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet
 
 
 def index(request):
@@ -717,7 +717,7 @@ class contrapartida_pesquisa_delete(DeleteView):
 # INSERIR MULTIPLOS
 #####################################################################################################################
 
-def contrapartida_pesquisa_criar_multipla(request):
+def contrapartida_pesquisa_criar_multiplos(request):
     """
     View para criar múltiplas contrapartidas de pesquisa
     O projeto é selecionado primeiro e os salários são filtrados por período
@@ -1527,6 +1527,96 @@ class contrapartida_rh_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_rh_menu')    
+
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_rh_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de rh
+    O projeto é selecionado primeiro e os salários são filtrados por período
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaRhFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaRhFormSet(request.POST, projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return redirect('contrapartida_rh_menu')
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaRhFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_rh_form_multiplo.html', context)
 
 
 ##############################
