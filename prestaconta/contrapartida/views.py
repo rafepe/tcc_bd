@@ -21,7 +21,7 @@ import csv
 import io
 import os
 import re
-from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet
+from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet,ContrapartidaSOFormSet
 
 
 def index(request):
@@ -1074,6 +1074,7 @@ class contrapartida_equipamento_delete(DeleteView):
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
+
 class contrapartida_so_menu(ListView):
     model = projeto  # Define o modelo explicitamente
     template_name = "contrapartida/contrapartida_so_menu.html"
@@ -1133,6 +1134,79 @@ class contrapartida_so_menu(ListView):
             }
         
         return context
+    
+class contrapartida_so_menu_new(ListView):
+    template_name = 'contrapartida/contrapartida_so_menu_new.html'
+    model = projeto  # Define o modelo explicitamente
+    context_object_name = "projetos"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
+            return redirect('projeto_menu')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        projeto = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes', '').strip()
+        if projeto:
+            queryset = queryset.filter(nome__icontains=projeto)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        linhas = []
+        
+        # Iterar sobre os projetos na queryset para acessar os campos
+        for projeto in context['projetos']:
+            # Realizando os cálculos necessários para a Contrapartida SO
+            so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
+            so_no_ptr = projeto.valor_so_ptr
+            num_meses = projeto.num_mes or 1    
+
+            cp_ue_so = so_da_ue - so_no_ptr
+            cp_mensal_so = round(cp_ue_so / num_meses, 2)
+
+            projeto.so_da_ue =  so_da_ue
+            projeto.so_no_ptr =  so_no_ptr
+            projeto.cp_ue_so =   cp_ue_so
+            projeto.cp_mensal_so = cp_mensal_so
+            projeto.num_meses =   num_meses
+
+            linhas.append({
+                "nome": projeto.nome,
+                "valor_total": projeto.valor_total,
+                "valor_financiado": projeto.valor_financiado,                
+                "so_da_ue": so_da_ue,
+                "so_no_ptr": so_no_ptr,
+                "cp_ue_so": cp_ue_so,
+                "cp_mensal_so": cp_mensal_so,
+                "num_meses": num_meses,
+                "data_inicio": projeto.data_inicio,
+                "taxa_funape": projeto.valor_funape,
+                "detalhes": projeto.id,
+            })
+         
+            
+    # Filtros para manter a consistência da UI
+        context["filtros"] = {
+        "projeto": self.request.GET.get("nome", ""),
+        "mes": self.request.GET.get("mes", ""),
+        "ano": self.request.GET.get("ano", "")
+        }
+
+        table = contrapartida_so_table(linhas)
+        RequestConfig(self.request, paginate={"per_page": 10}).configure(table)
+        context["table"] = table
+        return context
+
 
 class contrapartida_so_proj(TemplateView):
     template_name = 'contrapartida/contrapartida_so_proj.html'
@@ -1294,6 +1368,96 @@ class contrapartida_so_delete(DeleteView):
     template_name = 'contrapartida/contrapartida_so_delete.html'
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
+
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_so_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de so
+    O projeto é selecionado primeiro
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaSOFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET           
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaSOFormSet(request.POST,projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return  redirect('contrapartida_so_projeto', id_projeto=projeto_id)
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaSOFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_so_form_multiplo.html', context)
 
 
 

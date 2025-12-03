@@ -56,7 +56,11 @@
                  <input type="button" class="btn btn-primary" value="Incluir nova contrapartida">
             </a>
         </td>
-
+        <td>
+            <a href="{% url 'contrapartida_so_criar_multiplos' %}?id_projeto={{ projeto.id }}">
+                 <input type="button" class="btn btn-primary" value="Incluir multiplos">
+            </a>
+        </td>
 
 </div>
 </div>
