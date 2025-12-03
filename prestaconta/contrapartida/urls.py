@@ -60,6 +60,7 @@ urlpatterns = [
     path('contrapartida_equipamento_menu/', views.contrapartida_equipamento_menu.as_view(), name='contrapartida_equipamento_menu'),
     path("contrapartida_equipamento_update/<int:pk>/", views.contrapartida_equipamento_update.as_view(), name='contrapartida_equipamento_update'),
     path('contrapartida_equipamento_delete/<int:pk>/', views.contrapartida_equipamento_delete.as_view(), name='contrapartida_equipamento_delete'),
+    path('contrapartida_equipamento_criar_multiplos/',views.contrapartida_equipamento_criar_multiplos,name='contrapartida_equipamento_criar_multiplos'),
 
     path('contrapartida_so_menu/', views.contrapartida_so_menu.as_view(), name='contrapartida_so_menu'),
     path('contrapartida_so_menu_new/', views.contrapartida_so_menu_new.as_view(), name='contrapartida_so_menu_new'),

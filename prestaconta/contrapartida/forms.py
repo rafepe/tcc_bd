@@ -286,6 +286,43 @@ class BaseContrapartidaSOFormSet(BaseFormSet):
             except Exception:
                 raise forms.ValidationError(f"Linha {i+1}: Valor inválido.")
 
+class ContrapartidaEquipamentoForm(forms.ModelForm):
+    class Meta:
+        model = contrapartida_equipamento
+        fields = ['ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_manual']
+
+    def __init__(self, *args, **kwargs):
+        # Recebe projeto para filtrar salários
+        self.projeto = kwargs.pop('projeto', None)
+        super().__init__(*args, **kwargs)
+            
+
+class BaseContrapartidaEquipamentoFormSet(BaseFormSet):
+    def __init__(self, *args, **kwargs):
+        self.projeto = kwargs.pop('projeto', None)
+        super().__init__(*args, **kwargs)
+    
+    def _construct_form(self, i, **kwargs):
+        """
+        Passa o projeto para cada formulário individual
+        """
+        kwargs['projeto'] = self.projeto
+        return super()._construct_form(i, **kwargs) 
+
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if not form.cleaned_data:
+                continue
+
+            ano = form.cleaned_data.get("ano")
+            mes = form.cleaned_data.get("mes")
+            equipamento_obj = form.cleaned_data.get("id_equipamento")
+
+            if not ano or not mes or not equipamento_obj:
+                form.add_error(None, "Ano, mês e equipamento são obrigatórios.")
+
+
 
 
 ContrapartidaPesquisaFormSet= inlineformset_factory(
@@ -314,4 +351,13 @@ ContrapartidaSOFormSet= inlineformset_factory(
     formset=BaseContrapartidaSOFormSet,
     extra=1,
     can_delete=True
+)
+
+ContrapartidaEquipamentoFormSet = inlineformset_factory(
+    projeto,
+    model=contrapartida_equipamento,
+    form=ContrapartidaEquipamentoForm,
+    formset=BaseContrapartidaEquipamentoFormSet,
+    extra=1,
+    can_delete=True 
 )
