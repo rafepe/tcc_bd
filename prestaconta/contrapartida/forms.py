@@ -1,7 +1,9 @@
 from django import forms
 from django.forms import formset_factory, BaseFormSet,inlineformset_factory
 from django.db import models
-from .models import contrapartida_pesquisa, salario, contrapartida_rh, projeto
+from .models import contrapartida_pesquisa, salario, contrapartida_rh, projeto,contrapartida_so_projeto,equipamento,contrapartida_equipamento
+from decimal import Decimal
+from datetime import datetime,date
 
 class ContrapartidasPesquisaRhForm(forms.ModelForm):
     """
@@ -98,6 +100,7 @@ class BaseContrapartidasPesquisaRhFormSet(BaseFormSet):
         salarios_duplicados = set()
         
         for form in self.forms:
+
             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                 id_salario = form.cleaned_data.get('id_salario')
                 horas_alocadas = form.cleaned_data.get('horas_alocadas', 0)
@@ -159,16 +162,130 @@ class BaseContrapartidasPesquisaRhFormSet(BaseFormSet):
                     f'alocar {horas_novas}h no total.'
                 )
 
+class ContrapartidaSOForm(forms.ModelForm):
 
-# Criando o formset
-# ContrapartidaPesquisaFormSet = formset_factory(
-#     form=ContrapartidaPesquisaForm,
-#     formset=BaseContrapartidaPesquisaFormSet,
-#     extra=0,  # Apenas 1 linha inicial
-#     can_delete=True,
-#     min_num=1,
-#     validate_min=True
-# )
+
+    hoje=datetime.today()
+   
+    ano_mes = forms.CharField(
+        label="Ano/Mês",
+        required=True,
+        widget=forms.TextInput(attrs={"placeholder": f"{hoje.year}/{hoje.month}"})
+    )
+
+    class Meta:
+        model = contrapartida_so_projeto
+        fields = ["ano_mes", "valor"]
+        widgets = {
+            "valor": forms.NumberInput(attrs={"step": "0.01"}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        # Recebe projeto para filtrar salários
+        self.projeto = kwargs.pop('projeto', None)
+        super().__init__(*args, **kwargs)
+
+        
+    
+    def clean(self):
+        cleaned = super().clean()
+
+        ano_mes = cleaned.get("ano_mes")
+
+        if ano_mes:
+            try:
+                ano_str, mes_str = ano_mes.split("/")
+                ano = int(ano_str)
+                mes = int(mes_str)
+
+                if mes < 1 or mes > 12:
+                    raise ValueError
+            except Exception:
+                raise forms.ValidationError("Formato da data deve ser AAAA/MM")
+
+            cleaned['ano'] = ano
+            cleaned['mes'] = mes
+
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.ano = self.cleaned_data['ano']
+        obj.mes = self.cleaned_data['mes']
+
+        if commit:
+            obj.save()
+        return obj
+
+class BaseContrapartidaSOFormSet(BaseFormSet):
+    def __init__(self, *args, **kwargs):
+        self.projeto = kwargs.pop('projeto', None)
+        super().__init__(*args, **kwargs)
+    
+    def _construct_form(self, i, **kwargs):
+        """
+        Passa o projeto para cada formulário individual
+        """
+        kwargs['projeto'] = self.projeto
+        return super()._construct_form(i, **kwargs) 
+  
+    
+    def clean(self):
+        if any(self.errors):
+            return
+        
+        # if not self.projeto:
+        #     raise forms.ValidationError('Projeto não especificado.')
+        
+        meses_usados = set()
+        print(self.projeto.id)
+
+        for i, form in enumerate(self.forms):
+
+            if not hasattr(form, "cleaned_data"):
+                continue
+            
+            if form.cleaned_data.get("DELETE"):
+                continue
+            
+            ano_mes = form.cleaned_data.get("ano_mes")
+            valor = form.cleaned_data.get("valor")
+            data_inicio = self.projeto.data_inicio
+            data_fim = self.projeto.data_fim
+
+            if not ano_mes:
+                raise forms.ValidationError(f"Linha {i+1}: Informe o campo Ano/Mês.")
+
+            # parsing AAAA/MM
+            try:
+                ano_str, mes_str = ano_mes.split("/")
+                ano = int(ano_str)
+                mes = int(mes_str)
+            except ValueError:
+                raise forms.ValidationError(f"Linha {i+1}: Formato inválido. Use AAAA/MM.")
+
+            ref = date(ano, mes, 1)
+
+            if ref < data_inicio or ref > data_fim:
+                raise forms.ValidationError(
+                    f"Mês/ano {mes}/{ano} está fora do intervalo do projeto."
+                )
+
+            # valida duplicidade
+            if (ano, mes) in meses_usados:
+                raise forms.ValidationError(f"Mês duplicado na linha {i+1}.")
+            meses_usados.add((ano, mes))
+
+            # escrever nos cleaned_data para uso no save_formset()
+            form.cleaned_data["ano"] = ano
+            form.cleaned_data["mes"] = mes
+
+            # valor decimal com arredondamento
+            try:
+                form.cleaned_data["valor"] = round(Decimal(valor), 2)
+            except Exception:
+                raise forms.ValidationError(f"Linha {i+1}: Valor inválido.")
+
 
 
 ContrapartidaPesquisaFormSet= inlineformset_factory(
@@ -185,6 +302,16 @@ ContrapartidaRhFormSet= inlineformset_factory(
     model=contrapartida_rh,
     form=ContrapartidasPesquisaRhForm,
     formset=BaseContrapartidasPesquisaRhFormSet,
+    extra=1,
+    can_delete=True
+)
+
+
+ContrapartidaSOFormSet= inlineformset_factory(
+    projeto,
+    model=contrapartida_so_projeto,
+    form=ContrapartidaSOForm,
+    formset=BaseContrapartidaSOFormSet,
     extra=1,
     can_delete=True
 )

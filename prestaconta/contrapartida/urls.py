@@ -62,10 +62,12 @@ urlpatterns = [
     path('contrapartida_equipamento_delete/<int:pk>/', views.contrapartida_equipamento_delete.as_view(), name='contrapartida_equipamento_delete'),
 
     path('contrapartida_so_menu/', views.contrapartida_so_menu.as_view(), name='contrapartida_so_menu'),
+    path('contrapartida_so_menu_new/', views.contrapartida_so_menu_new.as_view(), name='contrapartida_so_menu_new'),
     path('contrapartida_so_projeto/<int:id_projeto>', views.contrapartida_so_proj.as_view(),name='contrapartida_so_projeto'),
     path("contrapartida_so_create/<int:id_projeto>", views.contrapartida_so_create.as_view(), name='contrapartida_so_create'),
     path("contrapartida_so_update/<int:pk>/", views.contrapartida_so_update.as_view(), name='contrapartida_so_update'),
     path('contrapartida_so_delete/<int:pk>/', views.contrapartida_so_delete.as_view(), name='contrapartida_so_delete'),
+    path('contrapartida_so_criar_multiplos/',views.contrapartida_so_criar_multiplos,name='contrapartida_so_criar_multiplos'),
 
     path("contrapartida_rh_create/", views.contrapartida_rh_create.as_view(), name='contrapartida_rh_create'),
     path('contrapartida_rh_menu/', views.contrapartida_rh_menu.as_view(), name='contrapartida_rh_menu'),
