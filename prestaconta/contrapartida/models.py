@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import os
+import re
 
 
 class projeto(models.Model):
@@ -78,6 +79,21 @@ class pessoa(models.Model):
     class Meta:
         ordering = ['-ativo', 'nome']
 
+
+def caminho_comprovante(instance, filename):
+    nome = re.sub(r'\s+', '_', instance.id_pessoa.nome.strip())
+
+    ano = instance.ano
+    mes = instance.mes
+    semestre = 1 if mes <= 6 else 2
+
+    new_filename = f"{nome}-{ano:04d}-{mes:02d}.pdf"
+    new_filename = new_filename.replace(" ", "_")
+
+    return f"comprovantes/{ano:04d}-{semestre}/{nome}/{new_filename}"
+
+
+
 class salario(models.Model):
     id = models.AutoField(primary_key=True)
     id_pessoa = models.ForeignKey(
@@ -94,7 +110,7 @@ class salario(models.Model):
     valor = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,blank=True, null=True)
     horas = models.IntegerField(default=160, null=False)
     horas_limite= models.IntegerField(default=0 , null=True)
-    anexo = models.FileField(upload_to='comprovantes/', null=True, blank=True)
+    anexo = models.FileField(upload_to=caminho_comprovante, null=True, blank=True)
     
     @property
     def valor_hora(self):
