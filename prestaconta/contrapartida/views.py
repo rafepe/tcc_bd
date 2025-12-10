@@ -1816,18 +1816,9 @@ def verifica_contracheque(request):
     context['pessoas'] = pessoas
     return render(request, 'verifica_contracheque.html', context)
 
-import os
-import zipfile
-from datetime import datetime
-from django.conf import settings
-from django.http import FileResponse
-from django.shortcuts import render, redirect
-from django.contrib import messages
-
-
 def download_cc_semestre(request):
     """
-    Página que lista ou gera o ZIP de comprovantes por semestre.
+    Página que gera o ZIP de comprovantes por semestre.
     """
 
     # --- Determinar semestre padrão: SEMESTRE ANTERIOR ---
@@ -1847,15 +1838,16 @@ def download_cc_semestre(request):
     ano = int(request.GET.get("ano", ano_default))
     semestre = int(request.GET.get("semestre", semestre_default))
 
-    # --- Caminho da pasta do semestre ---
+    # --- Caminho da pasta que contém SOMENTE os PDFs do semestre ---
     pasta_semestre = os.path.join(
         settings.MEDIA_ROOT,
         "comprovantes",
+        f"{ano}-{semestre}"
     )
 
-    # Nome fixo do ZIP
+    # --- ZIP fica na pasta /comprovantes ---
     zip_filename = f"comprovantes_{ano}_{semestre}.zip"
-    zip_path = os.path.join(pasta_semestre, zip_filename)
+    zip_path = os.path.join(settings.MEDIA_ROOT, "comprovantes", zip_filename)
 
     # --- Gerar ZIP, se solicitado ---
     if request.GET.get("gerar") == "1":
@@ -1864,11 +1856,11 @@ def download_cc_semestre(request):
             messages.error(request, "Pasta do semestre não encontrada.")
             return redirect(request.path)
 
-        # remover ZIP antigo, se existir
+        # remover ZIP antigo
         if os.path.exists(zip_path):
             os.remove(zip_path)
 
-        # criar novo ZIP
+        # criar ZIP apenas da pasta AAAA-S
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(pasta_semestre):
                 for file in files:
@@ -1880,13 +1872,8 @@ def download_cc_semestre(request):
         messages.success(request, "Arquivo ZIP gerado com sucesso!")
         return redirect(f"{request.path}?ano={ano}&semestre={semestre}")
 
-    # --- Existe ZIP? ---
+    # --- Verificar se ZIP existe ---
     zip_exists = os.path.exists(zip_path)
-    zip_url = (
-        f"{settings.MEDIA_URL}comprovantes/{zip_filename}"
-        if zip_exists else None
-    )
-
 
     if zip_exists:
         timestamp = os.path.getmtime(zip_path)
@@ -1894,8 +1881,10 @@ def download_cc_semestre(request):
     else:
         zip_date = None
 
-
-
+    zip_url = (
+        f"{settings.MEDIA_URL}comprovantes/{zip_filename}"
+        if zip_exists else None
+    )
 
     # --- Renderizar página ---
     return render(request, "contrapartida/contracheques_semestre.html", {
