@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block corpo %}
+
+
+<div class="container mt-4">
+<h2>Contrapartidas Realizadas - Pesquisa</h2>
+<hr>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+    <!-- Semestre Anterior -->
+        <form method="get" class="me-2">
+            {% if semestre == 1 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
+                <input type="hidden" name="semestre" value="2">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="1">
+            {% endif %}
+            <button class="btn btn-outline-secondary">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </button>
+        </form>
+
+
+        <div class="mx-3 text-center">
+            <h4 class="mb-0 text-primary">{{ semestre }}º Semestre de {{ ano }}</h4>
+            <small class="text-muted">
+                {% if semestre == 1 %}Janeiro - Junho{% else %}Julho - Dezembro{% endif %}
+            </small>
+        </div>
+
+        <!-- Semestre Seguinte -->
+        <form method="get">
+            {% if semestre == 2 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
+                <input type="hidden" name="semestre" value="1">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="2">
+            {% endif %}
+            <button class="btn btn-outline-secondary">
+                Próximo <i class="fas fa-chevron-right"></i>
+            </button>
+        </form>
+
+
+
+    </div>
+        <!-- Botão de atualizar -->
+        <button type="button" class="btn btn-outline-info" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+</div>
+
+{% if tabela %}
+<div style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
+    <div class="table-responsive custom-scroll">
+        <table class="table table-bordered tabela-equipamentos text-center">
+            <thead class="table-secondary">
+            <tr>
+                <th rowspan="2">Projeto</th>
+                <th rowspan="2">Pessoa</th>
+                <th rowspan="2">Média Horas</th>
+                <th colspan="{{ meses|length }}">Valor da Contrapartida</th>
+            </tr>
+            <tr>
+                {% for mes in meses %}
+                    <th>{{ mes|date:"M/Y" }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+        
+            <tbody>
+            {% for row in tabela %}
+                {% for pesq in row.pesquisadores %}
+                <tr>
+                    {% if forloop.first %}
+                    <td rowspan="{{ row.pesquisadores|length }}">
+                        {{ row.projeto.nome }}&nbsp;-&nbsp;{{ row.projeto.peia }}
+                    </td>
+                    {% endif %}
+        
+                    <td>{{ pesq.nome }}</td>
+                    <td class="bg-warning fw-bold">{{ pesq.horas_media }}</td>
+        
+                    {% for valor in pesq.meses %}
+                        <td>{{ valor|floatformat:2 }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+</div>
+
+
+{% else %}
+<p class="text-muted"><em>Nenhum projeto ativo neste semestre.</em></p>
+{% endif %}
+
+</div>
+
+{% endblock %}

@@ -2176,6 +2176,276 @@ def contrapartida_realizada_geral(request):
 
     return render(request, 'contrapartida/contrapartida_realizada_geral.html', context)
 
+#######################################
+# CONTRAPARTIDA REALIZADA EQUIPAMENTO #
+#######################################
+
+def contrapartida_realizada_equipamento(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    # Lista de meses dentro do semestre
+    meses_semestre = []
+    dt = inicio_semestre
+    while dt <= fim_semestre:
+        meses_semestre.append(f"{dt.year}-{dt.month:02d}")
+        dt = datetime(dt.year + (dt.month // 12), (dt.month % 12) + 1, 1)
+
+    # Projetos ativos no semestre
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("data_fim")  # Data fim mais próxima primeiro
+
+    equipamentos_lista = list(equipamento.objects.all())
+
+    # Dados da tabela
+    dados_tabela = []
+    tabela=[]
+
+
+    todos_meses = gerar_meses_entre(inicio_semestre, fim_semestre)
+       
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "meses": []
+        }
+        valores = []
+        total = 0                
+        for data  in todos_meses:
+            colunas=[]
+            total_mes=0
+            cp_obj_list=contrapartida_equipamento.objects.filter(id_projeto=proj, ano=data.year, mes=data.month)
+
+            soma = sum( [cp.valor_cp for cp in cp_obj_list]
+            )              
+            valores.append(soma)
+            total_mes += soma
+
+            for equip in equipamentos_lista:
+                horas= sum( [cp.horas_alocadas  for cp in cp_obj_list  if cp.id_equipamento==equip ])
+                colunas.append(horas)
+            linha["meses"].append({
+                "data": data,
+                "equipamentos": colunas,
+                "total_mes": soma,
+                })
+
+        tabela.append(linha)
+
+    context = {
+    "tabela": tabela,
+    'ano': ano,
+    'semestre': semestre,
+    "meses": todos_meses,
+    "equipamentos": equipamentos_lista,
+                }
+
+    return render(request,"contrapartida/contrapartida_realizada_equipamento.html", context)
+
+def contrapartida_realizada_pesquisa(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    meses_semestre = gerar_meses_entre(inicio_semestre, fim_semestre)
+
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("nome")
+
+    tabela = []
+
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "pesquisadores": []
+        }
+
+        # Pega todos os pesquisadores do projeto
+        pessoas = contrapartida_pesquisa.objects.filter(id_projeto=proj).values_list(
+            "id_salario__id_pessoa__nome", flat=True
+        ).distinct()
+
+        for pessoa in pessoas:
+            dados_pessoa = {
+                "nome": pessoa,
+                "horas_media": 0,
+                "meses": []
+            }
+
+            horas_totais = 0
+            meses_com_horas = 0
+
+            for mes in meses_semestre:
+                cp_reg = contrapartida_pesquisa.objects.filter(
+                    id_projeto=proj,
+                    id_salario__id_pessoa__nome=pessoa,
+                    id_salario__ano=mes.year,
+                    id_salario__mes=mes.month
+                ).first()
+                
+                if cp_reg: 
+                    print(cp_reg.id_salario.id_pessoa)
+                    if cp_reg.id_salario.id_pessoa=="Guilherme Tai":
+                        print(cp_reg.valor_cp)
+
+                valor_cp = cp_reg.valor_cp if cp_reg else 0
+                horas_mes = cp_reg.horas_alocadas if cp_reg else 0
+
+                dados_pessoa["meses"].append(valor_cp)
+
+                if horas_mes:
+                    horas_totais += horas_mes
+                    meses_com_horas += 1
+
+            dados_pessoa["horas_media"] = round(horas_totais / meses_com_horas, 1) if meses_com_horas else 0
+
+            linha["pesquisadores"].append(dados_pessoa)
+
+        tabela.append(linha)
+
+    context = {
+        "ano": ano,
+        "semestre": semestre,
+        "tabela": tabela,
+        "meses": meses_semestre,
+    }
+
+    return render(request, "contrapartida/contrapartida_realizada_pesquisa.html", context)
+
+def contrapartida_realizada_rh(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    meses_semestre = gerar_meses_entre(inicio_semestre, fim_semestre)
+
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("nome")
+
+    tabela = []
+
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "pessoas": []
+        }
+
+        # Pega todos os pesquisadores do projeto
+        pessoas = contrapartida_rh.objects.filter(id_projeto=proj).values_list(
+            "id_salario__id_pessoa__nome", flat=True
+        ).distinct()
+
+        for pessoa in pessoas:
+            dados_pessoa = {
+                "nome": pessoa,
+                "horas_media": 0,
+                "meses": []
+            }
+
+            horas_totais = 0
+            meses_com_horas = 0
+
+            for mes in meses_semestre:
+                cp_reg = contrapartida_rh.objects.filter(
+                    id_projeto=proj,
+                    id_salario__id_pessoa__nome=pessoa,
+                    id_salario__ano=mes.year,
+                    id_salario__mes=mes.month
+                ).first()
+                
+                valor_cp = cp_reg.valor_cp if cp_reg else 0
+                horas_mes = cp_reg.horas_alocadas if cp_reg else 0
+
+                dados_pessoa["meses"].append(valor_cp)
+
+                if horas_mes:
+                    horas_totais += horas_mes
+                    meses_com_horas += 1
+
+            dados_pessoa["horas_media"] = round(horas_totais / meses_com_horas, 1) if meses_com_horas else 0
+
+            linha["pessoas"].append(dados_pessoa)
+
+        tabela.append(linha)
+
+    context = {
+        "ano": ano,
+        "semestre": semestre,
+        "tabela": tabela,
+        "meses": meses_semestre,
+    }
+
+    return render(request, "contrapartida/contrapartida_realizada_rh.html", context)
 
 ##############################
 # DOWNLOAD DO BANCO DE DADOS #

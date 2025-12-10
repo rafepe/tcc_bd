@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block corpo %}
+
+
+<div class="container mt-4">
+<h2>Contrapartidas Realizadas - Equipamentos</h2>
+<hr>
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+    <!-- Semestre Anterior -->
+        <form method="get" class="me-2">
+            {% if semestre == 1 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
+                <input type="hidden" name="semestre" value="2">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="1">
+            {% endif %}
+            <button class="btn btn-outline-secondary">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </button>
+        </form>
+
+
+        <div class="mx-3 text-center">
+            <h4 class="mb-0 text-primary">{{ semestre }}º Semestre de {{ ano }}</h4>
+            <small class="text-muted">
+                {% if semestre == 1 %}Janeiro - Junho{% else %}Julho - Dezembro{% endif %}
+            </small>
+        </div>
+
+        <!-- Semestre Seguinte -->
+        <form method="get">
+            {% if semestre == 2 %}
+                <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
+                <input type="hidden" name="semestre" value="1">
+            {% else %}
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="2">
+            {% endif %}
+            <button class="btn btn-outline-secondary">
+                Próximo <i class="fas fa-chevron-right"></i>
+            </button>
+        </form>
+
+
+
+    </div>
+        <!-- Botão de atualizar -->
+        <button type="button" class="btn btn-outline-info" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+</div>
+
+{% if tabela %}
+<div style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
+    <!--table style="border-collapse: collapse; min-width: max-content; width: 100%;"-->
+    <table class="table table-bordered text-center align-middle",style="border-collapse: collapse; min-width: max-content; width: 100%;">
+
+        <!-- Cabeçalho de blocos por mês -->
+        <thead>
+            <tr>
+                <th rowspan="2">Projeto</th>
+                {% for mes in meses %}
+                    <th colspan="{{ equipamentos|length|add:1 }}" class="bg-secondary text-white">
+                        {{ mes|date:"m/Y" }}
+                    </th>
+                {% endfor %}
+            </tr>       
+    
+            <!-- Cabeçalhos dos equipamentos -->
+            <tr>
+                {% for mes in meses %}
+                    {% for equip in equipamentos %}
+                        <th>{{ equip.nome }}</th>
+                    {% endfor %}
+                    <th class="fw-bold text-primary">Total</th>
+                {% endfor %}
+            </tr>
+        </thead>
+    
+        <!-- Dados -->
+        <tbody>
+            {% for row in tabela %}
+            <tr>
+                <td style="font-weight: bold; text-align:left; white-space: nowrap;">
+                    {{ row.projeto.nome }}
+                </td>
+    
+                {% for m in row.meses %}
+                    {% for valor in m.equipamentos %}
+                        <td>{{ valor|default:"-" }}</td>
+                    {% endfor %}
+                    <td class="fw-bold bg-light">{{ m.total_mes }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+{% else %}
+<p class="text-muted"><em>Nenhum projeto ativo neste semestre.</em></p>
+{% endif %}
+
+</div>
+
+{% endblock %}
