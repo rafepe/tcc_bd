@@ -60,7 +60,7 @@
         <!-- Cabeçalho de blocos por mês -->
         <thead>
             <tr>
-                <th rowspan="2">Projeto</th>
+                <th rowspan="2" style="position: sticky; background-color: #f9f9f9; left: 0; font-weight: bold; z-index: 1;">Projeto</th>
                 {% for mes in meses %}
                     <th colspan="{{ equipamentos|length|add:1 }}" class="bg-secondary text-white">
                         {{ mes|date:"m/Y" }}
@@ -83,7 +83,8 @@
         <tbody>
             {% for row in tabela %}
             <tr>
-                <td style="font-weight: bold; text-align:left; white-space: nowrap;">
+                <td style="position: sticky; background-color: #f9f9f9; left: 0; font-weight: bold; z-index: 1; text-align:left; white-space: nowrap;">
+                <!--td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;"-->
                     {{ row.projeto.nome }}
                 </td>
     
