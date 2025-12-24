@@ -7,9 +7,9 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
-from django.db import IntegrityError
-from django.db.models import Q
-from django.http import HttpResponse, FileResponse
+from django.db import IntegrityError, transaction
+from django.db.models import Q, Sum
+from django.http import HttpResponse, FileResponse, JsonResponse
 from django.shortcuts import redirect, render , get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.timezone import now
@@ -21,7 +21,8 @@ import csv
 import io
 import os
 import re
-import zipfile
+from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet,ContrapartidaSOFormSet,ContrapartidaEquipamentoFormSet
+
 
 def index(request):
     usuario = request.POST.get('username')
@@ -712,6 +713,140 @@ class contrapartida_pesquisa_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
 
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_pesquisa_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de pesquisa
+    O projeto é selecionado primeiro e os salários são filtrados por período
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaPesquisaFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaPesquisaFormSet(request.POST, projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return redirect('contrapartida_pesquisa_menu')
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaPesquisaFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_pesquisa_form_multiplo.html', context)
+
+def obter_horas_disponiveis(request):
+    """
+    API para retornar horas disponíveis de um salário (chamada via AJAX)
+    """
+    salario_id = request.GET.get('salario_id')
+    
+    if not salario_id:
+        return JsonResponse({'error': 'ID do salário não fornecido'}, status=400)
+    
+    try:
+        salario_obj = salario.objects.get(id=salario_id)
+        
+        # Calcula horas utilizadas
+        horas_usadas_pesquisa = contrapartida_pesquisa.objects.filter(
+            id_salario__id_pessoa=salario_obj.id_pessoa,
+            id_salario__mes=salario_obj.mes,
+            id_salario__ano=salario_obj.ano
+        ).aggregate(total=Sum('horas_alocadas'))['total'] or 0
+        
+        horas_usadas_rh = contrapartida_rh.objects.filter(
+            id_salario__id_pessoa=salario_obj.id_pessoa,
+            id_salario__mes=salario_obj.mes,
+            id_salario__ano=salario_obj.ano
+        ).aggregate(total=Sum('horas_alocadas'))['total'] or 0
+        
+        horas_utilizadas = horas_usadas_pesquisa + horas_usadas_rh
+        horas_totais = salario_obj.horas_limite or 0
+        horas_disponiveis = horas_totais - horas_utilizadas
+        
+        return JsonResponse({
+            'horas_totais': float(horas_totais),
+            'horas_utilizadas': float(horas_utilizadas),
+            'horas_disponiveis': float(horas_disponiveis),
+            'pessoa': str(salario_obj.id_pessoa),
+            'periodo': f"{salario_obj.mes}/{salario_obj.ano}"
+        })
+    
+    except salario.DoesNotExist:
+        return JsonResponse({'error': 'Salário não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+#####################################################################################################################
 
 ##############################
 # CONTRAPARTIDA EQUIPAMENTOS #
@@ -936,9 +1071,102 @@ class contrapartida_equipamento_delete(DeleteView):
         return reverse_lazy('contrapartida_equipamento_menu')
     
 
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_equipamento_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de equipamento
+    O projeto é selecionado primeiro
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaEquipamentoFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET           
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaEquipamentoFormSet(request.POST,projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return  redirect('contrapartida_equipamento_menu')
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaEquipamentoFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_equipamento_form_multiplo.html', context)
+
+    
+
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
+
 class contrapartida_so_menu(ListView):
     model = projeto  # Define o modelo explicitamente
     template_name = "contrapartida/contrapartida_so_menu.html"
@@ -998,6 +1226,79 @@ class contrapartida_so_menu(ListView):
             }
         
         return context
+    
+class contrapartida_so_menu_new(ListView):
+    template_name = 'contrapartida/contrapartida_so_menu_new.html'
+    model = projeto  # Define o modelo explicitamente
+    context_object_name = "projetos"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.has_perm("contrapartida.view_contrapartida_so"):
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
+            return redirect('projeto_menu')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        projeto = self.request.GET.get('nome', '').strip()
+        ano = self.request.GET.get('ano', '').strip()
+        mes = self.request.GET.get('mes', '').strip()
+        if projeto:
+            queryset = queryset.filter(nome__icontains=projeto)
+        if ano:
+            queryset = queryset.filter(ano=ano)
+        if mes:
+            queryset = queryset.filter(mes=mes)        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        linhas = []
+        
+        # Iterar sobre os projetos na queryset para acessar os campos
+        for projeto in context['projetos']:
+            # Realizando os cálculos necessários para a Contrapartida SO
+            so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
+            so_no_ptr = projeto.valor_so_ptr
+            num_meses = projeto.num_mes or 1    
+
+            cp_ue_so = so_da_ue - so_no_ptr
+            cp_mensal_so = round(cp_ue_so / num_meses, 2)
+
+            projeto.so_da_ue =  so_da_ue
+            projeto.so_no_ptr =  so_no_ptr
+            projeto.cp_ue_so =   cp_ue_so
+            projeto.cp_mensal_so = cp_mensal_so
+            projeto.num_meses =   num_meses
+
+            linhas.append({
+                "nome": projeto.nome,
+                "valor_total": projeto.valor_total,
+                "valor_financiado": projeto.valor_financiado,                
+                "so_da_ue": so_da_ue,
+                "so_no_ptr": so_no_ptr,
+                "cp_ue_so": cp_ue_so,
+                "cp_mensal_so": cp_mensal_so,
+                "num_meses": num_meses,
+                "data_inicio": projeto.data_inicio,
+                "taxa_funape": projeto.valor_funape,
+                "detalhes": projeto.id,
+            })
+         
+            
+    # Filtros para manter a consistência da UI
+        context["filtros"] = {
+        "projeto": self.request.GET.get("nome", ""),
+        "mes": self.request.GET.get("mes", ""),
+        "ano": self.request.GET.get("ano", "")
+        }
+
+        table = contrapartida_so_table(linhas)
+        RequestConfig(self.request, paginate={"per_page": 10}).configure(table)
+        context["table"] = table
+        return context
+
 
 class contrapartida_so_proj(TemplateView):
     template_name = 'contrapartida/contrapartida_so_proj.html'
@@ -1159,6 +1460,96 @@ class contrapartida_so_delete(DeleteView):
     template_name = 'contrapartida/contrapartida_so_delete.html'
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
+
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_so_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de so
+    O projeto é selecionado primeiro
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaSOFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET           
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaSOFormSet(request.POST,projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return  redirect('contrapartida_so_projeto', id_projeto=projeto_id)
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaSOFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_so_form_multiplo.html', context)
 
 
 
@@ -1392,6 +1783,96 @@ class contrapartida_rh_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('contrapartida_rh_menu')    
+
+#################################################################################################################################################
+# INSERIR MULTIPLOS
+#####################################################################################################################
+
+def contrapartida_rh_criar_multiplos(request):
+    """
+    View para criar múltiplas contrapartidas de rh
+    O projeto é selecionado primeiro e os salários são filtrados por período
+    """
+    
+    projeto_obj = None
+    projeto_id = request.POST.get('id_projeto') or request.GET.get('id_projeto')
+    
+    # Busca o projeto se foi informado
+    if projeto_id:
+        try:
+            projeto_obj = projeto.objects.get(id=projeto_id)
+        except projeto.DoesNotExist:
+            messages.error(request, 'Projeto não encontrado.')
+            projeto_obj = None
+    
+    if request.method == 'POST':
+        # Verifica se é apenas seleção de projeto ou submissão do formset
+        tem_dados_formset = any(key.startswith('form-') for key in request.POST.keys())
+        
+        if not projeto_obj:
+            messages.error(request, 'Selecione um projeto para continuar.')
+            formset = ContrapartidaRhFormSet(projeto=None)
+            
+        elif not tem_dados_formset:
+            # É apenas seleção de projeto, não valida formset
+            # Redireciona para a mesma página com projeto selecionado via GET
+            return redirect(f"{request.path}?id_projeto={projeto_id}")
+            
+        else:
+            # Tem dados do formset, processa normalmente
+            formset = ContrapartidaRhFormSet(request.POST, projeto=projeto_obj)
+            
+            if formset.is_valid():
+                try:
+                    with transaction.atomic():
+                        instancias_salvas = []
+                        
+                        for form in formset:
+                            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                                # Cria a instância
+                                instance = form.save(commit=False)
+                                instance.id_projeto = projeto_obj
+                                instance.save()
+                                instancias_salvas.append(instance)
+                        
+                        if instancias_salvas:
+                            messages.success(
+                                request,
+                                f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
+                                f'com sucesso para o projeto "{projeto_obj.nome}"!'
+                            )
+                            return redirect('contrapartida_rh_menu')
+                        else:
+                            messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
+                
+                except Exception as e:
+                    messages.error(request, f'Erro ao salvar: {str(e)}')
+            else:
+                # Exibe erros de validação
+                if formset.non_form_errors():
+                    for error in formset.non_form_errors():
+                        messages.error(request, str(error))
+                
+                for i, form_errors in enumerate(formset.errors):
+                    if form_errors:
+                        for field, errors in form_errors.items():
+                            if field != '__all__':
+                                for error in errors:
+                                    messages.error(request, f'Linha {i+1} - {field}: {error}')
+    else:
+        # GET - exibe formulário
+        formset = ContrapartidaRhFormSet(projeto=projeto_obj)
+    
+    # Lista de projetos para o select
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    
+    context = {
+        'formset': formset,
+        'projetos': lista_projetos,
+        'projeto_obj': projeto_obj,
+    }
+    
+    return render(request, 'contrapartida/contrapartida_rh_form_multiplo.html', context)
 
 
 ##############################
@@ -1695,6 +2176,276 @@ def contrapartida_realizada_geral(request):
 
     return render(request, 'contrapartida/contrapartida_realizada_geral.html', context)
 
+#######################################
+# CONTRAPARTIDA REALIZADA EQUIPAMENTO #
+#######################################
+
+def contrapartida_realizada_equipamento(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    # Lista de meses dentro do semestre
+    meses_semestre = []
+    dt = inicio_semestre
+    while dt <= fim_semestre:
+        meses_semestre.append(f"{dt.year}-{dt.month:02d}")
+        dt = datetime(dt.year + (dt.month // 12), (dt.month % 12) + 1, 1)
+
+    # Projetos ativos no semestre
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("data_fim")  # Data fim mais próxima primeiro
+
+    equipamentos_lista = list(equipamento.objects.all())
+
+    # Dados da tabela
+    dados_tabela = []
+    tabela=[]
+
+
+    todos_meses = gerar_meses_entre(inicio_semestre, fim_semestre)
+       
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "meses": []
+        }
+        valores = []
+        total = 0                
+        for data  in todos_meses:
+            colunas=[]
+            total_mes=0
+            cp_obj_list=contrapartida_equipamento.objects.filter(id_projeto=proj, ano=data.year, mes=data.month)
+
+            soma = sum( [cp.valor_cp for cp in cp_obj_list]
+            )              
+            valores.append(soma)
+            total_mes += soma
+
+            for equip in equipamentos_lista:
+                horas= sum( [cp.horas_alocadas  for cp in cp_obj_list  if cp.id_equipamento==equip ])
+                colunas.append(horas)
+            linha["meses"].append({
+                "data": data,
+                "equipamentos": colunas,
+                "total_mes": soma,
+                })
+
+        tabela.append(linha)
+
+    context = {
+    "tabela": tabela,
+    'ano': ano,
+    'semestre': semestre,
+    "meses": todos_meses,
+    "equipamentos": equipamentos_lista,
+                }
+
+    return render(request,"contrapartida/contrapartida_realizada_equipamento.html", context)
+
+def contrapartida_realizada_pesquisa(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    meses_semestre = gerar_meses_entre(inicio_semestre, fim_semestre)
+
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("nome")
+
+    tabela = []
+
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "pesquisadores": []
+        }
+
+        # Pega todos os pesquisadores do projeto
+        pessoas = contrapartida_pesquisa.objects.filter(id_projeto=proj).values_list(
+            "id_salario__id_pessoa__nome", flat=True
+        ).distinct()
+
+        for pessoa in pessoas:
+            dados_pessoa = {
+                "nome": pessoa,
+                "horas_media": 0,
+                "meses": []
+            }
+
+            horas_totais = 0
+            meses_com_horas = 0
+
+            for mes in meses_semestre:
+                cp_reg = contrapartida_pesquisa.objects.filter(
+                    id_projeto=proj,
+                    id_salario__id_pessoa__nome=pessoa,
+                    id_salario__ano=mes.year,
+                    id_salario__mes=mes.month
+                ).first()
+                
+                if cp_reg: 
+                    print(cp_reg.id_salario.id_pessoa)
+                    if cp_reg.id_salario.id_pessoa=="Guilherme Tai":
+                        print(cp_reg.valor_cp)
+
+                valor_cp = cp_reg.valor_cp if cp_reg else 0
+                horas_mes = cp_reg.horas_alocadas if cp_reg else 0
+
+                dados_pessoa["meses"].append(valor_cp)
+
+                if horas_mes:
+                    horas_totais += horas_mes
+                    meses_com_horas += 1
+
+            dados_pessoa["horas_media"] = round(horas_totais / meses_com_horas, 1) if meses_com_horas else 0
+
+            linha["pesquisadores"].append(dados_pessoa)
+
+        tabela.append(linha)
+
+    context = {
+        "ano": ano,
+        "semestre": semestre,
+        "tabela": tabela,
+        "meses": meses_semestre,
+    }
+
+    return render(request, "contrapartida/contrapartida_realizada_pesquisa.html", context)
+
+def contrapartida_realizada_rh(request):
+    hoje = datetime.today()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    ano_str = request.GET.get("ano")
+    semestre_str = request.GET.get("semestre")
+
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    ano = int(ano_str) if ano_str and ano_str.isdigit() else ano_default
+    semestre = int(semestre_str) if semestre_str and semestre_str.isdigit() else semestre_default
+
+    # Limites do semestre
+    if semestre == 1:
+        inicio_semestre = datetime(ano, 1, 1)
+        fim_semestre = datetime(ano, 6, 30)
+    else:
+        inicio_semestre = datetime(ano, 7, 1)
+        fim_semestre = datetime(ano, 12, 31)
+
+    meses_semestre = gerar_meses_entre(inicio_semestre, fim_semestre)
+
+    projetos = projeto.objects.filter(
+        data_inicio__lte=fim_semestre,
+        data_fim__gte=inicio_semestre
+    ).order_by("nome")
+
+    tabela = []
+
+    for proj in projetos:
+        linha = {
+            "projeto": proj,
+            "pessoas": []
+        }
+
+        # Pega todos os pesquisadores do projeto
+        pessoas = contrapartida_rh.objects.filter(id_projeto=proj).values_list(
+            "id_salario__id_pessoa__nome", flat=True
+        ).distinct()
+
+        for pessoa in pessoas:
+            dados_pessoa = {
+                "nome": pessoa,
+                "horas_media": 0,
+                "meses": []
+            }
+
+            horas_totais = 0
+            meses_com_horas = 0
+
+            for mes in meses_semestre:
+                cp_reg = contrapartida_rh.objects.filter(
+                    id_projeto=proj,
+                    id_salario__id_pessoa__nome=pessoa,
+                    id_salario__ano=mes.year,
+                    id_salario__mes=mes.month
+                ).first()
+                
+                valor_cp = cp_reg.valor_cp if cp_reg else 0
+                horas_mes = cp_reg.horas_alocadas if cp_reg else 0
+
+                dados_pessoa["meses"].append(valor_cp)
+
+                if horas_mes:
+                    horas_totais += horas_mes
+                    meses_com_horas += 1
+
+            dados_pessoa["horas_media"] = round(horas_totais / meses_com_horas, 1) if meses_com_horas else 0
+
+            linha["pessoas"].append(dados_pessoa)
+
+        tabela.append(linha)
+
+    context = {
+        "ano": ano,
+        "semestre": semestre,
+        "tabela": tabela,
+        "meses": meses_semestre,
+    }
+
+    return render(request, "contrapartida/contrapartida_realizada_rh.html", context)
 
 ##############################
 # DOWNLOAD DO BANCO DE DADOS #
