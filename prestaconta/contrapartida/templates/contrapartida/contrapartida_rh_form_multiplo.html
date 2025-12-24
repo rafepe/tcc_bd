@@ -1,0 +1,364 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load bootstrap5 %}
+
+{% block corpo %}
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <h1>Cadastrar Contrapartidas de Rh</h1>
+        <p class="text-muted">Selecione o projeto e adicione múltiplas contrapartidas</p>
+    </div>
+
+    <form method="POST" id="contrapartida-formset">
+        {% csrf_token %}
+        
+        <!-- SELEÇÃO DE PROJETO NO TOPO -->
+        <div class="card mb-4 bg-light">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <label for="id_projeto" class="form-label fw-bold">
+                            <i class="bi bi-folder"></i> Projeto *
+                        </label>
+                        <select name="id_projeto" 
+                                id="id_projeto" 
+                                class="form-control form-control-lg"
+                                required
+                                {% if projeto_obj %}disabled{% endif %}>
+                            <option value="">Selecione um projeto...</option>
+                            {% for proj in projetos %}
+                                <option value="{{ proj.id }}" 
+                                        {% if projeto_obj and projeto_obj.id == proj.id %}selected{% endif %}>
+                                    {{ proj.nome }} ({{ proj.data_inicio|date:"m/Y" }} - {{ proj.data_fim|date:"m/Y" }})
+
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if projeto_obj %}
+                            <input type="hidden" name="id_projeto" value="{{ projeto_obj.id }}">
+                            <small class="text-muted">
+                                Projeto selecionado. Para trocar, 
+                                <a href="{% url 'contrapartida_rh_criar_multiplos' %}">clique aqui</a>.
+                            </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        {% if not projeto_obj %}
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="btn-selecionar-projeto">
+                                <i class="bi bi-check-circle"></i> Confirmar Projeto
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if projeto_obj %}
+        <!-- FORMSET DE CONTRAPARTIDAS -->
+        {{ formset.management_form }}
+
+        <div id="formset-container">
+            {% for form in formset %}
+            <div class="formset-row card mb-3 p-3" data-form-index="{{ forloop.counter0 }}">
+                <div class="card-header bg-light mb-3">
+                    <h5 class="mb-0">Contrapartida #<span class="row-number">{{ forloop.counter }}</span></h5>
+                </div>
+                
+                <div class="row align-items-end">
+                    <!-- Salário -->
+                    <div class="col-md-4">
+                        {% bootstrap_field form.id_salario show_label=True %}
+                    </div>
+                    
+                    <!-- Função -->
+                    <div class="col-md-3">
+                        {% bootstrap_field form.funcao show_label=True %}
+                    </div>
+                    
+                    <!-- Horas Alocadas -->
+                    <div class="col-md-2">
+                        {% bootstrap_field form.horas_alocadas show_label=True %}
+                    </div>
+                    
+                    <!-- Horas Disponíveis (readonly) -->
+                    <div class="col-md-3">
+                        <label class="form-label">Horas Disponíveis</label>
+                        <input type="text" 
+                               class="form-control horas-restantes" 
+                               readonly 
+                               placeholder="Selecione salário">
+                    </div>
+                </div>
+                
+                <!-- Botão Remover -->
+                <div class="row mt-2">
+                    <div class="col-12 text-end">
+                        <button type="button" 
+                                class="btn btn-danger btn-sm remove-form">
+                            <i class="bi bi-trash"></i> Remover esta linha
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Campo DELETE escondido -->
+                <div style="display: none;">
+                    {{ form.DELETE }}
+                    {{ form.id }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-3">
+            <button type="button" class="btn btn-success btn-lg" id="add-form">
+                <i class="bi bi-plus-circle"></i> Adicionar Nova Contrapartida
+            </button>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Salvar Todas as Contrapartidas
+            </button>
+            <a href="{% url 'contrapartida_rh_menu' %}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('formset-container');
+    const addButton = document.getElementById('add-form');
+    const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+    const projetoSelect = document.getElementById('id_projeto');
+    
+    // Desabilita formset se não houver projeto selecionado
+    {% if not projeto_obj %}
+    if (container) {
+        container.style.display = 'none';
+    }
+    if (addButton) {
+        addButton.style.display = 'none';
+    }
+    {% endif %}
+    
+    // Função para renumerar as linhas
+    function renumberRows() {
+        const visibleRows = container.querySelectorAll('.formset-row:not([style*="display: none"])');
+        visibleRows.forEach((row, index) => {
+            const numberSpan = row.querySelector('.row-number');
+            if (numberSpan) {
+                numberSpan.textContent = index + 1;
+            }
+        });
+    }
+    
+    // Função para atualizar índices dos campos de um formulário
+    function updateFormIndexes(row, newIndex) {
+        row.setAttribute('data-form-index', newIndex);
+        
+        row.querySelectorAll('input, select, textarea').forEach(input => {
+            ['name', 'id'].forEach(attr => {
+                const value = input.getAttribute(attr);
+                if (value) {
+                    const newValue = value.replace(/form-\d+/, `form-${newIndex}`);
+                    input.setAttribute(attr, newValue);
+                }
+            });
+        });
+    }
+    
+    // Função para atualizar horas disponíveis quando salário muda
+    function setupSalarioListener(row) {
+        const salarioSelect = row.querySelector('.salario-select');
+        const horasRestantesInput = row.querySelector('.horas-restantes');
+        
+        if (salarioSelect && horasRestantesInput) {
+            salarioSelect.addEventListener('change', function() {
+                const salarioId = this.value;
+                
+                if (salarioId) {
+                    horasRestantesInput.value = 'Carregando...';
+                    horasRestantesInput.className = 'form-control horas-restantes text-muted';
+                    
+                    fetch(`{% url 'obter_horas_disponiveis' %}?salario_id=${salarioId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                horasRestantesInput.value = 'Erro';
+                                horasRestantesInput.className = 'form-control horas-restantes text-danger';
+                                console.error(data.error);
+                            } else {
+                                const horas = parseFloat(data.horas_disponiveis);
+                                horasRestantesInput.value = `${horas.toFixed(1)}h`;
+                                
+                                // Muda cor baseado na disponibilidade
+                                if (horas > 0) {
+                                    horasRestantesInput.className = 'form-control horas-restantes text-success fw-bold';
+                                } else {
+                                    horasRestantesInput.className = 'form-control horas-restantes text-danger fw-bold';
+                                }
+                                
+                                horasRestantesInput.title = 
+                                    `Pessoa: ${data.pessoa}\n` +
+                                    `Período: ${data.periodo}\n` +
+                                    `Total: ${data.horas_totais}h\n` +
+                                    `Utilizadas: ${data.horas_utilizadas}h\n` +
+                                    `Disponíveis: ${horas.toFixed(1)}h`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            horasRestantesInput.value = 'Erro ao carregar';
+                            horasRestantesInput.className = 'form-control horas-restantes text-danger';
+                        });
+                } else {
+                    horasRestantesInput.value = '';
+                    horasRestantesInput.title = '';
+                    horasRestantesInput.className = 'form-control horas-restantes';
+                }
+            });
+            
+            // Trigger inicial se já houver valor
+            if (salarioSelect.value) {
+                salarioSelect.dispatchEvent(new Event('change'));
+            }
+        }
+    }
+    
+    // Configurar listeners para formulários existentes
+    if (container) {
+        document.querySelectorAll('.formset-row').forEach(row => {
+            setupSalarioListener(row);
+        });
+    }
+    
+    // Adicionar nova linha
+    if (addButton) {
+        addButton.addEventListener('click', function() {
+            const formCount = parseInt(totalForms.value);
+            const allRows = container.querySelectorAll('.formset-row');
+            
+            if (allRows.length === 0) {
+                console.error('Nenhuma linha encontrada para clonar');
+                return;
+            }
+            
+            // Pega a última linha (pode estar oculta)
+            const lastRow = allRows[allRows.length - 1];
+            const newRow = lastRow.cloneNode(true);
+            
+            // Remove estilo display:none se existir
+            newRow.style.display = '';
+            
+            // Atualiza índices
+            updateFormIndexes(newRow, formCount);
+            
+            // Limpa valores
+            newRow.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name && !name.includes('TOTAL_FORMS') && !name.includes('INITIAL_FORMS')) {
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else if (input.type !== 'hidden') {
+                        input.value = '';
+                    }
+                }
+            });
+            
+            // Limpa o campo de horas restantes
+            const horasRestantes = newRow.querySelector('.horas-restantes');
+            if (horasRestantes) {
+                horasRestantes.value = '';
+                horasRestantes.title = '';
+                horasRestantes.className = 'form-control horas-restantes';
+            }
+            
+            // Adiciona ao container
+            container.appendChild(newRow);
+            
+            // Atualiza contador
+            totalForms.value = formCount + 1;
+            
+            // Configura listeners
+            setupSalarioListener(newRow);
+            
+            // Renumera
+            renumberRows();
+            updateRemoveButtons();
+        });
+    }
+    
+    // Remover linha
+    if (container) {
+        container.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.remove-form');
+            if (!removeBtn) return;
+            
+            const row = removeBtn.closest('.formset-row');
+            if (!row) return;
+            
+            const allVisibleRows = container.querySelectorAll('.formset-row:not([style*="display: none"])');
+            
+            // Não permite remover se for a única linha visível
+            if (allVisibleRows.length <= 1) {
+                alert('É necessário manter pelo menos uma contrapartida.');
+                return;
+            }
+            
+            // Remove a linha
+            row.remove();
+            
+            // Atualiza o contador
+            const currentTotal = parseInt(totalForms.value);
+            totalForms.value = currentTotal - 1;
+            
+            // Renumera as linhas restantes e seus índices
+            const remainingRows = container.querySelectorAll('.formset-row');
+            remainingRows.forEach((r, idx) => {
+                updateFormIndexes(r, idx);
+            });
+            
+            renumberRows();
+            updateRemoveButtons();
+        });
+    }
+    
+    function updateRemoveButtons() {
+        if (!container) return;
+        
+        const visibleRows = container.querySelectorAll('.formset-row:not([style*="display: none"])');
+        visibleRows.forEach((row) => {
+            const removeBtn = row.querySelector('.remove-form');
+            if (removeBtn) {
+                // Desabilita se for a única linha visível
+                removeBtn.disabled = (visibleRows.length === 1);
+            }
+        });
+    }
+    
+    // Inicializa estado dos botões
+    updateRemoveButtons();
+});
+</script>
+
+<style>
+.formset-row {
+    transition: all 0.3s ease;
+}
+
+.formset-row:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.horas-restantes.text-success {
+    background-color: #d4edda;
+}
+
+.horas-restantes.text-danger {
+    background-color: #f8d7da;
+}
+</style>
+{% endblock %}

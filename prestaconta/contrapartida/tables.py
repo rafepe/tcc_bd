@@ -1,7 +1,7 @@
 from .models import *
 from django_tables2.utils import A
 from django.db.models import Func, IntegerField, F
-from django.urls import reverse
+from django.urls import reverse,resolve
 from django.utils.dateformat import DateFormat
 from django.utils.html import format_html
 import django_tables2 as tables
@@ -16,14 +16,14 @@ class projeto_table(tables.Table):
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
     valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
-    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+    #excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
         model = projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
-        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
+        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total")
+        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total")
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
@@ -267,6 +267,29 @@ class contrapartida_equipamento_table(tables.Table):
 #         attrs = {"class": "table thead-light table-striped table-hover"}
 #         template_name = "django_tables2/bootstrap4.html"
 #         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
+
+class contrapartida_so_table(tables.Table):
+    nome = tables.LinkColumn("contrapartida_so_projeto", args=[A("detalhes")],verbose_name="Projeto")
+    valor_total = tables.Column(verbose_name="Valor Total")
+    valor_financiado = tables.Column(verbose_name="Valor Financiado")
+    so_da_ue = tables.Column(verbose_name="SO da UE Permitido")
+    so_no_ptr = tables.Column(verbose_name="SO no PTR")
+    cp_ue_so = tables.Column(verbose_name="Contrapartida UE de SO")
+    cp_mensal_so = tables.Column(verbose_name="Contrapartida Mensal de SO")
+    num_meses = tables.Column(verbose_name="Número de Meses")
+    data_inicio = tables.DateColumn(verbose_name="Data de Início", format="d/m/Y")
+    taxa_funape = tables.Column(verbose_name="Taxa Funape")
+    detalhes = tables.Column(empty_values=(), orderable=False, verbose_name="Detalhar")
+
+
+    def detalhes(self, record):
+            url = reverse("contrapartida_so_projeto", args=[record["detalhes"]])
+            return format_html('<a href="{}" class="btn btn-sm btn-primary">Detalhar</a>', url)
+
+    class Meta:
+        attrs = {"class": "table table-striped table-hover"}
+        template_name = "django_tables2/bootstrap4.html"
+        per_page = 10
 
 class contrapartida_so_proj_table(tables.Table):
     ano = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano de Referência")

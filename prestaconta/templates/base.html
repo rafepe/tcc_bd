@@ -3,132 +3,91 @@
 {% load bootstrap5 %}
 {% bootstrap_css %}
 {% bootstrap_javascript %}
-{% bootstrap_messages %}
 <html lang="pt-br">
 
 <head>
-    <title>
-        {% block titulo %}{% endblock %}
-    </title>
+    <title>{% block titulo %}{% endblock %}</title>
     <link rel="icon" href="https://ceia.ufg.br/favicon.ico" type="image/x-icon" />
+    <style>
+        body {
+            background: #f8f9fa;
+        }
+        .sidebar {
+            width: 240px;
+            min-height: 100vh;
+            background: #0d6efd;
+            color: #fff;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px 10px;
+        }
+        .sidebar a {
+            color: #fff;
+            display: block;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .sidebar a:hover,
+        .sidebar a.active {
+            background-color: #0b5ed7;
+        }
+        .content-area {
+            margin-left: 260px;
+            padding: 20px;
+        }
+    </style>
 </head>
 
 <body>
 
-    <div class="d-flex justify-content-center align-items-start">
-        <div class="text-center mx-2">
-            <a href="{% url 'projeto_menu' %}">
-                <p>Projetos</p>
-            </a>
-        </div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h5 class="text-center mb-4">Menu</h5>
 
-        <div class="text-center mx-2">
-            <a href="{% url 'equipamento_menu' %}">
-                <p>Equipamentos</p>
-            </a>
-        </div>
-
-
-        <div class="text-center mx-2">
-            <a href="{% url 'pessoa_menu' %}">
-                <p>Pessoas</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'salario_menu' %}">
-                <p>Salários</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'upload_contracheque' %}">
-                <p>Contracheques</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'verifica_contracheque' %}">
-                <p>Verifica Contracheque</p>
-            </a>
-        </div>
-        
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_pesquisa_menu' %}">
-                <p>Contrapartida Pesquisa</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_rh_menu' %}">
-                <p>Contrapartida Rh</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_equipamento_menu' %}">
-                <p>Contrapartida Equipamentos</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_so_menu' %}">
-                <p>Contrapartida SO</p>
-            </a>
-        </div>
-
-        <!--div class="text-center mx-2">
-            <a href="{% url 'projetos_semestre' %}">
-                <p>Projetos Semestre</p>
-            </a>
-        </div-->
-
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_realizada_list' %}">
-                <p>Contrapartida Realizada</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'contrapartida_realizada_geral' %}">
-                <p>Contrapartida Geral</p>
-            </a>
-        </div>
-        
-        <div class="text-center mx-2">
-            <a href="{% url 'importar_csv' %}">
-                <p>Importar CSV</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'declaracoes_menu' %}">
-                <p>Gerar Declarações</p>
-            </a>
-        </div>
-
-        <div class="text-center mx-2">
-            <a href="{% url 'logout' %}">
-                <p>Logout</p>
-            </a>
-        </div>
-
-
+        <a href="{% url 'projeto_menu' %}">Projetos</a>
+        <a href="{% url 'equipamento_menu' %}">Equipamentos</a>
+        <a href="{% url 'pessoa_menu' %}">Pessoas</a>
+        <a href="{% url 'salario_menu' %}">Salários</a>
+        <a href="{% url 'upload_contracheque' %}">Contracheques</a>
+        <a href="{% url 'verifica_contracheque' %}">Verifica Contracheque</a>
+        <a href="{% url 'contrapartida_pesquisa_menu' %}">Contrapartida Pesquisa</a>
+        <a href="{% url 'contrapartida_rh_menu' %}">Contrapartida RH</a>
+        <a href="{% url 'contrapartida_equipamento_menu' %}">Contrapartida Equipamentos</a>
+        <a href="{% url 'contrapartida_so_menu_new' %}">Contrapartida SO</a>
+        <a href="{% url 'contrapartida_realizada_equipamento' %}">Tela Equipamento</a>
+        <a href="{% url 'contrapartida_realizada_pesquisa' %}">Tela Pesquisa</a>
+        <a href="{% url 'contrapartida_realizada_rh' %}">Tela RH</a>
+        <a href="{% url 'contrapartida_realizada_geral' %}">Contrapartida Geral</a>
+        <a href="{% url 'importar_csv' %}">Importar CSV</a>
+        <a href="{% url 'declaracoes_menu' %}">Gerar Declarações</a>
+        <a href="{% url 'logout' %}">Logout</a>
     </div>
 
-<body>
+    <!-- Area principal -->
+    <div class="content-area">
+        <div class="container mt-3 pt-2">
+            {% if messages %}
+            <div style="position:relative; z-index:1050;">
+                {% bootstrap_messages %}
+            </div>
+            {% endif %}   
+        {% block corpo %}{% endblock %}
+        </div>
+        <center class="mt-5">
+            <hr>
+            <h3>{% block rodape %}{% endblock %}</h3>
+            <h4>
+                <p>Última atualização: {% now "d/m/Y H:i:s" %}</p>
+            </h4>
+        </center>
+    </div>
 
-    {% block corpo %}{% endblock %}
+
 
 </body>
-<center>
-    <hr>
-    <h3>{% block rodape %}{% endblock %}</h3>
-    <h4>
-        <p>Última atualização: {% now "d/m/Y H:i:s" %}</p>
-        
-
-    </h4>
-</center>
-
 </html>

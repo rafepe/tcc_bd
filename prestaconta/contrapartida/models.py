@@ -142,7 +142,7 @@ def delete_anexo_file(sender, instance, **kwargs):
 class contrapartida_pesquisa(models.Model):
     id_projeto = models.ForeignKey('Projeto', on_delete=models.CASCADE, verbose_name='Projeto')
     id_salario = models.ForeignKey('salario', on_delete=models.CASCADE, verbose_name='Salário')
-    horas_alocadas = models.DecimalField(max_digits=6, decimal_places=1, default=0.0, verbose_name='Horas Alocadas',blank=True)
+    horas_alocadas = models.DecimalField(max_digits=9, decimal_places=3, default=0.0, verbose_name='Horas Alocadas',blank=True)
     funcao = models.CharField(max_length=100, default="Pesquisador",null=True, verbose_name="Função")
     
     @property
