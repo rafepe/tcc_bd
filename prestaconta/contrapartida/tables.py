@@ -16,14 +16,14 @@ class projeto_table(tables.Table):
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
     valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
-    excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
+    #excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
         model = projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
-        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total", "excluir")
+        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total")
+        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total")
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
