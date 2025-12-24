@@ -2567,3 +2567,82 @@ def verifica_contracheque(request):
     context['pessoas'] = pessoas
     return render(request, 'verifica_contracheque.html', context)
 
+def download_cc_semestre(request):
+    """
+    Página que gera o ZIP de comprovantes por semestre.
+    """
+
+    # --- Determinar semestre padrão: SEMESTRE ANTERIOR ---
+    hoje = datetime.now()
+    ano_atual = hoje.year
+    semestre_atual = 1 if hoje.month <= 6 else 2
+
+    # semestre anterior ao atual
+    if semestre_atual == 1:
+        semestre_default = 2
+        ano_default = ano_atual - 1
+    else:
+        semestre_default = 1
+        ano_default = ano_atual
+
+    # --- Obter semestre da URL ou usar padrão ---
+    ano = int(request.GET.get("ano", ano_default))
+    semestre = int(request.GET.get("semestre", semestre_default))
+
+    # --- Caminho da pasta que contém SOMENTE os PDFs do semestre ---
+    pasta_semestre = os.path.join(
+        settings.MEDIA_ROOT,
+        "comprovantes",
+        f"{ano}-{semestre}"
+    )
+
+    # --- ZIP fica na pasta /comprovantes ---
+    zip_filename = f"comprovantes_{ano}_{semestre}.zip"
+    zip_path = os.path.join(settings.MEDIA_ROOT, "comprovantes", zip_filename)
+
+    # --- Gerar ZIP, se solicitado ---
+    if request.GET.get("gerar") == "1":
+
+        if not os.path.exists(pasta_semestre):
+            messages.error(request, "Pasta do semestre não encontrada.")
+            return redirect(request.path)
+
+        # remover ZIP antigo
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+
+        # criar ZIP apenas da pasta AAAA-S
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(pasta_semestre):
+                for file in files:
+                    if file.endswith(".pdf"):
+                        full_path = os.path.join(root, file)
+                        arcname = os.path.relpath(full_path, pasta_semestre)
+                        zipf.write(full_path, arcname)
+
+        messages.success(request, "Arquivo ZIP gerado com sucesso!")
+        return redirect(f"{request.path}?ano={ano}&semestre={semestre}")
+
+    # --- Verificar se ZIP existe ---
+    zip_exists = os.path.exists(zip_path)
+
+    if zip_exists:
+        timestamp = os.path.getmtime(zip_path)
+        zip_date = datetime.fromtimestamp(timestamp)
+    else:
+        zip_date = None
+
+    zip_url = (
+        f"{settings.MEDIA_URL}comprovantes/{zip_filename}"
+        if zip_exists else None
+    )
+
+    # --- Renderizar página ---
+    return render(request, "contrapartida/contracheques_semestre.html", {
+        "ano": ano,
+        "semestre": semestre,
+        "zip_exists": zip_exists,
+        "zip_url": zip_url,
+        "zip_date": zip_date,
+    })
+
