@@ -88,5 +88,7 @@ urlpatterns = [
     path('verifica_contracheque/', verifica_contracheque, name='verifica_contracheque'),
     path('declaracao/', include('declaracao.urls')),
 
+    path("download_cc_semestre/", download_cc_semestre, name="download_cc_semestre"),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

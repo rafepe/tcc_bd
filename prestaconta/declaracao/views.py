@@ -585,6 +585,23 @@ def gerar_docx_rh(request, declaracao_id):
     doc.save(response)
     return response
 
+# instale no seu ambiente:
+# pip install num2words
+from decimal import Decimal, ROUND_HALF_UP
+
+try:
+    from num2words import num2words
+except ImportError:
+    raise ImportError("Instale a dependência: pip install num2words")
+
+def valor_por_extenso(valor):
+    """
+    Recebe float/Decimal e devolve, em pt-BR, ex.: 'doze reais e trinta e quatro centavos'
+    """
+    v = Decimal(valor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return num2words(v, to='currency', lang='pt_BR')
+
+
 def gerar_docx_so(request, declaracao_id):
     declaracao = get_object_or_404(declaracao_contrapartida_so, id=declaracao_id)
 
@@ -592,26 +609,9 @@ def gerar_docx_so(request, declaracao_id):
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
     projeto_nome = declaracao.projeto
-    total_valor_cp = declaracao.total or 0.0
+    codigo_peia = declaracao.codigo or ''
 
-    itens_qs = None
-    colunas_itens = None
-    try:
-        if hasattr(declaracao, 'itens'):
-            itens_qs = declaracao.itens.all()
-            sample = itens_qs.first()
-            if sample:
-                colunas_itens = []
-                if hasattr(sample, 'descricao'): colunas_itens.append(('Descrição', 'descricao'))
-                if hasattr(sample, 'quantidade'): colunas_itens.append(('Qtd.', 'quantidade'))
-                if hasattr(sample, 'valor_unitario'): colunas_itens.append(('Valor Unitário', 'valor_unitario'))
-                if hasattr(sample, 'valor_cp'): colunas_itens.append(('Valor CP', 'valor_cp'))
-                if not colunas_itens:
-                    colunas_itens = [('Item', 'descricao' if hasattr(sample, 'descricao') else 'id'),
-                                     ('Valor CP', 'valor_cp' if hasattr(sample, 'valor_cp') else None)]
-    except Exception:
-        itens_qs = None
-        colunas_itens = None
+    total_valor_cp = declaracao.total or 0.0
 
     caminho_base_preferido = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_so.docx')
     caminho_fallback = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
@@ -626,7 +626,9 @@ def gerar_docx_so(request, declaracao_id):
                 .replace('{{mes_selecionado}}', mes_nome)
                 .replace('{{ano_selecionado}}', str(ano))
                 .replace('{{nome_projeto}}', projeto_nome)
-                .replace('{{valor_total}}', br_currency(total_valor_cp)))
+                .replace('{{codigo_peia}}', codigo_peia)
+                .replace('{{valor_total}}', br_currency(total_valor_cp))
+                .replace('{{valor_extenso}}', valor_por_extenso(total_valor_cp)))
 
     for p in doc.paragraphs:
         if p.text:
@@ -640,41 +642,7 @@ def gerar_docx_so(request, declaracao_id):
                         p.text = apply_replacements_to_text(p.text)
 
     marcador_encontrado = False
-    if itens_qs is not None and colunas_itens:
-        for paragraph in doc.paragraphs:
-            if '{{tabela_itens}}' in paragraph.text:
-                marcador_encontrado = True
-                paragraph.text = paragraph.text.replace('{{tabela_itens}}', '')
-
-                table = doc.add_table(rows=1, cols=len(colunas_itens))
-                table.style = 'Table Grid'
-
-                hdr_cells = table.rows[0].cells
-                for i, (rotulo, _) in enumerate(colunas_itens):
-                    hdr_cells[i].text = rotulo
-
-                for item in itens_qs:
-                    row = table.add_row().cells
-                    for i, (_, attr) in enumerate(colunas_itens):
-                        if attr is None:
-                            row[i].text = ''
-                        else:
-                            val = getattr(item, attr, '')
-                            if 'valor' in (attr or '').lower():
-                                try:
-                                    row[i].text = br_currency(val)
-                                except Exception:
-                                    row[i].text = str(val)
-                            else:
-                                row[i].text = str(val)
-                break
-
-    if not marcador_encontrado:
-        for p in doc.paragraphs:
-            if '{{tabela_itens}}' in p.text:
-                p.text = p.text.replace('{{tabela_itens}}', '')
-                break
-
+    
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
@@ -713,7 +681,7 @@ def _fmt_moeda_br_decimal(v: Decimal | float | int | None) -> str:
     return f"R$ {s}"
 
 def _nota_equipamento_por_nome(nome_equip: str) -> str | None:
-    eq = Equipamento.objects.filter(nome__iexact=nome_equip).first()
+    eq = equipamento.objects.filter(nome__iexact=nome_equip).first()
     if not eq:
         return None
     aquis = eq.valor_aquisicao or Decimal("0")
