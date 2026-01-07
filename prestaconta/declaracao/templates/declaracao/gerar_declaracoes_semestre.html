@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block corpo %}
+<div class="container mt-4">
+    <h2>Declarações por Semestre</h2>
+    <hr>
+
+    <!-- Navegação entre semestres -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="d-flex align-items-center">
+            <!-- Semestre anterior -->
+            <form method="get" class="me-2">
+                {% if semestre == 1 %}
+                    <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
+                    <input type="hidden" name="semestre" value="2">
+                {% else %}
+                    <input type="hidden" name="ano" value="{{ ano }}">
+                    <input type="hidden" name="semestre" value="1">
+                {% endif %}
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+            </form>
+
+            <!-- Texto do semestre atual -->
+            <div class="mx-3">
+                <h4 class="mb-0 text-primary">{{ semestre }}º Semestre de {{ ano }}</h4>
+                <small class="text-muted">
+                    {% if semestre == 1 %}Janeiro - Junho{% else %}Julho - Dezembro{% endif %}
+                </small>
+            </div>
+
+            <!-- Semestre seguinte -->
+            <form method="get" class="ms-2">
+                {% if semestre == 2 %}
+                    <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
+                    <input type="hidden" name="semestre" value="1">
+                {% else %}
+                    <input type="hidden" name="ano" value="{{ ano }}">
+                    <input type="hidden" name="semestre" value="2">
+                {% endif %}
+                <button type="submit" class="btn btn-outline-secondary">
+                    Próximo <i class="fas fa-chevron-right"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Botão de atualizar -->
+        <button type="button" class="btn btn-outline-info" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+    </div>
+
+    <!-- Resumo do semestre -->
+    <div class="card mb-3">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <p class="mb-1">
+                    <strong>Projetos ativos no semestre:</strong> {{ projetos_qtd }}
+                </p>
+                <p class="mb-1">
+                    <strong>Status do semestre:</strong>
+                    {% if semestre_completo %}
+                        <span class="badge bg-success">Completo</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Incompleto</span>
+                    {% endif %}
+                </p>
+                <p class="mb-0">
+                    <strong>Última geração:</strong>
+                    {% if ultima_data %}
+                        {{ ultima_data }}
+                    {% else %}
+                        <span class="text-muted">Ainda não gerado</span>
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="text-end">
+                <!-- Gerar declarações pendentes -->
+                <a href="?ano={{ ano }}&semestre={{ semestre }}&gerar=1"
+                   class="btn btn-success mb-2">
+                    <i class="fas fa-cogs"></i> Gerar declarações pendentes
+                </a>
+                <br>
+                <!-- Gerar ou baixar ZIP -->
+                {% if zip_exists %}
+                    <a href="/media/declaracoes/{{ ano }}-{{ semestre }}/{{ zip_filename }}"
+                       class="btn btn-primary">
+                        <i class="fas fa-file-archive"></i> Baixar ZIP
+                    </a>
+                {% else %}
+                    <a href="?ano={{ ano }}&semestre={{ semestre }}&zip=1"
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-file-archive"></i> Gerar ZIP com declarações existentes
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        O ZIP será gerado <strong>apenas com as declarações DOCX que já existem no disco</strong>.
+        Se algum mês/projeto ainda não possui declaração ou DOCX, ele será simplesmente ignorado no arquivo compactado.
+    </div>
+</div>
+{% endblock %}
