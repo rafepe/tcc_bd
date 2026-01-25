@@ -278,14 +278,14 @@ class contrapartida_so_table(tables.Table):
     cp_mensal_so = tables.Column(verbose_name="Contrapartida Mensal de SO")
     num_meses = tables.Column(verbose_name="Número de Meses")
     data_inicio = tables.DateColumn(verbose_name="Data de Início", format="d/m/Y")
+    data_fim = tables.DateColumn(verbose_name="Data de Fim", format="d/m/Y")
     taxa_funape = tables.Column(verbose_name="Taxa Funape")
-    detalhes = tables.Column(empty_values=(), orderable=False, verbose_name="Detalhar")
+    detalhes = tables.Column(empty_values=(), orderable=False, verbose_name="Por Projeto")
 
-
-    def detalhes(self, record):
+    def render_detalhes(self, record):
             url = reverse("contrapartida_so_projeto", args=[record["detalhes"]])
             return format_html('<a href="{}" class="btn btn-sm btn-primary">Detalhar</a>', url)
-
+    
     class Meta:
         attrs = {"class": "table table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"

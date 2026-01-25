@@ -8,18 +8,28 @@
 <html>
 
 <head>
-    <title>Excluir Pessoa</title>
+    <title>Excluir Salario</title>
 </head>
 {% block corpo %}
 <body>
     <div class="container">
         <div class="col-md-12 col-sm-12 col-xs-12">
             <center>
-
+                <h3 class= mb-4">Excluir Salário</h3>
+                <br>
+                   <div >
+                       <strong>Pessoa:</strong> {{ object.id_pessoa.nome }}
+                       <strong>Referência:</strong> {{ object.ano }}-{{ object.mes|add:"00"|slice:":2" }}
+                       <strong>Horas:</strong>  {{ object.horas|floatformat:2 }}
+                       <strong>Valor:</strong> R$ {{ object.valor|floatformat:2 }}
+       
+                   </div>
+                <br>
                 <form method="POST">
                     {% csrf_token %}
-                    <p>{{object.nome}}</p>
                     <button type="submit" class="btn btn-danger">Sim, exclua!</button> &nbsp;
+                    <a href="{% url 'salario_menu' %}" class="btn btn-secondary">Cancelar</a>
+
                 </form>
             </center>
         </div>

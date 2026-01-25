@@ -15,11 +15,20 @@
     <div class="container">
         <div class="col-md-12 col-sm-12 col-xs-12">
             <center>
-
+                <h3 class= mb-4">Excluir Equipamento</h3>
+                <br>
+                   <div >
+                       <strong>Equipamento:</strong> {{ object.nome }}
+                       <strong>Horas Mensais:</strong>  {{ object.horas_mensais|floatformat:2 }}
+                       <strong>Valor Aquisição:</strong> R$ {{ object.valor_aquisicao|floatformat:2 }}
+       
+                   </div>
+                <br>
                 <form method="POST">
                     {% csrf_token %}
-                    <p>{{object.nome}}</p>
+
                     <button type="submit" class="btn btn-danger">Sim, exclua!</button> &nbsp;
+                    <a href="{% url 'equipamento_menu' %}" class="btn btn-secondary">Cancelar</a>
                 </form>
             </center>
         </div>
