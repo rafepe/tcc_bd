@@ -15,11 +15,21 @@
     <div class="container">
         <div class="col-md-12 col-sm-12 col-xs-12">
             <center>
-
+                <h3 class= mb-4">Excluir Contrapartida Rh</h3>
+                <br>
+                   <div >
+                       <strong>Projeto:</strong> {{ object.id_projeto.nome }}
+                       <strong>Salario:</strong> {{ object.id_salario }}
+                       <strong>Horas Alocadas:</strong>  {{ object.horas_alocadas|floatformat:2 }}
+                       <strong>Valor:</strong> R$ {{ object.valor_cp|floatformat:2 }}
+       
+                   </div>
+                <br>
                 <form method="POST">
                     {% csrf_token %}
                     <p>{{object.nome}}</p>
                     <button type="submit" class="btn btn-danger">Sim, exclua!</button> &nbsp;
+                    <a href="{% url 'contrapartida_rh_menu' %}" class="btn btn-secondary">Cancelar</a>
                 </form>
             </center>
         </div>

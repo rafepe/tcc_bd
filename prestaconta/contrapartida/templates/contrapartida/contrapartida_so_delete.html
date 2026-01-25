@@ -22,7 +22,7 @@
                 <strong>Valor:</strong> R$ {{ object.valor|floatformat:2 }}
 
             </div>
-<br>
+         <br>
             <form method="POST">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Sim, excluir</button> &nbsp;

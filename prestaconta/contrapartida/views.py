@@ -1223,8 +1223,7 @@ class contrapartida_so_menu(ListView):
             "projeto": self.request.GET.get("nome", ""),
             "mes": self.request.GET.get("mes", ""),
             "ano": self.request.GET.get("ano", "")
-            }
-        
+            }        
         return context
     
 class contrapartida_so_menu_new(ListView):
@@ -1242,15 +1241,16 @@ class contrapartida_so_menu_new(ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         projeto = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes', '').strip()
+        ano_fim = self.request.GET.get('ano', '').strip()
+        mes_fim = self.request.GET.get('mes', '').strip()
         if projeto:
             queryset = queryset.filter(nome__icontains=projeto)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)        
+        if ano_fim:
+            queryset = queryset.filter(data_fim__year=int(ano_fim))
+        if mes_fim:
+            queryset = queryset.filter(data_fim__month=int(mes_fim))        
         return queryset
+    
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1282,10 +1282,10 @@ class contrapartida_so_menu_new(ListView):
                 "cp_mensal_so": cp_mensal_so,
                 "num_meses": num_meses,
                 "data_inicio": projeto.data_inicio,
+                "data_fim": projeto.data_fim,
                 "taxa_funape": projeto.valor_funape,
                 "detalhes": projeto.id,
-            })
-         
+            })         
             
     # Filtros para manter a consistência da UI
         context["filtros"] = {
@@ -1518,7 +1518,7 @@ def contrapartida_so_criar_multiplos(request):
                                 f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
                                 f'com sucesso para o projeto "{projeto_obj.nome}"!'
                             )
-                            return  redirect('contrapartida_so_projeto', id_projeto=projeto_id)
+                            return  redirect('contrapartida_so_menu_new')
                         else:
                             messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
                 
@@ -2216,7 +2216,7 @@ def contrapartida_realizada_equipamento(request):
     # Projetos ativos no semestre
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
-        data_fim__gte=inicio_semestre
+        data_fim__gt=inicio_semestre
     ).order_by("data_fim")  # Data fim mais próxima primeiro
 
     equipamentos_lista = list(equipamento.objects.all())
@@ -2296,7 +2296,7 @@ def contrapartida_realizada_pesquisa(request):
 
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
-        data_fim__gte=inicio_semestre
+        data_fim__gt=inicio_semestre
     ).order_by("nome")
 
     tabela = []
@@ -2330,11 +2330,6 @@ def contrapartida_realizada_pesquisa(request):
                     id_salario__mes=mes.month
                 ).first()
                 
-                if cp_reg: 
-                    print(cp_reg.id_salario.id_pessoa)
-                    if cp_reg.id_salario.id_pessoa=="Guilherme Tai":
-                        print(cp_reg.valor_cp)
-
                 valor_cp = cp_reg.valor_cp if cp_reg else 0
                 horas_mes = cp_reg.horas_alocadas if cp_reg else 0
 
@@ -2389,7 +2384,7 @@ def contrapartida_realizada_rh(request):
 
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
-        data_fim__gte=inicio_semestre
+        data_fim__gt=inicio_semestre
     ).order_by("nome")
 
     tabela = []
