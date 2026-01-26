@@ -1274,6 +1274,7 @@ class contrapartida_so_menu_new(ListView):
 
             linhas.append({
                 "nome": projeto.nome,
+                "peia": projeto.peia,
                 "valor_total": projeto.valor_total,
                 "valor_financiado": projeto.valor_financiado,                
                 "so_da_ue": so_da_ue,
@@ -2217,7 +2218,7 @@ def contrapartida_realizada_equipamento(request):
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
         data_fim__gt=inicio_semestre
-    ).order_by("data_fim")  # Data fim mais próxima primeiro
+    ).order_by("peia")  # Data fim mais próxima primeiro
 
     equipamentos_lista = list(equipamento.objects.all())
 
@@ -2230,7 +2231,7 @@ def contrapartida_realizada_equipamento(request):
        
     for proj in projetos:
         linha = {
-            "projeto": proj,
+            "projeto": proj.peia+' - '+proj.nome,
             "meses": []
         }
         valores = []
@@ -2297,13 +2298,13 @@ def contrapartida_realizada_pesquisa(request):
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
         data_fim__gt=inicio_semestre
-    ).order_by("nome")
+    ).order_by("peia")
 
     tabela = []
 
     for proj in projetos:
         linha = {
-            "projeto": proj,
+            "projeto": proj.peia+' - '+proj.nome,
             "pesquisadores": []
         }
 
@@ -2385,13 +2386,13 @@ def contrapartida_realizada_rh(request):
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
         data_fim__gt=inicio_semestre
-    ).order_by("nome")
+    ).order_by("peia")
 
     tabela = []
 
     for proj in projetos:
         linha = {
-            "projeto": proj,
+            "projeto": proj.peia+' - '+proj.nome,
             "pessoas": []
         }
 
