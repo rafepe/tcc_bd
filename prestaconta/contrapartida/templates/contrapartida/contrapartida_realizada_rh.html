@@ -75,8 +75,8 @@
                 {% for pesq in row.pessoas %}
                 <tr>
                     {% if forloop.first %}
-                    <td rowspan="{{ row.pessoas|length }}">
-                        {{ row.projeto.nome }}&nbsp;-&nbsp;{{ row.projeto.peia }}
+                    <td rowspan="{{ row.pessoas|length }}" style="font-weight: bold">
+                        {{ row.projeto}}
                     </td>
                     {% endif %}
         
@@ -84,7 +84,7 @@
                     <td class="bg-warning fw-bold">{{ pesq.horas_media }}</td>
         
                     {% for valor in pesq.meses %}
-                        <td>{{ valor|floatformat:2 }}</td>
+                        <td>R$ {{ valor|floatformat:2 }}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}

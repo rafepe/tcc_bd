@@ -153,7 +153,7 @@ class contrapartida_pesquisa_table(tables.Table):
     valor_cp = tables.Column( verbose_name="Valor Contrapartida", orderable=False)
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
     funcao = tables.Column(empty_values=(), verbose_name="Função")
-
+    
     def render_valor_hora(self, record):
         formatted_value = locale.currency(record.id_salario.valor_hora, grouping=True)
         return format_html('<span>{}</span>', formatted_value)
@@ -171,7 +171,7 @@ class contrapartida_pesquisa_table(tables.Table):
         model = contrapartida_pesquisa
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'id_salario','funcao', 'horas_alocadas','valor_hora','valor_cp')
+        fields = ('id_projeto__peia','id_projeto', 'id_salario','funcao', 'horas_alocadas','valor_hora','valor_cp')
 
 
 
@@ -212,63 +212,11 @@ class contrapartida_equipamento_table(tables.Table):
         model = contrapartida_equipamento
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
-        sequence = ('id_projeto', 'ano', 'mes', 'id_equipamento','descricao','horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
-
-## inutil
-# class contrapartida_so_table(tables.Table):
-#     id_projeto = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Projeto")
-#     so_da_ue  = tables.Column(empty_values=(), verbose_name="SO da Ue Permitido", orderable=False)
-#     so_no_ptr=  tables.Column(empty_values=(), verbose_name="SO no PTR", orderable=False)
-#     cp_ue_so = tables.Column(empty_values=(), verbose_name="Contrapartida UE de S.O", orderable=False)
-#     cp_mensal_so = tables.Column(empty_values=(), verbose_name="Contrapartida Mensal de SO", orderable=False)
-#     num_meses=tables.Column(empty_values=(), verbose_name="Numero de Meses", orderable=False)
-#     dt_inicio=tables.Column(empty_values=(), verbose_name="Data Inicio", orderable=False)
-#     ano_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Ano")
-#     mes_alocacao = tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Mês")
-#     valor =tables.LinkColumn("contrapartida_so_update", args=[A("pk")], verbose_name="Valor Alocado")
-    
-
-#     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
-    
-
-#     def render_so_da_ue(self, record):
-#         value=round(record.id_projeto.valor_total * record.id_projeto.tx_adm_ue,2)-record.valor_funape
-#         formatted_value = locale.currency(value, grouping=True)
-#         return format_html('<span>{}</span>', formatted_value) 
-    
-#     def render_so_no_ptr(self, record):
-#         value=record.id_projeto_valor_so_ptr
-#         formatted_value = locale.currency(value, grouping=True)
-#         return format_html('<span>{}</span>', formatted_value) 
-    
-#     def render_num_meses(self, record):
-#         data_inicio = record.id_projeto.data_inicio
-#         data_fim = record.id_projeto.data_fim
-#         num_meses = data_fim.month - data_inicio.month + ((data_fim.year - data_inicio.year) * 12)
-#         return num_meses
-    
-#     def render_cp_ue_so(self, record):
-#         value = record.so_da_ue - record.so_no_ptr
-#         formatted_value = locale.currency(value, grouping=True)
-#         return format_html('<span>{}</span>', formatted_value) 
-     
-#     def render_cp_mensal_so(self, record):
-#         value = round(record.cp_ue_so/record.num_meses,2)
-#         formatted_value = locale.currency(value, grouping=True)
-#         return format_html('<span>{}</span>', formatted_value) 
-
-#     # def render_excluir(self, record):
-#     #     url = reverse("contrapartida_so_delete", args=[record.pk])
-#     #     return format_html('<a href="{}" class="btn btn-danger btn-sm">Excluir</a>', url)
-    
-#     class Meta:
-#         model = contrapartida_so_projeto
-#         attrs = {"class": "table thead-light table-striped table-hover"}
-#         template_name = "django_tables2/bootstrap4.html"
-#         fields = ('id_projeto', 'cp_ue_so', 'cp_mensal_so','valor','mes_alocacao','ano_alocacao')
+        fields = ('id_projeto__peia','id_projeto', 'ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
+        sequence = ('id_projeto__peia','id_projeto', 'ano', 'mes', 'id_equipamento','descricao','horas_alocadas', 'valor_hora', 'valor_cp','valor_manual', 'excluir')
 
 class contrapartida_so_table(tables.Table):
+    peia=tables.Column(empty_values=(),verbose_name="PEIA")
     nome = tables.LinkColumn("contrapartida_so_projeto", args=[A("detalhes")],verbose_name="Projeto")
     valor_total = tables.Column(verbose_name="Valor Total")
     valor_financiado = tables.Column(verbose_name="Valor Financiado")
@@ -281,7 +229,11 @@ class contrapartida_so_table(tables.Table):
     data_fim = tables.DateColumn(verbose_name="Data de Fim", format="d/m/Y")
     taxa_funape = tables.Column(verbose_name="Taxa Funape")
     detalhes = tables.Column(empty_values=(), orderable=False, verbose_name="Por Projeto")
+    
 
+    def render_tai(self, record):
+        return(record["peia"])
+    
     def render_detalhes(self, record):
             url = reverse("contrapartida_so_projeto", args=[record["detalhes"]])
             return format_html('<a href="{}" class="btn btn-sm btn-primary">Detalhar</a>', url)
@@ -337,4 +289,4 @@ class contrapartida_rh_table(tables.Table):
         model = contrapartida_rh
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('id_projeto', 'id_salario', 'funcao', 'horas_alocadas')
+        fields = ('id_projeto__peia','id_projeto', 'id_salario', 'funcao', 'horas_alocadas')

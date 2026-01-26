@@ -55,8 +55,8 @@
 {% if tabela %}
 <div style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
     <!--table style="border-collapse: collapse; min-width: max-content; width: 100%;"-->
-    <table class="table table-bordered text-center align-middle",style="border-collapse: collapse; min-width: max-content; width: 100%;">
-
+    <table class="table table-bordered text-center align-middle"
+    style="border-collapse: collapse; min-width: max-content; table-layout: auto;">
         <!-- Cabeçalho de blocos por mês -->
         <thead>
             <tr>
@@ -72,9 +72,20 @@
             <tr>
                 {% for mes in meses %}
                     {% for equip in equipamentos %}
-                        <th>{{ equip.nome }}</th>
+                        <th   style="
+                        width: 110px;
+                        max-width: 110px;
+                        white-space: normal;
+                        word-break: break-word;
+                        overflow-wrap: break-word;
+                        text-align: center;
+                        vertical-align: bottom;"  >
+                            <span class="long-text" style="font-size:0.9rem;">
+                                {{ equip.nome }}
+                            </span> 
+                    </th>
                     {% endfor %}
-                    <th class="fw-bold text-primary">Total</th>
+                    <th class="fw-bold text-primary" >Total</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -84,15 +95,14 @@
             {% for row in tabela %}
             <tr>
                 <td style="position: sticky; background-color: #f9f9f9; left: 0; font-weight: bold; z-index: 1; text-align:left; white-space: nowrap;">
-                <!--td style="position: sticky; left: 0; background-color: #f9f9f9; font-weight: bold; z-index: 1;"-->
-                    {{ row.projeto.nome }}
+                    {{ row.projeto }}
                 </td>
     
                 {% for m in row.meses %}
                     {% for valor in m.equipamentos %}
                         <td>{{ valor|default:"-" }}</td>
                     {% endfor %}
-                    <td class="fw-bold bg-light">{{ m.total_mes }}</td>
+                    <td class="fw-bold bg-light" > R$ {{ m.total_mes }}</td>
                 {% endfor %}
             </tr>
             {% endfor %}
