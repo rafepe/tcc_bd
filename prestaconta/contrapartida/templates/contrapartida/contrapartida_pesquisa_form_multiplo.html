@@ -29,7 +29,7 @@
                             {% for proj in projetos %}
                                 <option value="{{ proj.id }}" 
                                         {% if projeto_obj and projeto_obj.id == proj.id %}selected{% endif %}>
-                                    {{ proj.nome }} ({{ proj.data_inicio|date:"m/Y" }} - {{ proj.data_fim|date:"m/Y" }})
+                                        {{ proj.peia }} - {{ proj.nome }} ({{ proj.data_inicio|date:"m/Y" }}  {{ proj.data_fim|date:"m/Y" }})
 
                                 </option>
                             {% endfor %}
