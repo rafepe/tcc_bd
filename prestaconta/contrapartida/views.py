@@ -793,7 +793,7 @@ def contrapartida_pesquisa_criar_multiplos(request):
         formset = ContrapartidaPesquisaFormSet(projeto=projeto_obj)
     
     # Lista de projetos para o select
-    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('peia')
     
     context = {
         'formset': formset,
@@ -1151,7 +1151,7 @@ def contrapartida_equipamento_criar_multiplos(request):
         formset = ContrapartidaEquipamentoFormSet(projeto=projeto_obj)
     
     # Lista de projetos para o select
-    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('peia')
     
     context = {
         'formset': formset,
@@ -1542,7 +1542,7 @@ def contrapartida_so_criar_multiplos(request):
         formset = ContrapartidaSOFormSet(projeto=projeto_obj)
     
     # Lista de projetos para o select
-    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('peia')
     
     context = {
         'formset': formset,
@@ -1865,7 +1865,7 @@ def contrapartida_rh_criar_multiplos(request):
         formset = ContrapartidaRhFormSet(projeto=projeto_obj)
     
     # Lista de projetos para o select
-    lista_projetos = projeto.objects.filter(ativo=True).order_by('nome')
+    lista_projetos = projeto.objects.filter(ativo=True).order_by('peia')
     
     context = {
         'formset': formset,
@@ -2037,6 +2037,10 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 ##############################
 # CONTRAPARTIDA GERAL        #
 ##############################
+def format_br(value):
+    if value is None:
+        return "0,00"
+    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def contrapartida_realizada_geral(request):
     # ano padrão (atual) se não vier ou vier vazio
@@ -2154,11 +2158,19 @@ def contrapartida_realizada_geral(request):
             dados_transpostos['Diferenca'][data] = valores['diferenca']
             dados_transpostos['Saldo'][data] = valores['saldo']
 
+
+
+
+
         linhas = []
         for tipo in tipos_contrapartida:
             linha = {
                 "tipo": tipo,
-                "valores": [dados_transpostos[tipo].get(data, 0.0) for data in ano_mes]
+                "valores": [
+                            {
+                                "raw": dados_transpostos[tipo].get(data, 0.0),
+                                "fmt": format_br(dados_transpostos[tipo].get(data, 0.0))
+                            } for data in ano_mes]
             }
             linhas.append(linha)
 

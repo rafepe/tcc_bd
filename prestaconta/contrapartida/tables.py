@@ -23,7 +23,7 @@ class projeto_table(tables.Table):
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
         fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total")
-        sequence =  ("nome", "peia", "data_inicio", "data_fim", "valor_total")
+        sequence =  ("peia", "nome",  "data_inicio", "data_fim", "valor_total")
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
@@ -202,6 +202,12 @@ class contrapartida_equipamento_table(tables.Table):
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value) 
 
+    def render_valor_manual(self, value, record):
+        if value is None:
+            return "-"
+
+        formatted_value = locale.currency(value, grouping=True)
+        return format_html('<span>{}</span>', formatted_value)
 
     def render_excluir(self, record):
         url = reverse("contrapartida_equipamento_delete", args=[record.pk])

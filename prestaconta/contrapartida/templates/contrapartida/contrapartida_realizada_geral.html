@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block corpo %}
@@ -55,8 +56,8 @@
 </form>
 {% if dados_tabela %}
 {% for item in dados_tabela %}
-<h3>{{ item.projeto.nome }} - {{ item.projeto.peia }}</h3>
-<div style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
+<h3>{{ item.projeto.peia }} - {{ item.projeto.nome }}  </h3>
+<div  style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
   <table style="border-collapse: collapse; min-width: max-content; width: 100%;">
     <thead>
       <tr>
@@ -80,13 +81,13 @@
         {% for valor in linha.valores %}
         {% if linha.tipo == "Saldo" %}
         <td style="font-weight: bold;
-                           background-color: {% if valor < 0 %}#f8d7da{% else %}#d4edda{% endif %};
-                           color: {% if valor < 0 %}#721c24{% else %}#155724{% endif %};
+                           background-color: {% if valor.raw < 0 %}#f8d7da{% else %}#d4edda{% endif %};
+                           color: {% if valor.raw < 0 %}#721c24{% else %}#155724{% endif %};
                            min-width: 150px;  text-align: right;">
-          {{ valor|floatformat:2 }}
+          R$ {{ valor.fmt}}
         </td>
         {% else %}
-        <td style="min-width: 150px; text-align: right;">{{ valor|floatformat:2 }}</td>
+        <td style="min-width: 150px; text-align: right;">R$ {{ valor.fmt}}</td>
         {% endif %}
         {% endfor %}
       </tr>
@@ -101,3 +102,4 @@
 {% endif %}
 </div>
 {% endblock %}
+
