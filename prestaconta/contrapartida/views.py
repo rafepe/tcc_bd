@@ -115,6 +115,7 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
+
     def get_queryset(self):
         queryset = super().get_queryset()
         f_nome = self.request.GET.get('nome', '').strip()
@@ -1916,12 +1917,22 @@ class contrapartida_realizada_list(ListView):
         return context
 
 
+
 def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
     meses = []
     ano, mes = inicio.year, inicio.month
 
-    while (ano, mes) <= (fim.year, fim.month):
+    fim_ano, fim_mes = fim.year, fim.month
+    if fim.day == 1:
+        if fim_mes == 1:
+            fim_mes = 12
+            fim_ano -= 1
+        else:
+            fim_mes -= 1
+
+    while (ano, mes) <= (fim_ano, fim_mes):
         meses.append(date(ano, mes, 1))
+
         if mes == 12:
             mes = 1
             ano += 1
@@ -1929,7 +1940,6 @@ def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
             mes += 1
 
     return meses
-
 
 
 def contrapartida_realizada_detalhes(request, projeto_id): 
@@ -2080,7 +2090,7 @@ def contrapartida_realizada_geral(request):
         # Filtra projetos ativos no semestre
     projetos = projeto.objects.filter(
         data_inicio__lte=fim_semestre,
-        data_fim__gte=inicio_semestre
+        data_fim__gt=inicio_semestre
 
     )
     
