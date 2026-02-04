@@ -56,7 +56,8 @@
 </form>
 {% if dados_tabela %}
 {% for item in dados_tabela %}
-<h3>{{ item.projeto.peia }} - {{ item.projeto.nome }}  </h3>
+<h3>{{ item.projeto.peia }} - {{ item.projeto.nome }} </h3>
+<h4> Total R$ {{ item.valor_total }} Meses: {{ item.projeto.num_mes }} Devido: R${{ item.devido }}   | Saldo: R$ {{ item.saldo }} </h4>
 <div  style="overflow-x: auto; border: none solid #ccc; padding: 0px;">
   <table style="border-collapse: collapse; min-width: max-content; width: 100%;">
     <thead>

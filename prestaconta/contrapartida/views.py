@@ -1918,6 +1918,7 @@ class contrapartida_realizada_list(ListView):
 
 
 
+
 def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
     meses = []
     ano, mes = inicio.year, inicio.month
@@ -2168,7 +2169,7 @@ def contrapartida_realizada_geral(request):
             dados_transpostos['Diferenca'][data] = valores['diferenca']
             dados_transpostos['Saldo'][data] = valores['saldo']
 
-
+        saldo_final=valores['saldo']
 
 
 
@@ -2187,7 +2188,10 @@ def contrapartida_realizada_geral(request):
         dados_tabela.append({
             'projeto': proj,
             'ano_mes': ano_mes,
-            'linhas': linhas
+            'linhas': linhas,
+            'saldo': format_br(saldo_final),
+            'devido': format_br(vlr_mensal_devido),
+            'valor_total':format_br(proj.contrapartida_max)
         })
 
     context = {
@@ -2515,6 +2519,7 @@ def upload_contracheque(request):
                             'valor': salario_bruto,
                             'horas': 160,
                             'anexo': pdf_file,
+                            #'horas_limite': 60,
                         }
                     )
                     if not salario_created:
