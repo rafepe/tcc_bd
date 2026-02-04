@@ -1917,14 +1917,12 @@ class contrapartida_realizada_list(ListView):
         return context
 
 
-
-
 def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
     meses = []
     ano, mes = inicio.year, inicio.month
 
     fim_ano, fim_mes = fim.year, fim.month
-    if fim.day == 1:
+    if fim.day < 15:
         if fim_mes == 1:
             fim_mes = 12
             fim_ano -= 1
@@ -2101,8 +2099,8 @@ def contrapartida_realizada_geral(request):
     dados_tabela = []
 
     for proj in projetos:
-        vlr_mensal_devido = (proj.contrapartida_max / proj.num_mes 
-                             if proj.num_mes else proj.contrapartida_max)
+        vlr_mensal_devido = (proj.contrapartida / proj.num_mes 
+                             if proj.num_mes else proj.contrapartida)
 
         contrapartidas_por_mes = defaultdict(lambda: {
             'so': Decimal(0.0),
@@ -2191,7 +2189,7 @@ def contrapartida_realizada_geral(request):
             'linhas': linhas,
             'saldo': format_br(saldo_final),
             'devido': format_br(vlr_mensal_devido),
-            'valor_total':format_br(proj.contrapartida_max)
+            'valor_total':format_br(proj.contrapartida)
         })
 
     context = {
