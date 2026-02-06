@@ -15,6 +15,7 @@ from django.urls import reverse_lazy
 from django.utils.timezone import now
 from django.views.generic import ListView, TemplateView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from utils.functions import *
 from PyPDF2 import PdfReader
 import calendar
 import csv
@@ -1917,28 +1918,6 @@ class contrapartida_realizada_list(ListView):
         return context
 
 
-def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
-    meses = []
-    ano, mes = inicio.year, inicio.month
-
-    fim_ano, fim_mes = fim.year, fim.month
-    if fim.day < 15:
-        if fim_mes == 1:
-            fim_mes = 12
-            fim_ano -= 1
-        else:
-            fim_mes -= 1
-
-    while (ano, mes) <= (fim_ano, fim_mes):
-        meses.append(date(ano, mes, 1))
-
-        if mes == 12:
-            mes = 1
-            ano += 1
-        else:
-            mes += 1
-
-    return meses
 
 
 def contrapartida_realizada_detalhes(request, projeto_id): 
@@ -2046,10 +2025,7 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 ##############################
 # CONTRAPARTIDA GERAL        #
 ##############################
-def format_br(value):
-    if value is None:
-        return "0,00"
-    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 
 def contrapartida_realizada_geral(request):
     # ano padrão (atual) se não vier ou vier vazio

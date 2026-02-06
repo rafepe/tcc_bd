@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from utils.functions import *
 import os
 import re
 
@@ -27,7 +28,7 @@ class projeto(models.Model):
     @property
     def num_mes(self):
         if self.data_inicio and self.data_fim:
-            return (self.data_fim.year - self.data_inicio.year) * 12 + (self.data_fim.month - self.data_inicio.month)
+            return len(gerar_meses_entre(self.data_inicio,self.data_fim))
         return 0
 
     class Meta:
