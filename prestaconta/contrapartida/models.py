@@ -3,7 +3,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from utils.functions import *
+from .utils import gerar_meses_entre
 import os
 import re
 
