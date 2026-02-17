@@ -15,7 +15,7 @@ from django.urls import reverse_lazy
 from django.utils.timezone import now
 from django.views.generic import ListView, TemplateView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from .utils import format_br,gerar_meses_entre
+from .utils import format_br,gerar_meses_entre,aplicar_filtro_data,aplicar_filtro,contexto_filtros
 from PyPDF2 import PdfReader
 import calendar
 import csv
@@ -117,27 +117,46 @@ class projeto_menu(SingleTableView):
     template_name = 'projeto_menu.html'
 
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        f_nome = self.request.GET.get('nome', '').strip()
-        mes_fim = self.request.GET.get('mes', '').strip()
-        ano_fim = self.request.GET.get('ano','').strip()
-        if f_nome:
-            queryset = queryset.filter(nome__icontains=f_nome)
-        if mes_fim:
-            queryset = queryset.filter(data_fim__month=int(mes_fim))
-        if ano_fim:
-            queryset = queryset.filter(data_fim__year=int(ano_fim))         
-        return queryset
+    # def get_queryset(self):
+    #     queryset = super().get_queryset()
+    #     f_nome = self.request.GET.get('nome', '').strip()
+    #     mes_fim = self.request.GET.get('mes', '').strip()
+    #     ano_fim = self.request.GET.get('ano','').strip()
+    #     if f_nome:
+    #         queryset = queryset.filter(nome__icontains=f_nome)
+    #     if mes_fim:
+    #         queryset = queryset.filter(data_fim__month=int(mes_fim))
+    #     if ano_fim:
+    #         queryset = queryset.filter(data_fim__year=int(ano_fim))         
+    #     return queryset
 
+
+    # def get_context_data(self, **kwargs):
+    #     context = super().get_context_data(**kwargs)
+    #     context["filtros"] = {
+    #         "nome": self.request.GET.get("nome", ""),
+    #         "mes": self.request.GET.get("mes", ""),
+    #         "ano": self.request.GET.get("ano", "")
+    #     }
+    #     return context
+
+    def get_queryset(self):
+        filtros={"peia": "peia",'projeto':'nome','peia':'peia'}
+        filtros_data={"ano_fim":"data_fim__year","mes_fim":"data_fim__month"} 
+        queryset = super().get_queryset()
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
+        return queryset
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-            "nome": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")
-        }
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["peia","projeto","ano_fim","mes_fim"]
+        )
         return context
+
+
 
 class projeto_create(CreateView):
     model = projeto
@@ -272,23 +291,19 @@ class pessoa_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'pessoa_menu.html'
 
-    def get_queryset(self):
+    def get_queryset(self): 
+        filtros={'pessoa':'nome','email':'email',"cpf":"cpf"} 
         queryset = super().get_queryset()
-        pessoa = self.request.GET.get('nome', '').strip()
-        email = self.request.GET.get('email', '').strip()
-        cpf = self.request.GET.get('cpf','').strip()
-        if pessoa:
-            queryset = queryset.filter(nome__icontains=pessoa)
-        if email:
-            queryset = queryset.filter(email__icontains=email)
-        if cpf:
-            queryset = queryset.filter(cpf__icontains=cpf)
-
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
         return queryset
-
+    
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)        
-        return context    
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["pessoa", "email", "cpf"]
+        )
+        return context
 
 class pessoa_create(CreateView):
     model = pessoa
@@ -350,22 +365,20 @@ class salario_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'salario_menu.html'
 
-    def get_queryset(self):
+    def get_queryset(self): 
+        filtros={"pessoa":"id_pessoa__nome"}
+        filtros_data={"ano":"ano","mes":"mes"} 
         queryset = super().get_queryset()
-        pessoa = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if pessoa:
-            queryset = queryset.filter(id_pessoa__nome__icontains=pessoa)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)
-
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
         return queryset
-
+    
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)        
+        context = super().get_context_data(**kwargs)
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["pessoa", "ano", "mes"]
+        )
         return context
 
 class salario_create(CreateView):
@@ -496,31 +509,21 @@ class contrapartida_pesquisa_menu(SingleTableView):
     template_name = 'contrapartida_pesquisa_menu.html'
 
     def get_queryset(self):
+        filtros={"peia":"id_projeto__peia","projeto": "id_projeto__nome","pessoa": "id_salario__id_pessoa__nome"} 
+        filtros_data={"ano":"id_salario__ano","mes":"id_salario__mes"}
         queryset = super().get_queryset()
-        nome = self.request.GET.get('nome', '').strip()
-        pessoa= self.request.GET.get('pessoa','').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if nome:
-            queryset = queryset.filter(id_projeto__nome__icontains=nome)
-        if pessoa:
-            queryset= queryset.filter(id_salario__id_pessoa__nome__icontains=pessoa)
-        if ano:
-            queryset = queryset.filter(id_salario__ano=ano)
-        if mes:
-            queryset = queryset.filter(id_salario__mes=mes)
-
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
         return queryset
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-            "nome": self.request.GET.get("nome", ""),
-            "pessoa": self.request.GET.get("pessoa", ""),
-            "ano": self.request.GET.get("ano", ""),
-            "mes": self.request.GET.get("mes", ""),
-        }
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["peia","projeto","pessoa","ano","mes"]
+        )
         return context
+
 
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
@@ -868,26 +871,19 @@ class contrapartida_equipamento_menu(SingleTableView):
     template_name = 'contrapartida_equipamento_menu.html'
 
     def get_queryset(self):
+        filtros={"peia":"id_projeto__peia","projeto": "id_projeto__nome","equipamento": "id_equipamento__nome"} 
+        filtros_data={"ano":"ano","mes":"mes"}
         queryset = super().get_queryset()
-        v_nome = self.request.GET.get('nome', '').strip()
-        v_ano = self.request.GET.get('ano', '').strip()
-        v_mes = self.request.GET.get('mes','').strip()
-        if v_nome:
-            queryset = queryset.filter(id_projeto__nome__icontains=v_nome)
-        if v_ano:
-            queryset = queryset.filter(ano=v_ano)
-        if v_mes:
-            queryset = queryset.filter(mes=v_mes)
-
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
         return queryset
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-            "nome": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", ""),
-        }
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["peia","projeto","equipamento","ano","mes"]
+        )
         return context
 
 class contrapartida_equipamento_create(CreateView):
@@ -1058,8 +1054,6 @@ class contrapartida_equipamento_update(UpdateView):
          
         return context
 
-
-
 class contrapartida_equipamento_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.delete_contrapartida_equipamento"):
@@ -1169,67 +1163,9 @@ def contrapartida_equipamento_criar_multiplos(request):
 # CONTRAPARTIDA SO           #
 ##############################
 
-class contrapartida_so_menu(ListView):
-    model = projeto  # Define o modelo explicitamente
-    template_name = "contrapartida/contrapartida_so_menu.html"
-    context_object_name = "projetos"
-    paginate_by = 10
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.has_perm("contrapartida.view_contrapartida_so"):
-            return super().dispatch(request, *args, **kwargs)
-        else:
-            messages.error(self.request, "Usuário sem permissão para ver Contrapartida SO.")
-            return redirect('projeto_menu')
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        projeto = self.request.GET.get('nome', '').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes', '').strip()
-        if projeto:
-            queryset = queryset.filter(nome__icontains=projeto)
-        if ano:
-            queryset = queryset.filter(ano=ano)
-        if mes:
-            queryset = queryset.filter(mes=mes)        
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        contrapartida_so = []
-        
-        # Iterar sobre os projetos na queryset para acessar os campos
-        for projeto in context['projetos']:
-            # Realizando os cálculos necessários para a Contrapartida SO
-            so_da_ue = round(projeto.valor_total * projeto.tx_adm_ue /100, 2) - projeto.valor_funape
-            so_no_ptr = projeto.valor_so_ptr
-            num_meses = projeto.num_mes
-        
-            if num_meses == 0:
-                num_meses = 1  # Evita divisão por zero
-
-            cp_ue_so = so_da_ue - so_no_ptr
-            cp_mensal_so = round(cp_ue_so / num_meses, 2)
-
-            # Atribuindo os cálculos diretamente ao objeto projeto
-            projeto.so_da_ue =  so_da_ue
-            projeto.so_no_ptr =  so_no_ptr
-            projeto.cp_ue_so =   cp_ue_so
-            projeto.cp_mensal_so = cp_mensal_so
-            projeto.num_meses =   num_meses
-
-   
-        # Filtros para manter a consistência da UI
-            context["filtros"] = {
-            "projeto": self.request.GET.get("nome", ""),
-            "mes": self.request.GET.get("mes", ""),
-            "ano": self.request.GET.get("ano", "")
-            }        
-        return context
     
-class contrapartida_so_menu_new(ListView):
-    template_name = 'contrapartida/contrapartida_so_menu_new.html'
+class contrapartida_so_menu(ListView):
+    template_name = 'contrapartida/contrapartida_so_menu.html'
     model = projeto  # Define o modelo explicitamente
     context_object_name = "projetos"
 
@@ -1241,16 +1177,11 @@ class contrapartida_so_menu_new(ListView):
             return redirect('projeto_menu')
 
     def get_queryset(self):
+        filtros={"peia":"peia","projeto": "nome"}
+        filtros_data={"ano_fim":"data_fim__year","mes_fim":"data_fim__month"}
         queryset = super().get_queryset()
-        projeto = self.request.GET.get('nome', '').strip()
-        ano_fim = self.request.GET.get('ano', '').strip()
-        mes_fim = self.request.GET.get('mes', '').strip()
-        if projeto:
-            queryset = queryset.filter(nome__icontains=projeto)
-        if ano_fim:
-            queryset = queryset.filter(data_fim__year=int(ano_fim))
-        if mes_fim:
-            queryset = queryset.filter(data_fim__month=int(mes_fim))        
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
         return queryset
     
 
@@ -1290,12 +1221,10 @@ class contrapartida_so_menu_new(ListView):
                 "detalhes": projeto.id,
             })         
             
-    # Filtros para manter a consistência da UI
-        context["filtros"] = {
-        "projeto": self.request.GET.get("nome", ""),
-        "mes": self.request.GET.get("mes", ""),
-        "ano": self.request.GET.get("ano", "")
-        }
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["peia","projeto","ano_fim","mes_fim"]
+        )
 
         table = contrapartida_so_table(linhas)
         RequestConfig(self.request, paginate={"per_page": 10}).configure(table)
@@ -1521,7 +1450,7 @@ def contrapartida_so_criar_multiplos(request):
                                 f'{len(instancias_salvas)} contrapartida(s) cadastrada(s) '
                                 f'com sucesso para o projeto "{projeto_obj.nome}"!'
                             )
-                            return  redirect('contrapartida_so_menu_new')
+                            return  redirect('contrapartida_so_menu')
                         else:
                             messages.warning(request, 'Nenhuma contrapartida foi cadastrada.')
                 
@@ -1560,7 +1489,7 @@ def contrapartida_so_criar_multiplos(request):
 # CONTRAPARTIDA RH   #####
 ##########################
 
-class contrapartida_rh_menu(SingleTableView):
+class contrapartida_rh_menu(SingleTableView):   
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.view_contrapartida_rh"):
             return super().dispatch(request, *args, **kwargs)
@@ -1574,30 +1503,19 @@ class contrapartida_rh_menu(SingleTableView):
     template_name = 'contrapartida_rh_menu.html'
 
     def get_queryset(self):
+        filtros={"peia":"id_projeto__peia","projeto": "id_projeto__nome","pessoa":"id_salario__id_pessoa__nome"}
+        filtros_data={"ano":"id_salario__ano","mes":"id_salario__mes"}
         queryset = super().get_queryset()
-        nome = self.request.GET.get('nome', '').strip()
-        pessoa= self.request.GET.get('pessoa','').strip()
-        ano = self.request.GET.get('ano', '').strip()
-        mes = self.request.GET.get('mes','').strip()
-        if nome:
-            queryset = queryset.filter(id_projeto__nome__icontains=nome)
-        if pessoa:
-            queryset= queryset.filter(id_salario__id_pessoa__nome__icontains=pessoa)
-        if ano:
-            queryset = queryset.filter(id_salario__ano=ano)
-        if mes:
-            queryset = queryset.filter(id_salario__mes=mes)
-
+        queryset =aplicar_filtro(queryset,self.request.GET,filtros)
+        queryset =aplicar_filtro_data(queryset,self.request.GET,filtros_data)
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["filtros"] = {
-            "nome": self.request.GET.get("nome", ""),
-            "pessoa": self.request.GET.get("pessoa", ""),
-            "ano": self.request.GET.get("ano", ""),
-            "mes": self.request.GET.get("mes", ""),
-        }
+        context["filtros"] = contexto_filtros(
+            self.request.GET,
+            ["peia","projeto","pessoa","ano","mes"]
+        )
         return context
 
 class contrapartida_rh_create(CreateView):
@@ -1683,7 +1601,7 @@ class contrapartida_rh_create(CreateView):
 
     def get_success_url(self):
         return reverse_lazy("contrapartida_rh_update", kwargs={"pk": self.object.pk})
-    
+   
 
 
 class contrapartida_rh_update(UpdateView):
