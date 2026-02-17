@@ -8,21 +8,12 @@
 
 {% block titulo %}Salário{% endblock %}
 {% block corpo %}
+
 <center>
-<form method="GET">
-    <label for="id_pesoa">Nome</label>
-    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
-
-    <label for="ano">Ano Referencia:</label>
-    <input type="int" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> <!-- Tamanho reduzido -->
-
-    <label for="mes">Mes Referencia:</label>
-    <input type="int" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;"> <!-- Tamanho reduzido -->
-
-    <button type="submit">Filtrar</button>
-    <a href="{% url 'salario_menu' %}">Limpar Filtros</a> <!-- Substitua pelo nome correto da URL -->
-</form>
+    {% include "blocos/filtro_padrao.html" with mostrar_pessoa=True  mostrar_ano=True mostrar_mes=True %}
 </center>
+    
+
 
 <body>
     <div class="container">

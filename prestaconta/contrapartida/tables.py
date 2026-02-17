@@ -16,14 +16,16 @@ class projeto_table(tables.Table):
     data_inicio = tables.LinkColumn("projeto_update", args=[A("pk")])
     data_fim = tables.LinkColumn("projeto_update", args=[A("pk")])
     valor_total = tables.LinkColumn("projeto_update", args=[A("pk")])
+    contrapartida = tables.LinkColumn("projeto_update", args=[A("pk")], verbose_name="Contrapartida Prometida")
+
     #excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
 
     class Meta:
         model = projeto
         attrs = {"class": "table thead-light table-striped table-hover"}
         template_name = "django_tables2/bootstrap4.html"
-        fields =    ("nome", "peia", "data_inicio", "data_fim", "valor_total")
-        sequence =  ("peia", "nome",  "data_inicio", "data_fim", "valor_total")
+        fields =    ("nome", "peia", "data_inicio", "data_fim","contrapartida" ,"valor_total")
+        sequence =  ("peia", "nome",  "data_inicio", "data_fim","contrapartida", "valor_total")
     
     def render_data_inicio(self, value):
         # Formatar a data no formato DD/MM/YYYY
@@ -183,10 +185,11 @@ class contrapartida_equipamento_table(tables.Table):
     horas_alocadas = tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Horas Alocadas")
     descricao= tables.Column(empty_values=(), verbose_name="Descricao", orderable=False)
     valor_hora = tables.Column(empty_values=(), verbose_name="Valor-Hora", orderable=False)
+    
     valor_cp = tables.Column(empty_values=(), verbose_name="Valor Contrapartida", orderable=False)
     valor_manual=tables.LinkColumn("contrapartida_equipamento_update", args=[A("pk")], verbose_name="Valor Informado Manualmente")
     excluir = tables.Column(empty_values=(), orderable=False, verbose_name="Excluir")
-    
+
     def render_descricao(self, value):
         if not value:
              return "-"
@@ -205,7 +208,6 @@ class contrapartida_equipamento_table(tables.Table):
     def render_valor_manual(self, value, record):
         if value is None:
             return "-"
-
         formatted_value = locale.currency(value, grouping=True)
         return format_html('<span>{}</span>', formatted_value)
 

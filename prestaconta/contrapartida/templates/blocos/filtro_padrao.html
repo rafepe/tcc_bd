@@ -1,0 +1,58 @@
+<form method="GET" class="filtro-form">
+
+    {% if mostrar_peia %}
+    <label>Peia:</label>
+    <input type="text" name="peia" value="{{ filtros.peia }}">
+    {% endif %}
+
+    {% if mostrar_projeto %}    
+        <label>Projeto:</label>
+        <input type="text" name="projeto" value="{{ filtros.projeto }}">
+    {% endif %}
+
+    {% if mostrar_pessoa %}
+        <label>Pessoa:</label>
+        <input type="text" name="pessoa" value="{{ filtros.pessoa }}">
+    {% endif %}
+
+    {% if mostrar_equipamento %}
+        <label>Equipamento:</label>
+        <input type="text" name="equipamento" value="{{ filtros.equipamento }}">
+    {% endif %}
+
+    {% if mostrar_email %}
+    <label>Email:</label>
+    <input type="text" name="email" value="{{ filtros.email }}">
+    {% endif %}
+
+    {% if mostrar_cpf %}
+    <label>Cpf:</label>
+    <input type="text" name="cpf" value="{{ filtros.cpf }}">
+    {% endif %}
+
+    {% if mostrar_ano_fim %}
+        <label>Ano fim:</label>
+        <input type="number" name="ano_fim" value="{{ filtros.ano_fim }}" style="width: 80px;">
+    {% endif %}
+
+    {% if mostrar_mes_fim %}
+        <label>Mês fim:</label>
+        <input type="number"  name="mes_fim" value="{{ filtros.mes_fim }}" style="width: 80px;">   
+    {% endif %}
+
+    {% if mostrar_ano %}
+        <label>Ano:</label>
+        <input type="number" name="ano" value="{{ filtros.ano }}" style="width: 80px;">
+    {% endif %}
+
+    {% if mostrar_mes %}
+        <label>Mês:</label>
+        <input type="number" name="mes" value="{{ filtros.mes }}" style="width: 80px;">
+    {% endif %}
+
+
+
+
+    <button type="submit">Filtrar</button>
+    <a href="{{ request.path }}">Limpar Filtros</a>
+</form>

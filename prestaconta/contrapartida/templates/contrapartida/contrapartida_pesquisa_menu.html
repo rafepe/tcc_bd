@@ -9,23 +9,7 @@
 {% block titulo %}Contrapartida Pesquisa{% endblock %}
 {% block corpo %}
 <center>
-<!-- Formulário de Filtro -->
-<form method="GET">
-    <label for="id_nome">Nome do Projeto:</label>
-    <input type="text" name="nome" id="id_nome" value="{{ filtros.nome }}">
-
-    <label for="pessoa_nome">Pessoa:</label>
-    <input type="text" name="pessoa" id="pessoa_nome" value="{{ filtros.pessoa }}">
-
-    <label for="id_ano">Ano:</label>
-    <input type="number" name="ano" id="id_ano" value="{{ filtros.ano }}" style="width: 80px;"> 
-
-    <label for="id_mes">Mês:</label>
-    <input type="number" name="mes" id="id_mes" value="{{ filtros.mes }}" style="width: 80px;">
-
-    <button type="submit">Filtrar</button>
-    <a href="{% url 'contrapartida_pesquisa_menu' %}">Limpar Filtros</a> 
-</form>
+    {% include "blocos/filtro_padrao.html" with mostrar_peia=True mostrar_projeto=True mostrar_pessoa=True mostrar_ano=True mostrar_mes=True %}
 </center>
 
 <body>

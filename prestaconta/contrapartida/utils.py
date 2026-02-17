@@ -27,3 +27,31 @@ def gerar_meses_entre(inicio: date, fim: date) -> list[date]:
             mes += 1
 
     return meses
+
+
+
+def aplicar_filtro(queryset, request,filtros):
+    for nome_filtro ,nome_model in filtros.items():
+        valor = request.get(nome_filtro, "").strip()
+        if valor:
+            queryset = queryset.filter(**{f"{nome_model}__icontains": valor})
+    return queryset
+
+def aplicar_filtro_data(queryset, request,filtros):
+    for nome_filtro,nome_model in filtros.items():
+        valor = request.get(nome_filtro, "").strip()
+        if valor:
+            queryset = queryset.filter(**{f"{nome_model}": valor})
+    return queryset
+
+
+def contexto_filtros(params, campos):
+    """
+    Retorna apenas os filtros ativos definidos em `campos`.
+    Ex:
+        contexto_filtros(request.GET, ["nome", "ano", "mes"])
+    """
+    return {
+        campo: params.get(campo, "").strip()
+        for campo in campos
+    }
