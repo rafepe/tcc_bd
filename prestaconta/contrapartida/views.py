@@ -23,6 +23,7 @@ import io
 import os
 import re
 from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet,ContrapartidaSOFormSet,ContrapartidaEquipamentoFormSet
+import zipfile
 
 
 def index(request):

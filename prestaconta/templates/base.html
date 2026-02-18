@@ -9,9 +9,26 @@
     <title>{% block titulo %}{% endblock %}</title>
     <link rel="icon" href="https://ceia.ufg.br/favicon.ico" type="image/x-icon" />
     <style>
+        .auto-dismiss {
+            animation: hideMsg 0s steps(1, end) 3s forwards;
+        }
+
+        @keyframes hideMsg {
+            to {
+                visibility: hidden;
+                height: 0;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                overflow: hidden;
+            }
+        }
+
+
         body {
             background: #f8f9fa;
         }
+
         .sidebar {
             width: 240px;
             min-height: 100vh;
@@ -22,6 +39,7 @@
             left: 0;
             padding: 20px 10px;
         }
+
         .sidebar a {
             color: #fff;
             display: block;
@@ -32,10 +50,12 @@
             font-size: 0.95rem;
             font-weight: 500;
         }
+
         .sidebar a:hover,
         .sidebar a.active {
             background-color: #0b5ed7;
         }
+
         .content-area {
             margin-left: 260px;
             padding: 20px;
@@ -70,15 +90,25 @@
         <a href="{% url 'logout' %}">Logout</a>
     </div>
 
+
     <!-- Area principal -->
+
     <div class="content-area">
         <div class="container mt-3 pt-2">
             {% if messages %}
             <div style="position:relative; z-index:1050;">
-                {% bootstrap_messages %}
+                {% for message in messages|slice:":3" %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible auto-dismiss" role="alert">
+                    {{ message }}
+                </div>
+
+
+                {% endfor %}
+
             </div>
-            {% endif %}   
-        {% block corpo %}{% endblock %}
+            {% endif %}
+
+            {% block corpo %}{% endblock %}
         </div>
         <center class="mt-5">
             <hr>
@@ -92,4 +122,5 @@
 
 
 </body>
+
 </html>

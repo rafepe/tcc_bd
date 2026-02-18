@@ -12,11 +12,11 @@
             <!-- Semestre anterior -->
             <form method="get" class="me-2">
                 {% if semestre == 1 %}
-                    <input type="hidden" name="ano" value="{{ ano|add:"-1" }}">
-                    <input type="hidden" name="semestre" value="2">
+                <input type="hidden" name="ano" value="{{ ano|add:" -1" }}">
+                <input type="hidden" name="semestre" value="2">
                 {% else %}
-                    <input type="hidden" name="ano" value="{{ ano }}">
-                    <input type="hidden" name="semestre" value="1">
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="1">
                 {% endif %}
                 <button type="submit" class="btn btn-outline-secondary">
                     <i class="fas fa-chevron-left"></i> Anterior
@@ -34,11 +34,11 @@
             <!-- Semestre seguinte -->
             <form method="get" class="ms-2">
                 {% if semestre == 2 %}
-                    <input type="hidden" name="ano" value="{{ ano|add:"1" }}">
-                    <input type="hidden" name="semestre" value="1">
+                <input type="hidden" name="ano" value="{{ ano|add:" 1" }}">
+                <input type="hidden" name="semestre" value="1">
                 {% else %}
-                    <input type="hidden" name="ano" value="{{ ano }}">
-                    <input type="hidden" name="semestre" value="2">
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="semestre" value="2">
                 {% endif %}
                 <button type="submit" class="btn btn-outline-secondary">
                     Próximo <i class="fas fa-chevron-right"></i>
@@ -62,40 +62,51 @@
                 <p class="mb-1">
                     <strong>Status do semestre:</strong>
                     {% if semestre_completo %}
-                        <span class="badge bg-success">Completo</span>
+                    <span class="badge bg-success">Completo</span>
                     {% else %}
-                        <span class="badge bg-warning text-dark">Incompleto</span>
+                    <span class="badge bg-warning text-dark">Incompleto</span>
                     {% endif %}
                 </p>
                 <p class="mb-0">
                     <strong>Última geração:</strong>
                     {% if ultima_data %}
-                        {{ ultima_data }}
+                    {{ ultima_data }}
                     {% else %}
-                        <span class="text-muted">Ainda não gerado</span>
+                    <span class="text-muted">Ainda não gerado</span>
                     {% endif %}
                 </p>
             </div>
 
             <div class="text-end">
-                <!-- Gerar declarações pendentes -->
-                <a href="?ano={{ ano }}&semestre={{ semestre }}&gerar=1"
-                   class="btn btn-success mb-2">
+                <!-- GERAR via AJAX -->
+                <button type="button" class="btn btn-success mb-2" id="btnGerarSemestre"
+                    onclick="iniciarGeracaoSemestre()">
                     <i class="fas fa-cogs"></i> Gerar declarações pendentes
-                </a>
+                </button>
                 <br>
+
                 <!-- Gerar ou baixar ZIP -->
                 {% if zip_exists %}
-                    <a href="/media/declaracoes/{{ ano }}-{{ semestre }}/{{ zip_filename }}"
-                       class="btn btn-primary">
-                        <i class="fas fa-file-archive"></i> Baixar ZIP
-                    </a>
+                <a href="/media/declaracoes/{{ ano }}-{{ semestre }}/{{ zip_filename }}" class="btn btn-primary">
+                    <i class="fas fa-file-archive"></i> Baixar ZIP
+                </a>
                 {% else %}
-                    <a href="?ano={{ ano }}&semestre={{ semestre }}&zip=1"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-file-archive"></i> Gerar ZIP com declarações existentes
-                    </a>
+                <a href="?ano={{ ano }}&semestre={{ semestre }}&zip=1" class="btn btn-outline-primary">
+                    <i class="fas fa-file-archive"></i> Gerar ZIP com declarações existentes
+                </a>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- PROGRESSO (SÓ TEXTO) -->
+    <div class="card mb-3" id="cardProgresso" style="display:none;">
+        <div class="card-body">
+            <div id="progressoMensagem" class="fw-semibold">
+                Iniciando...
+            </div>
+            <div class="small text-muted mt-1">
+                Não feche esta página.
             </div>
         </div>
     </div>
@@ -106,4 +117,68 @@
         Se algum mês/projeto ainda não possui declaração ou DOCX, ele será simplesmente ignorado no arquivo compactado.
     </div>
 </div>
+
+<script>
+    let pollingAtivo = false;
+
+    function iniciarGeracaoSemestre() {
+        const ano = "{{ ano }}";
+        const semestre = "{{ semestre }}";
+
+        // UI
+        document.getElementById("btnGerarSemestre").disabled = true;
+        document.getElementById("cardProgresso").style.display = "block";
+        atualizarProgressoUI("Iniciando...");
+
+        // ✅ comece a “escutar” ANTES de disparar a geração
+        if (!pollingAtivo) {
+            pollingAtivo = true;
+            pollProgresso();
+        }
+
+        // dispara a geração (vai demorar e tudo bem)
+        fetch("{% url 'gerar_semestre_ajax' %}?ano=" + ano + "&semestre=" + semestre, { cache: "no-store" })
+            .then(resp => resp.json())
+            .then(data => {
+                // não chama pollProgresso aqui — ele já está rodando
+                if (data.ok !== true) {
+                    atualizarProgressoUI(data.erro || "Erro ao iniciar geração.");
+                    document.getElementById("btnGerarSemestre").disabled = false;
+                    pollingAtivo = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                atualizarProgressoUI("Erro ao iniciar geração (veja o console).");
+                document.getElementById("btnGerarSemestre").disabled = false;
+                pollingAtivo = false;
+            });
+    }
+
+    function pollProgresso() {
+        fetch("{% url 'progresso_semestre' %}", { cache: "no-store" })
+            .then(resp => resp.json())
+            .then(p => {
+                atualizarProgressoUI(p.mensagem || "");
+
+                if (p.finalizado) {
+                    atualizarProgressoUI("Concluído! Recarregando...");
+                    setTimeout(() => location.reload(), 800);
+                    return;
+                }
+
+                setTimeout(pollProgresso, 700);
+            })
+            .catch(err => {
+                console.error(err);
+                setTimeout(pollProgresso, 1200);
+            });
+    }
+
+    function atualizarProgressoUI(mensagem) {
+        document.getElementById("progressoMensagem").textContent = mensagem || "";
+    }
+</script>
+
+
 {% endblock %}
