@@ -1,30 +1,36 @@
-from .models import * 
+from .models import *
 from .tables import *
 from contrapartida.models import *
-from datetime import datetime
-from decimal import Decimal
-from django_tables2 import RequestConfig
-from django.conf import settings
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
-from django.db.models.functions import ExtractMonth
-from django.http import HttpResponse, Http404, JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.template.loader import get_template
-from django.urls import reverse, reverse_lazy
-from django.utils.timezone import now
-from django.views.generic import TemplateView
-from django.views.generic.edit import DeleteView
+
+import os
+import zipfile
+import unicodedata
+from io import BytesIO
+from itertools import groupby
+from threading import Lock
+from datetime import datetime, date
+from decimal import Decimal, ROUND_HALF_UP
+
 from docx import Document
 from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_PARAGRAPH_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, Cm, RGBColor
-from io import BytesIO
-from itertools import groupby
-import os
+
+from django_tables2 import RequestConfig
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.http import HttpResponse, Http404, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse, reverse_lazy
+from django.views.decorators.cache import never_cache
+from django.views.generic import TemplateView
+from django.views.generic.edit import DeleteView
+
 
 def gerar_declaracoes(request):
     nome_projeto = request.GET.get('projeto')
@@ -387,30 +393,25 @@ class declaracao_contrapartida_rh_delete(DeleteView):
         )
 
 def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
-
     try:
         projeto_selecionado = projeto.objects.get(id=projeto_id)
     except projeto.DoesNotExist:
         messages.error(request, "projeto não encontrado.")
         return redirect('declaracoes_menu')
 
-    declaracao_existente = declaracao_contrapartida_equipamento.objects.filter(
-         mes=mes, ano=ano
-    ).first()
-
+    declaracao_existente = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
     if declaracao_existente:
         messages.info(request, f"Já existe uma declaração para {mes}/{ano}.")
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
-    declaracao = declaracao_contrapartida_equipamento.objects.create(
-        mes=mes,    	
-        ano=ano,
-    )
+    declaracao = declaracao_contrapartida_equipamento.objects.create(mes=mes, ano=ano)
 
-    registros = contrapartida_equipamento.objects.filter(
-        mes=mes,
-        ano=ano
+    registros = (
+        contrapartida_equipamento.objects
+        .filter(mes=mes, ano=ano)
+        .select_related("id_projeto", "id_equipamento")
+        .order_by("id_equipamento__nome", "id_projeto__id")
     )
 
     if not registros.exists():
@@ -419,22 +420,39 @@ def gerar_declaracao_contrapartida_equipamento(request, projeto_id, mes, ano):
         url = reverse('declaracoes_menu')
         return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
 
+    for (equip_nome, proj_id), grupo in groupby(
+        registros,
+        key=lambda r: (r.id_equipamento.nome, r.id_projeto_id)
+    ):
+        grupo = list(grupo)
 
-    for r in registros:
+        horas_total = sum(Decimal(g.horas_alocadas or 0) for g in grupo)
+        valor_total = sum(Decimal(g.valor_cp or 0) for g in grupo)
+
+        # junta descrições únicas (se quiser)
+        descricoes = []
+        for g in grupo:
+            d = (g.descricao or "").strip()
+            if d and d not in descricoes:
+                descricoes.append(d)
+        descricao_final = "; ".join(descricoes)
+
+        p0 = grupo[0].id_projeto
+
         declaracao_contrapartida_equipamento_item.objects.create(
             declaracao=declaracao,
-            codigo=r.id_projeto.peia,
-            projeto=r.id_projeto.nome,
-            equipamento=r.id_equipamento.nome,
-            descricao=r.descricao,
-            horas_alocadas=r.horas_alocadas,
-            valor_cp=r.valor_cp
+            codigo=p0.peia,
+            projeto=p0.nome,
+            equipamento=equip_nome,
+            descricao=descricao_final,
+            horas_alocadas=horas_total,   # se seu campo for IntegerField, use int(horas_total)
+            valor_cp=valor_total
         )
-
 
     messages.success(request, f"Declaração gerada para {mes}/{ano}.")
     url = reverse('declaracoes_menu')
     return redirect(f'{url}?projeto={projeto_selecionado.nome}&mes={mes}&ano={ano}')
+
 
 class declaracao_contrapartida_equipamento_view(TemplateView):
     template_name = 'declaracao/declaracao_contrapartida_equipamento.html'
@@ -454,22 +472,6 @@ class declaracao_contrapartida_equipamento_view(TemplateView):
         context['tabela'] = tabela
 
         return context
-
-def get_context_data(self, **kwargs):
-    context = super().get_context_data(**kwargs)
-
-    id_declaracao = self.kwargs.get('id_declaracao')
-    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id_declaracao)
-
-    itens = declaracao_contrapartida_equipamento_item.objects.filter(declaracao=declaracao)
-
-    tabela = declaracao_contrapartida_equipamento_item_table(itens)
-    RequestConfig(self.request).configure(tabela)
-
-    context['declaracao'] = declaracao
-    context['tabela'] = tabela
-
-    return context
 
 class declaracao_contrapartida_equipamento_delete(DeleteView):
 
@@ -585,8 +587,6 @@ def gerar_docx_rh(request, declaracao_id):
     doc.save(response)
     return response
 
-from decimal import Decimal, ROUND_HALF_UP
-
 try:
     from num2words import num2words
 except ImportError:
@@ -598,7 +598,6 @@ def valor_por_extenso(valor):
     """
     v = Decimal(valor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     return num2words(v, to='currency', lang='pt_BR')
-
 
 def gerar_docx_so(request, declaracao_id):
     declaracao = get_object_or_404(declaracao_contrapartida_so, id=declaracao_id)
@@ -1303,243 +1302,6 @@ def download_declaracao_mes(request):
     
     return JsonResponse({'error': 'Nenhuma declaração encontrada para este mês'}, status=404)
 
-######################
-'''
-from datetime import date
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.urls import reverse
-
-def gerar_declaracoes_semestre(request):
-    from datetime import date, datetime
-    import os
-    import zipfile
-
-    # -------------------------------
-    #  DEFINIÇÃO DO SEMESTRE PADRÃO
-    # -------------------------------
-    hoje = date.today()
-    ano_atual = hoje.year
-    semestre_atual = 1 if hoje.month <= 6 else 2
-
-    if semestre_atual == 1:
-        semestre_default = 2
-        ano_default = ano_atual - 1
-    else:
-        semestre_default = 1
-        ano_default = ano_atual
-
-    ano = int(request.GET.get("ano", ano_default))
-    semestre = int(request.GET.get("semestre", semestre_default))
-    meses_semestre = [1,2,3,4,5,6] if semestre == 1 else [7,8,9,10,11,12]
-
-    # -------------------------------
-    #  BUSCA PROJETOS ATIVOS
-    # -------------------------------
-    data_ini = date(ano, 1 if semestre == 1 else 7, 1)
-    data_fim = date(ano, 6 if semestre == 1 else 12, 31)
-
-    projetos = projeto.objects.filter(
-        ativo=True,
-        data_inicio__lte=data_fim,
-        data_fim__gte=data_ini
-    )
-
-    projetos_qtd = projetos.count()
-
-    # -------------------------------
-    #  CONTAGEM DE DECLARAÇÕES EXISTENTES
-    # -------------------------------
-    total_existente = 0
-    total_esperado = (projetos_qtd * 3 * len(meses_semestre)) + len(meses_semestre)
-
-    for p in projetos:
-        for mes in meses_semestre:
-
-            if declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                total_existente += 1
-
-            if declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                total_existente += 1
-
-            if declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                total_existente += 1
-
-    # Equipamento → 1 por mês
-    for mes in meses_semestre:
-        if declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).exists():
-            total_existente += 1
-
-    semestre_completo = (total_existente == total_esperado)
-
-    # -------------------------------
-    #  GERAR DECLARAÇÕES / GERAR=PENDENTES
-    # -------------------------------
-    if request.GET.get("gerar") == "1":
-
-        total_pesq = total_rh = total_so = total_equip = 0
-
-        for p in projetos:
-            for mes in meses_semestre:
-
-                # PESQUISA
-                if not declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                    gerar_declaracao_contrapartida_pesquisa(request, p.id, mes, ano)
-                    total_pesq += 1
-
-                # RH
-                if not declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                    gerar_declaracao_contrapartida_rh(request, p.id, mes, ano)
-                    total_rh += 1
-
-                # SO
-                if not declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                    gerar_declaracao_contrapartida_so(request, p.id, mes, ano)
-                    total_so += 1
-
-            # EQUIPAMENTO — um por mês
-            for mes in meses_semestre:
-                if not declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).exists():
-                    gerar_declaracao_contrapartida_equipamento(request, p.id, mes, ano)
-                    total_equip += 1
-
-        messages.success(
-            request,
-            f"Declarações geradas com sucesso! "
-            f"Pesquisa={total_pesq}, RH={total_rh}, SO={total_so}, Equip={total_equip}"
-        )
-
-        # Salva timestamp
-        request.session["ultima_geracao_zip"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        return redirect(reverse("gerar_declaracoes_semestre") + f"?ano={ano}&semestre={semestre}")
-
-    # -------------------------------
-    #  GERAR ZIP — SEMPRE INCLUI APENAS O QUE EXISTE!
-    # -------------------------------
-    pasta_zip = os.path.join(settings.MEDIA_ROOT, "declaracoes", f"{ano}-{semestre}")
-    os.makedirs(pasta_zip, exist_ok=True)
-
-    zip_filename = f"declaracoes_{ano}-{semestre}.zip"
-    zip_path = os.path.join(pasta_zip, zip_filename)
-
-    zip_exists = os.path.exists(zip_path)
-
-    if request.GET.get("zip") == "1":
-
-        # Remove ZIP antigo
-        if os.path.exists(zip_path):
-            os.remove(zip_path)
-
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-
-            for p in projetos:
-                for mes in meses_semestre:
-
-                    # --- PESQUISA ---
-                    decl = declaracao_contrapartida_pesquisa.objects.filter(
-                        id_projeto=p.id, mes=mes, ano=ano
-                    ).first()
-                    if decl and decl.arquivo:
-                        zipf.write(
-                            decl.arquivo.path,
-                            f"pesquisa/{p.peia}-{p.nome}/{ano}-{mes:02d}.docx"
-                        )
-
-                    # --- RH ---
-                    decl = declaracao_contrapartida_rh.objects.filter(
-                        id_projeto=p.id, mes=mes, ano=ano
-                    ).first()
-                    if decl and decl.arquivo:
-                        zipf.write(
-                            decl.arquivo.path,
-                            f"rh/{p.peia}-{p.nome}/{ano}-{mes:02d}.docx"
-                        )
-
-                    # --- SO ---
-                    decl = declaracao_contrapartida_so.objects.filter(
-                        id_projeto=p.id, mes=mes, ano=ano
-                    ).first()
-                    if decl and decl.arquivo:
-                        zipf.write(
-                            decl.arquivo.path,
-                            f"so/{p.peia}-{p.nome}/{ano}-{mes:02d}.docx"
-                        )
-
-                # --- EQUIPAMENTO (1 por mês) ---
-                for mes in meses_semestre:
-                    decl = declaracao_contrapartida_equipamento.objects.filter(
-                        mes=mes, ano=ano
-                    ).first()
-                    if decl and decl.arquivo:
-                        zipf.write(
-                            decl.arquivo.path,
-                            f"equipamento/{ano}-{mes:02d}.docx"
-                        )
-
-        messages.success(request, "ZIP criado com sucesso!")
-
-        return redirect(reverse("gerar_declaracoes_semestre") + f"?ano={ano}&semestre={semestre}")
-
-    # -------------------------------
-    #  ÚLTIMA GERAÇÃO
-    # -------------------------------
-    ultima_data = request.session.get("ultima_geracao_zip")
-
-    # -------------------------------
-    #  RENDERIZAÇÃO
-    # -------------------------------
-    return render(request, "declaracao/gerar_declaracoes_semestre.html", {
-        "ano": ano,
-        "semestre": semestre,
-        "projetos_qtd": projetos_qtd,
-        "semestre_completo": semestre_completo,
-        "zip_exists": zip_exists,
-        "zip_filename": zip_filename,
-        "ultima_data": ultima_data,
-    })
-
-
-from threading import Lock
-
-progresso = {
-    "status": "aguardando",
-    "percentual": 0,
-    "mensagem": "",
-    "ano": None,
-    "semestre": None,
-    "finalizado": False,
-}
-
-progresso_lock = Lock()
-
-def progresso_semestre(request):
-    with progresso_lock:
-        return JsonResponse(progresso)
-
-def zip_semestre(ano, semestre):
-    import zipfile
-
-    pasta_base = os.path.join(settings.MEDIA_ROOT, "declaracoes", f"{ano}_{semestre}")
-    os.makedirs(pasta_base, exist_ok=True)
-
-    zip_path = os.path.join(pasta_base, f"declaracoes_{ano}_{semestre}.zip")
-
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
-
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        pasta_docs = os.path.join(settings.MEDIA_ROOT, "declaracoes_docs")
-
-        for root, dirs, files in os.walk(pasta_docs):
-            for f in files:
-                full = os.path.join(root, f)
-                arc = full.replace(pasta_docs, "")
-                zipf.write(full, arc)
-
-    return zip_path
-
-
 def gerar_docx_rh_novo(declaracao_id):
     """
     Gera DOCX de RH e salva no disco segundo o padrão:
@@ -1860,185 +1622,6 @@ def gerar_docx_equipamento_novo(declaracao_id):
     doc.save(fullpath)
     return fullpath
 
-def gerar_semestre_ajax(request):
-    from datetime import datetime, date
-    import time
-    import os
-
-    ano = int(request.GET.get("ano"))
-    semestre = int(request.GET.get("semestre"))
-
-    meses = [1,2,3,4,5,6] if semestre == 1 else [7,8,9,10,11,12]
-
-    # range de datas
-    data_ini = date(ano, 1 if semestre == 1 else 7, 1)
-    data_fim = date(ano, 6 if semestre == 1 else 12, 30 if semestre == 1 else 31)
-
-    projetos = projeto.objects.filter(
-        ativo=True,
-        data_inicio__lte=data_fim,
-        data_fim__gte=data_ini
-    )
-
-    # total de operações
-    total_ops = len(projetos) * 3 * len(meses) + len(meses)
-    atual = 0
-
-    # inicializa progresso
-    with progresso_lock:
-        progresso.update({
-            "status": "gerando",
-            "percentual": 0,
-            "mensagem": "Iniciando geração...",
-            "ano": ano,
-            "semestre": semestre,
-            "finalizado": False,
-        })
-
-    # LOG
-    logdir = os.path.join(settings.MEDIA_ROOT, "logs")
-    os.makedirs(logdir, exist_ok=True)
-
-    logpath = os.path.join(logdir, f"geracao_{ano}_{semestre}.log")
-
-    def log(msg):
-        with open(logpath, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.now()} - {msg}\n")
-
-    log(f"Início geração semestre {semestre}/{ano}, projetos={projetos.count()}")
-
-    # ------------------------------------------
-    # LOOP PRINCIPAL
-    # ------------------------------------------
-    for p in projetos:
-        peia = p.peia or "SEMPEIA"
-
-        for mes in meses:
-
-            # ======================
-            # PESQUISA
-            # ======================
-            if not declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_pesquisa(request, p.id, mes, ano)
-            
-            # gera docx persistente
-            decl = declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_pesquisa_novo(decl.id)
-                log(f"Pesquisa: {p.nome} {mes}/{ano}")
-
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"Pesquisa – {p.nome} – mês {mes}"
-
-            time.sleep(0.05)
-
-            # ======================
-            # RH
-            # ======================
-            if not declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_rh(request, p.id, mes, ano)
-
-            decl = declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_rh_novo(decl.id)
-                log(f"RH: {p.nome} {mes}/{ano}")
-
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"RH – {p.nome} – mês {mes}"
-
-            time.sleep(0.05)
-
-            # ======================
-            # SO
-            # ======================
-            if not declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_so(request, p.id, mes, ano)
-
-            decl = declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_so_novo(decl.id)
-                log(f"SO: {p.nome} {mes}/{ano}")
-
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"SO – {p.nome} – mês {mes}"
-
-            time.sleep(0.05)
-
-        # ======================
-        # EQUIPAMENTOS (1 por mês)
-        # ======================
-        for mes in meses:
-            decl = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_equipamento_novo(decl.id)
-                log(f"Equipamento mês {mes}/{ano}")
-
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"Equipamento – mês {mes}"
-
-            time.sleep(0.05)
-
-    # FINALIZA
-    with progresso_lock:
-        progresso["status"] = "finalizado"
-        progresso["mensagem"] = "Geração concluída!"
-        progresso["finalizado"] = True
-
-    log("Finalizado com sucesso.")
-
-    return JsonResponse({"ok": True})
-
-def zip_semestre_novo(ano, semestre):
-    import zipfile
-    import os
-
-    pasta_semestre = os.path.join(settings.MEDIA_ROOT, "declaracoes", f"{ano}-{semestre}")
-    zip_path = os.path.join(pasta_semestre, f"declaracoes_{ano}-{semestre}.zip")
-
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
-
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(pasta_semestre):
-            for file in files:
-                if file.endswith(".docx"):
-                    full = os.path.join(root, file)
-                    arcname = os.path.relpath(full, pasta_semestre)
-                    zipf.write(full, arcname)
-
-    return zip_path
-'''
-
-import os
-import unicodedata
-import zipfile
-from io import BytesIO
-from threading import Lock
-from datetime import datetime, date
-
-from django.conf import settings
-from django.http import HttpResponse, Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.contrib import messages
-
-from docx import Document
-from docx.enum.section import WD_ORIENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_PARAGRAPH_ALIGNMENT
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.shared import Pt, Cm, RGBColor
-from decimal import Decimal, ROUND_HALF_UP
-from itertools import groupby
-
 def _slugify_nome(peia: str | None, nome: str | None) -> str:
     """
     Gera algo como: 'peia1234-projeto_tal'
@@ -2053,7 +1636,6 @@ def _slugify_nome(peia: str | None, nome: str | None) -> str:
         base = base.replace(ch, "_")
     return base or "projeto_sem_nome"
 
-
 def _pasta_declaracoes_semestre(ano: int, semestre: int) -> str:
     """
     Ex.: media/declaracoes/2025-1
@@ -2061,7 +1643,6 @@ def _pasta_declaracoes_semestre(ano: int, semestre: int) -> str:
     pasta = os.path.join(settings.MEDIA_ROOT, "declaracoes", f"{ano}-{semestre}")
     os.makedirs(pasta, exist_ok=True)
     return pasta
-
 
 def _nome_arquivo_declaracao(ano: int, semestre: int, peia: str, nome: str,
                              tipo: str, mes: int) -> str:
@@ -2072,13 +1653,11 @@ def _nome_arquivo_declaracao(ano: int, semestre: int, peia: str, nome: str,
     slug = _slugify_nome(peia, nome)
     return f"{slug}-{tipo}-{ano}-{mes:02d}.docx"
 
-
 def _caminho_docx_declaracao(ano: int, semestre: int, peia: str, nome: str,
                              tipo: str, mes: int) -> str:
     pasta = _pasta_declaracoes_semestre(ano, semestre)
     filename = _nome_arquivo_declaracao(ano, semestre, peia, nome, tipo, mes)
     return os.path.join(pasta, filename)
-
 
 def _caminho_docx_equipamento(ano: int, semestre: int, mes: int) -> str:
     """
@@ -2195,23 +1774,6 @@ def _gerar_docx_rh_para_declaracao(declaracao) -> str:
     doc.save(caminho_saida)
     return caminho_saida
 
-def gerar_docx_rh_novo(request, declaracao_id):
-    declaracao = get_object_or_404(declaracao_contrapartida_rh, id=declaracao_id)
-    caminho = _gerar_docx_rh_para_declaracao(declaracao)
-    if not caminho or not os.path.exists(caminho):
-        return HttpResponse("Não foi possível gerar o DOCX de RH.", status=400)
-
-    with open(caminho, "rb") as f:
-        data = f.read()
-
-    filename = os.path.basename(caminho)
-    response = HttpResponse(
-        data,
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
 def _gerar_docx_so_para_declaracao(declaracao) -> str:
     ano = declaracao.ano
     mes = declaracao.mes
@@ -2252,23 +1814,6 @@ def _gerar_docx_so_para_declaracao(declaracao) -> str:
     caminho_saida = _caminho_docx_declaracao(ano, semestre, codigo_peia, projeto_nome, "so", mes)
     doc.save(caminho_saida)
     return caminho_saida
-
-def gerar_docx_so_novo(request, declaracao_id):
-    declaracao = get_object_or_404(declaracao_contrapartida_so, id=declaracao_id)
-    caminho = _gerar_docx_so_para_declaracao(declaracao)
-    if not caminho or not os.path.exists(caminho):
-        return HttpResponse("Não foi possível gerar o DOCX de SO.", status=400)
-
-    with open(caminho, "rb") as f:
-        data = f.read()
-
-    filename = os.path.basename(caminho)
-    response = HttpResponse(
-        data,
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
 
 def _fmt_moeda_br_decimal(v: Decimal | float | int | None) -> str:
     if v is None:
@@ -2435,23 +1980,6 @@ def _gerar_docx_equipamento_para_declaracao(declaracao) -> str:
     doc.save(caminho_saida)
     return caminho_saida
 
-def gerar_docx_equipamento_novo(request, id):
-    declaracao = get_object_or_404(declaracao_contrapartida_equipamento, id=id)
-    caminho = _gerar_docx_equipamento_para_declaracao(declaracao)
-    if not caminho or not os.path.exists(caminho):
-        return HttpResponse("Não foi possível gerar o DOCX de Equipamento.", status=400)
-
-    with open(caminho, "rb") as f:
-        data = f.read()
-
-    filename = os.path.basename(caminho)
-    resp = HttpResponse(
-        data,
-        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return resp
-
 def _gerar_docx_pesquisa_para_declaracao(declaracao) -> str:
     itens_qs = declaracao.itens.all()
     if not itens_qs.exists():
@@ -2557,23 +2085,6 @@ def _gerar_docx_pesquisa_para_declaracao(declaracao) -> str:
     doc.save(caminho_saida)
     return caminho_saida
 
-def gerar_docx_pesquisa_novo(request, declaracao_id):
-    declaracao = get_object_or_404(declaracao_contrapartida_pesquisa, id=declaracao_id)
-    caminho = _gerar_docx_pesquisa_para_declaracao(declaracao)
-    if not caminho or not os.path.exists(caminho):
-        return HttpResponse("Não foi possível gerar o DOCX de Pesquisa.", status=400)
-
-    with open(caminho, "rb") as f:
-        data = f.read()
-
-    filename = os.path.basename(caminho)
-    response = HttpResponse(
-        data,
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
 def gerar_declaracoes_semestre(request):
     """
     Página para:
@@ -2662,14 +2173,14 @@ def gerar_declaracoes_semestre(request):
                     _gerar_docx_so_para_declaracao(decl_so)
                     total_so += 1
 
-            # EQUIPAMENTO (1 por mês, global)
-            for mes in meses_semestre:
-                if not declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).exists():
-                    gerar_declaracao_contrapartida_equipamento(request, p.id, mes, ano)
-                decl_eq = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
-                if decl_eq:
-                    _gerar_docx_equipamento_para_declaracao(decl_eq)
-                    total_equip += 1
+        # EQUIPAMENTO (1 por mês, global)
+        for mes in meses_semestre:
+            if not declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).exists():
+                gerar_declaracao_contrapartida_equipamento(request, p.id, mes, ano)
+            decl_eq = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
+            if decl_eq:
+                _gerar_docx_equipamento_para_declaracao(decl_eq)
+                total_equip += 1
 
         messages.success(
             request,
@@ -2691,35 +2202,31 @@ def gerar_declaracoes_semestre(request):
             os.remove(zip_path)
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            # 1) arquivos por projeto
             for p in projetos:
                 peia = p.peia
                 nome_proj = p.nome
 
                 for mes in meses_semestre:
-                    # RH
                     caminho_rh = _caminho_docx_declaracao(ano, semestre, peia, nome_proj, "rh", mes)
                     if os.path.exists(caminho_rh):
-                        arcname = os.path.relpath(caminho_rh, pasta_semestre)
-                        zipf.write(caminho_rh, arcname)
+                        zipf.write(caminho_rh, os.path.relpath(caminho_rh, pasta_semestre))
 
-                    # PESQUISA
                     caminho_pesq = _caminho_docx_declaracao(ano, semestre, peia, nome_proj, "pesquisa", mes)
                     if os.path.exists(caminho_pesq):
-                        arcname = os.path.relpath(caminho_pesq, pasta_semestre)
-                        zipf.write(caminho_pesq, arcname)
+                        zipf.write(caminho_pesq, os.path.relpath(caminho_pesq, pasta_semestre))
 
-                    # SO
                     caminho_so = _caminho_docx_declaracao(ano, semestre, peia, nome_proj, "so", mes)
                     if os.path.exists(caminho_so):
-                        arcname = os.path.relpath(caminho_so, pasta_semestre)
-                        zipf.write(caminho_so, arcname)
+                        zipf.write(caminho_so, os.path.relpath(caminho_so, pasta_semestre))
 
-                # Equipamento: 1 por mês
-                for mes in meses_semestre:
-                    caminho_eq = _caminho_docx_equipamento(ano, semestre, mes)
-                    if os.path.exists(caminho_eq):
-                        arcname = os.path.relpath(caminho_eq, pasta_semestre)
-                        zipf.write(caminho_eq, arcname)
+            # 2) equipamentos (1 por mês, global) — fora do loop de projetos
+            for mes in meses_semestre:
+                caminho_eq = _caminho_docx_equipamento(ano, semestre, mes)
+                if os.path.exists(caminho_eq):
+                    zipf.write(caminho_eq, os.path.relpath(caminho_eq, pasta_semestre))
+
+
 
         messages.success(request, "ZIP criado com sucesso!")
         return redirect(reverse("gerar_declaracoes_semestre") + f"?ano={ano}&semestre={semestre}")
@@ -2736,17 +2243,53 @@ def gerar_declaracoes_semestre(request):
         "ultima_data": ultima_data,
     })
 
+
+# =========================================================
+# PROGRESSO GLOBAL (DEIXE SÓ ESTE, UMA ÚNICA VEZ NO ARQUIVO)
+# =========================================================
+progresso_lock = Lock()
+progresso = {
+    "status": "aguardando",   # aguardando | gerando | finalizado | erro
+    "percentual": 0,
+    "mensagem": "",
+    "ano": None,
+    "semestre": None,
+    "finalizado": False,
+}
+
+def _set_progresso(**kwargs):
+    with progresso_lock:
+        progresso.update(kwargs)
+
+def _no_cache_json(data, status=200):
+    resp = JsonResponse(data, status=status)
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp["Pragma"] = "no-cache"
+    resp["Expires"] = "0"
+    return resp
+
+@never_cache
+@login_required
+def progresso_semestre(request):
+    with progresso_lock:
+        return _no_cache_json(progresso)
+
+@never_cache
+@login_required
 def gerar_semestre_ajax(request):
-    from datetime import datetime, date
-    import time
-    import os
+    """
+    Gera declarações + DOCX no disco, atualizando o dict global 'progresso'.
+    O front faz polling em /progresso_semestre/ pra atualizar a barra.
+    """
+    try:
+        ano = int(request.GET.get("ano"))
+        semestre = int(request.GET.get("semestre"))
+    except (TypeError, ValueError):
+        _set_progresso(status="erro", mensagem="Parâmetros inválidos (ano/semestre).", finalizado=True)
+        return _no_cache_json({"ok": False, "erro": "Parâmetros inválidos."}, status=400)
 
-    ano = int(request.GET.get("ano"))
-    semestre = int(request.GET.get("semestre"))
+    meses = [1, 2, 3, 4, 5, 6] if semestre == 1 else [7, 8, 9, 10, 11, 12]
 
-    meses = [1,2,3,4,5,6] if semestre == 1 else [7,8,9,10,11,12]
-
-    # range de datas
     data_ini = date(ano, 1 if semestre == 1 else 7, 1)
     data_fim = date(ano, 6 if semestre == 1 else 12, 30 if semestre == 1 else 31)
 
@@ -2754,124 +2297,135 @@ def gerar_semestre_ajax(request):
         ativo=True,
         data_inicio__lte=data_fim,
         data_fim__gte=data_ini
-    )
+    ).order_by("nome")
 
-    # total de operações
-    total_ops = len(projetos) * 3 * len(meses) + len(meses)
+    projetos_qtd = projetos.count()
+
+    # total de “passos” pra barra:
+    # 3 docx por projeto/mês (pesq, rh, so) + 1 docx de equipamento por mês
+    total_ops = (projetos_qtd * 3 * len(meses)) + len(meses)
+    if total_ops <= 0:
+        _set_progresso(
+            status="finalizado",
+            percentual=100,
+            mensagem="Nada a gerar (sem projetos no semestre).",
+            ano=ano,
+            semestre=semestre,
+            finalizado=True,
+        )
+        return _no_cache_json({"ok": True, "vazio": True})
+
     atual = 0
 
-    # inicializa progresso
-    with progresso_lock:
-        progresso.update({
-            "status": "gerando",
-            "percentual": 0,
-            "mensagem": "Iniciando geração...",
-            "ano": ano,
-            "semestre": semestre,
-            "finalizado": False,
-        })
+    _set_progresso(
+        status="gerando",
+        percentual=0,
+        mensagem="Iniciando geração...",
+        ano=ano,
+        semestre=semestre,
+        finalizado=False,
+    )
+    def _msg_projeto(tipo: str, ano: int, mes: int, p) -> str:
+        return f"Gerando {tipo} - {ano} - {mes:02d} - {p.peia} - {p.nome}"
 
-    # LOG
+    def _msg_equip(tipo: str, ano: int, mes: int) -> str:
+        return f"Gerando {tipo} - {ano} - {mes:02d}"
+
+
+    # log opcional (ajuda a debugar travas)
     logdir = os.path.join(settings.MEDIA_ROOT, "logs")
     os.makedirs(logdir, exist_ok=True)
-
     logpath = os.path.join(logdir, f"geracao_{ano}_{semestre}.log")
 
     def log(msg):
         with open(logpath, "a", encoding="utf-8") as f:
             f.write(f"{datetime.now()} - {msg}\n")
 
-    log(f"Início geração semestre {semestre}/{ano}, projetos={projetos.count()}")
+    log(f"Início geração semestre {semestre}/{ano}, projetos={projetos_qtd}")
 
-    # ------------------------------------------
-    # LOOP PRINCIPAL
-    # ------------------------------------------
-    for p in projetos:
-        peia = p.peia or "SEMPEIA"
+    # pega um projeto “fallback” para a declaração de equipamento (sua função exige projeto_id)
+    p_fallback = projetos.first()
 
-        for mes in meses:
+    try:
+        # -------------------------
+        # LOOP PROJETOS / MESES
+        # -------------------------
+        for p in projetos:
+            for mes in meses:
 
-            # ======================
-            # PESQUISA
-            # ======================
-            if not declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_pesquisa(request, p.id, mes, ano)
-            
-            # gera docx persistente
-            decl = declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_pesquisa_novo(decl.id)
-                log(f"Pesquisa: {p.nome} {mes}/{ano}")
+                # ===== PESQUISA =====
+                if not declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
+                    gerar_declaracao_contrapartida_pesquisa(request, p.id, mes, ano)
 
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"Pesquisa – {p.nome} – mês {mes}"
+                decl_p = declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
+                if decl_p:
+                    _gerar_docx_pesquisa_para_declaracao(decl_p)
+                    log(f"Pesquisa: {p.nome} {mes}/{ano}")
 
-            time.sleep(0.05)
+                atual += 1
+                _set_progresso(
+                    percentual=int(100 * atual / total_ops),
+                    mensagem=_msg_projeto("Pesquisa", ano, mes, p)
+                )
 
-            # ======================
-            # RH
-            # ======================
-            if not declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_rh(request, p.id, mes, ano)
 
-            decl = declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_rh_novo(decl.id)
-                log(f"RH: {p.nome} {mes}/{ano}")
+                # ===== RH =====
+                if not declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
+                    gerar_declaracao_contrapartida_rh(request, p.id, mes, ano)
 
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"RH – {p.nome} – mês {mes}"
+                decl_rh = declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
+                if decl_rh:
+                    _gerar_docx_rh_para_declaracao(decl_rh)
+                    log(f"RH: {p.nome} {mes}/{ano}")
 
-            time.sleep(0.05)
+                atual += 1
+                _set_progresso(
+                    percentual=int(100 * atual / total_ops),
+                    mensagem=_msg_projeto("RH", ano, mes, p)
+                )
 
-            # ======================
-            # SO
-            # ======================
-            if not declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
-                gerar_declaracao_contrapartida_so(request, p.id, mes, ano)
 
-            decl = declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_so_novo(decl.id)
-                log(f"SO: {p.nome} {mes}/{ano}")
+                # ===== SO =====
+                if not declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
+                    gerar_declaracao_contrapartida_so(request, p.id, mes, ano)
 
-            atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"SO – {p.nome} – mês {mes}"
+                decl_so = declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
+                if decl_so:
+                    _gerar_docx_so_para_declaracao(decl_so)
+                    log(f"SO: {p.nome} {mes}/{ano}")
 
-            time.sleep(0.05)
+                atual += 1
+                _set_progresso(
+                    percentual=int(100 * atual / total_ops),
+                    mensagem=_msg_projeto("SO", ano, mes, p)
+                )
 
-        # ======================
+
+        # -------------------------
         # EQUIPAMENTOS (1 por mês)
-        # ======================
+        # -------------------------
         for mes in meses:
-            decl = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
-            if decl:
-                gerar_docx_equipamento_novo(decl.id)
-                log(f"Equipamento mês {mes}/{ano}")
+            if not declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).exists():
+                if p_fallback:
+                    gerar_declaracao_contrapartida_equipamento(request, p_fallback.id, mes, ano)
+
+            decl_eq = declaracao_contrapartida_equipamento.objects.filter(mes=mes, ano=ano).first()
+            if decl_eq:
+                _gerar_docx_equipamento_para_declaracao(decl_eq)
+                log(f"Equipamento: {mes}/{ano}")
 
             atual += 1
-            with progresso_lock:
-                progresso["percentual"] = int(100 * atual / total_ops)
-                progresso["mensagem"] = f"Equipamento – mês {mes}"
+            _set_progresso(
+                percentual=int(100 * atual / total_ops),
+                mensagem=_msg_equip("Equipamento", ano, mes)
+            )
 
-            time.sleep(0.05)
 
-    # FINALIZA
-    with progresso_lock:
-        progresso["status"] = "finalizado"
-        progresso["mensagem"] = "Geração concluída!"
-        progresso["finalizado"] = True
+        _set_progresso(status="finalizado", percentual=100, mensagem="Geração concluída!", finalizado=True)
+        log("Finalizado com sucesso.")
+        return _no_cache_json({"ok": True})
 
-    log("Finalizado com sucesso.")
-
-    return JsonResponse({"ok": True})
-
-def progresso_semestre(request):
-    with progresso_lock:
-        return JsonResponse(progresso)
+    except Exception as e:
+        log(f"ERRO: {repr(e)}")
+        _set_progresso(status="erro", mensagem=f"Erro: {e}", finalizado=True)
+        return _no_cache_json({"ok": False, "erro": str(e)}, status=500)

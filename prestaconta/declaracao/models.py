@@ -14,7 +14,7 @@ class declaracao_contrapartida_pesquisa(models.Model):
     mes = models.IntegerField(verbose_name="Mês de referência")
     ano = models.IntegerField(verbose_name="Ano de referência")
     total=models.FloatField(default=0, verbose_name="Total")
-    data_geracao = models.DateTimeField(auto_now_add=True, verbose_name="Data de geração da declaração")
+    data_geracao = models.DateTimeField(auto_now_add=True, verbose_name="Data de ção da declaração")
 
     class Meta:
         verbose_name = "Declaração Contrapartida Pesquisa"
