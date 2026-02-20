@@ -1,3 +1,4 @@
+import json
 from django import forms
 from django.forms import formset_factory, BaseFormSet,inlineformset_factory
 from django.db import models
@@ -287,14 +288,32 @@ class BaseContrapartidaSOFormSet(BaseFormSet):
                 raise forms.ValidationError(f"Linha {i+1}: Valor inválido.")
 
 class ContrapartidaEquipamentoForm(forms.ModelForm):
+
     class Meta:
         model = contrapartida_equipamento
         fields = ['ano', 'mes', 'id_equipamento', 'descricao', 'horas_alocadas', 'valor_manual']
 
+
     def __init__(self, *args, **kwargs):
-        # Recebe projeto para filtrar salários
         self.projeto = kwargs.pop('projeto', None)
         super().__init__(*args, **kwargs)
+
+        # Bootstrap / seletor JS
+        self.fields['id_equipamento'].widget.attrs.update({
+            'class': 'form-select equipamento-select'
+        })
+        
+        equipamentos = self.fields['id_equipamento'].queryset
+
+        mapa_valor_hora = {
+            str(e.pk): float(e.valor_hora)
+            for e in equipamentos
+        }
+
+        # Joga o JSON no HTML (data attribute)
+        self.fields['id_equipamento'].widget.attrs[
+            'data-valores-hora'
+        ] = json.dumps(mapa_valor_hora)
             
 
 class BaseContrapartidaEquipamentoFormSet(BaseFormSet):

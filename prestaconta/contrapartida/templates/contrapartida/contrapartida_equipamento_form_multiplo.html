@@ -84,6 +84,14 @@
                     <div class="col-md-4">
                         {% bootstrap_field form.valor_manual show_label=True %}
                     </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Valor Total</label>
+                        <input type="text"
+                               class="form-control valor-preview"
+                               placeholder="Calculado automaticamente"
+                               readonly>
+                    </div>
                 </div>
                 
                 <!-- Botão Remover -->
@@ -190,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Limpa valores
             newRow.querySelectorAll('input, select, textarea').forEach(input => {
                 const name = input.getAttribute('name');
+                const preview = newRow.querySelector('.valor-preview');
                 if (name && !name.includes('TOTAL_FORMS') && !name.includes('INITIAL_FORMS')) {
                     if (input.type === 'checkbox') {
                         input.checked = false;
@@ -197,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         input.value = '';
                     }
                 }
+               if (preview) preview.value = '';
             });
             
                   
@@ -263,6 +273,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializa estado dos botões
     updateRemoveButtons();
 });
+
+document.addEventListener('input', function (e) {
+    const row = e.target.closest('.formset-row');
+    if (!row) return;
+
+    const horasInput = row.querySelector('input[name$="horas_alocadas"]');
+    const equipamentoSelect = row.querySelector('.equipamento-select');
+    const valorManualInput = row.querySelector('input[name$="valor_manual"]');
+    const previewInput = row.querySelector('.valor-preview');
+
+    if (!horasInput || !equipamentoSelect || !previewInput) return;
+
+    const horas = parseFloat(horasInput.value) || 0;
+    const valorManual = parseFloat(valorManualInput?.value) || 0;
+
+ 
+    const mapaValores = JSON.parse(
+        equipamentoSelect.dataset.valoresHora || '{}'
+    );
+
+    const equipamentoId = equipamentoSelect.value;
+    const valorHora = parseFloat(mapaValores[equipamentoId]) || 0;
+
+    let total = 0;
+
+    if (valorManual > 0) {
+        total = valorManual;
+    } else {
+        total = horas * valorHora;
+    }
+
+    previewInput.value = total > 0 ? total.toFixed(2) : '';
+});
+
 </script>
 
 <style>
