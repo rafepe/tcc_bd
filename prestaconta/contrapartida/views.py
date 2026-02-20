@@ -25,7 +25,6 @@ import re
 from .forms import ContrapartidaPesquisaFormSet,ContrapartidaRhFormSet,ContrapartidaSOFormSet,ContrapartidaEquipamentoFormSet
 import zipfile
 
-
 def index(request):
     usuario = request.POST.get('username')
     senha = request.POST.get('password')
@@ -156,8 +155,6 @@ class projeto_menu(SingleTableView):
             ["peia","projeto","ano_fim","mes_fim"]
         )
         return context
-
-
 
 class projeto_create(CreateView):
     model = projeto
@@ -346,8 +343,7 @@ class pessoa_delete(DeleteView):
     template_name_suffix = '_delete'
     def get_success_url(self):
         return reverse_lazy('pessoa_menu')
-    
-  
+     
 ###########
 # SALARIO #
 ###########
@@ -438,7 +434,6 @@ class salario_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('salario_menu')
    
-
 #######################
 # PROJETOS SEMESTRAIS #
 #######################
@@ -525,7 +520,6 @@ class contrapartida_pesquisa_menu(SingleTableView):
         )
         return context
 
-
 class contrapartida_pesquisa_create(CreateView):
     model = contrapartida_pesquisa
     fields = ['id_projeto', 'id_salario','funcao', 'horas_alocadas']
@@ -611,8 +605,6 @@ class contrapartida_pesquisa_create(CreateView):
     def get_success_url(self):
         return reverse_lazy("contrapartida_pesquisa_update", kwargs={"pk": self.object.pk})
     
-
-
 class contrapartida_pesquisa_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_contrapartida_pesquisa"):
@@ -705,7 +697,6 @@ class contrapartida_pesquisa_update(UpdateView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')
        
-
 class contrapartida_pesquisa_delete(DeleteView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.delete_contrapartida_pesquisa"):
@@ -719,7 +710,7 @@ class contrapartida_pesquisa_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_pesquisa_menu')     
 
-#################################################################################################################################################
+#####################################################################################################################
 # INSERIR MULTIPLOS
 #####################################################################################################################
 
@@ -850,9 +841,6 @@ def obter_horas_disponiveis(request):
         return JsonResponse({'error': 'Salário não encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-
-#####################################################################################################################
 
 ##############################
 # CONTRAPARTIDA EQUIPAMENTOS #
@@ -1067,8 +1055,7 @@ class contrapartida_equipamento_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_equipamento_menu')
     
-
-#################################################################################################################################################
+#####################################################################################################################
 # INSERIR MULTIPLOS
 #####################################################################################################################
 
@@ -1157,13 +1144,10 @@ def contrapartida_equipamento_criar_multiplos(request):
     }
     
     return render(request, 'contrapartida/contrapartida_equipamento_form_multiplo.html', context)
-
     
-
 ##############################
 # CONTRAPARTIDA SO           #
 ##############################
-
     
 class contrapartida_so_menu(ListView):
     template_name = 'contrapartida/contrapartida_so_menu.html'
@@ -1231,7 +1215,6 @@ class contrapartida_so_menu(ListView):
         RequestConfig(self.request, paginate={"per_page": 10}).configure(table)
         context["table"] = table
         return context
-
 
 class contrapartida_so_proj(TemplateView):
     template_name = 'contrapartida/contrapartida_so_proj.html'
@@ -1394,7 +1377,7 @@ class contrapartida_so_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_so_projeto', kwargs={'id_projeto': self.object.id_projeto.id})
 
-#################################################################################################################################################
+#####################################################################################################################
 # INSERIR MULTIPLOS
 #####################################################################################################################
 
@@ -1483,8 +1466,6 @@ def contrapartida_so_criar_multiplos(request):
     }
     
     return render(request, 'contrapartida/contrapartida_so_form_multiplo.html', context)
-
-
 
 ##########################
 # CONTRAPARTIDA RH   #####
@@ -1603,8 +1584,6 @@ class contrapartida_rh_create(CreateView):
     def get_success_url(self):
         return reverse_lazy("contrapartida_rh_update", kwargs={"pk": self.object.pk})
    
-
-
 class contrapartida_rh_update(UpdateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.has_perm("contrapartida.update_contrapartida_rh"):
@@ -1706,7 +1685,7 @@ class contrapartida_rh_delete(DeleteView):
     def get_success_url(self):
         return reverse_lazy('contrapartida_rh_menu')    
 
-#################################################################################################################################################
+#####################################################################################################################
 # INSERIR MULTIPLOS
 #####################################################################################################################
 
@@ -1796,10 +1775,9 @@ def contrapartida_rh_criar_multiplos(request):
     
     return render(request, 'contrapartida/contrapartida_rh_form_multiplo.html', context)
 
-
-##############################
-# CONTRAPARTIDA REALIZADA    #
-##############################
+#####################################
+# CONTRAPARTIDA REALIZADA ListView  #
+#####################################
 class contrapartida_realizada_list(ListView):
     model = projeto  # Define o modelo explicitamente
     template_name = "contrapartida/contrapartida_realizada_list.html"
@@ -1835,9 +1813,6 @@ class contrapartida_realizada_list(ListView):
             "ano": self.request.GET.get("ano", "")           
         }
         return context
-
-
-
 
 def contrapartida_realizada_detalhes(request, projeto_id): 
 
@@ -1941,10 +1916,9 @@ def contrapartida_realizada_detalhes(request, projeto_id):
 
     return render(request, 'contrapartida/contrapartida_realizada_detalhes.html', context)
 
-##############################
-# CONTRAPARTIDA GERAL        #
-##############################
-
+################################
+# CONTRAPARTIDA REALIZADA GERAL#
+################################
 
 def contrapartida_realizada_geral(request):
     # ano padrão (atual) se não vier ou vier vazio
@@ -2096,9 +2070,9 @@ def contrapartida_realizada_geral(request):
 
     return render(request, 'contrapartida/contrapartida_realizada_geral.html', context)
 
-#######################################
-# CONTRAPARTIDA REALIZADA EQUIPAMENTO #
-#######################################
+##################################
+# TELAS CONTRAPARTIDA REALIZADA  #
+##################################
 
 def contrapartida_realizada_equipamento(request):
     hoje = datetime.today()
@@ -2168,14 +2142,15 @@ def contrapartida_realizada_equipamento(request):
             for equip in equipamentos_lista:
                 horas= sum( [cp.horas_alocadas  for cp in cp_obj_list  if cp.id_equipamento==equip ])
                 colunas.append(horas)
+
             linha["meses"].append({
-                "data": data,
+                "data": data, 
                 "equipamentos": colunas,
                 "total_mes": soma,
                 })
 
         tabela.append(linha)
-
+    #print(tabela[1]["meses"])
     context = {
     "tabela": tabela,
     'ano': ano,
@@ -2229,12 +2204,13 @@ def contrapartida_realizada_pesquisa(request):
 
         # Pega todos os pesquisadores do projeto
         pessoas = contrapartida_pesquisa.objects.filter(id_projeto=proj).values_list(
-            "id_salario__id_pessoa__nome", flat=True
+            "id_salario__id_pessoa__nome" ,"id_salario__id_pessoa__cpf"
         ).distinct()
 
-        for pessoa in pessoas:
+        for pessoa,cpf in pessoas:
             dados_pessoa = {
                 "nome": pessoa,
+                "cpf": cpf,
                 "horas_media": 0,
                 "meses": []
             }
@@ -2317,12 +2293,13 @@ def contrapartida_realizada_rh(request):
 
         # Pega todos os pesquisadores do projeto
         pessoas = contrapartida_rh.objects.filter(id_projeto=proj).values_list(
-            "id_salario__id_pessoa__nome", flat=True
+            "id_salario__id_pessoa__nome" ,"id_salario__id_pessoa__cpf"
         ).distinct()
 
-        for pessoa in pessoas:
+        for pessoa,cpf in pessoas:
             dados_pessoa = {
                 "nome": pessoa,
+                "cpf": cpf,
                 "horas_media": 0,
                 "meses": []
             }
@@ -2434,7 +2411,6 @@ def upload_contracheque(request):
         return redirect('upload_contracheque')
 
     return render(request, 'upload.html')
-
 
 def verifica_contracheque(request):
     pessoas = pessoa.objects.all()
