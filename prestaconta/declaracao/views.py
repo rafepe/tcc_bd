@@ -488,7 +488,7 @@ class declaracao_contrapartida_equipamento_delete(DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('declaracoes_menu')
-
+''' Retirado 24/02/2026
 def gerar_docx_rh(request, declaracao_id):
     declaracao_itens = declaracao_contrapartida_rh_item.objects.filter(declaracao_id=declaracao_id)
     if not declaracao_itens.exists():
@@ -586,7 +586,7 @@ def gerar_docx_rh(request, declaracao_id):
     response['Content-Disposition'] = f'attachment; filename="RH_{projeto_nome}_{mes}_{ano}.docx"'
     doc.save(response)
     return response
-
+'''
 try:
     from num2words import num2words
 except ImportError:
@@ -1302,7 +1302,7 @@ def download_declaracao_mes(request):
     
     return JsonResponse({'error': 'Nenhuma declaração encontrada para este mês'}, status=404)
 
-def gerar_docx_rh_novo(declaracao_id):
+def gerar_docx_rh(declaracao_id):
     """
     Gera DOCX de RH e salva no disco segundo o padrão:
     media/declaracoes/ANO-SEMESTRE/PEIA-NOME-rh-ANO-MES.docx
