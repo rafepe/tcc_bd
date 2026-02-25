@@ -263,7 +263,7 @@ def progresso_semestre(request):
 @never_cache
 @login_required
 def gerar_semestre_ajax(request):
-    print("Entrou no gerar_semestre_ajax")
+    #print("Entrou no gerar_semestre_ajax")
     """
     Gera declarações + DOCX no disco, atualizando o dict global 'progresso'.
     O front faz polling em /progresso_semestre/ pra atualizar a barra.
@@ -334,12 +334,15 @@ def gerar_semestre_ajax(request):
     p_fallback = projetos.first()
 
     try:
-        print("Entrou no try")
+        #print("Entrou no try")
         # -------------------------
         # LOOP PROJETOS / MESES
         # -------------------------
         for p in projetos:
+            #print("entrou")
+            #print(p)
             for mes in meses:
+                #print(mes)
 
                 # ===== PESQUISA =====
                 if not declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():
@@ -347,8 +350,10 @@ def gerar_semestre_ajax(request):
 
                 decl_p = declaracao_contrapartida_pesquisa.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
                 if decl_p:
+                    #print(decl_p)
                     path = _gerar_docx_pesquisa(decl_p)
                     log(f"SALVO PESQUISA: {path}")
+                    
 
                 atual += 1
                 _set_progresso(
@@ -361,15 +366,18 @@ def gerar_semestre_ajax(request):
                     gerar_declaracao_contrapartida_rh(request, p.id, mes, ano)
 
                 decl_rh = declaracao_contrapartida_rh.objects.filter(id_projeto=p.id, mes=mes, ano=ano).first()
+                #print(decl_rh)
                 if decl_rh:
                     path = _gerar_docx_rh(decl_rh)
                     log(f"SALVO RH: {path}")
+
 
                 atual += 1
                 _set_progresso(
                     percentual=int(100 * atual / total_ops),
                     mensagem=_msg_projeto("RH", ano, mes, p)
                 )
+
 
                 # ===== SO =====
                 if not declaracao_contrapartida_so.objects.filter(id_projeto=p.id, mes=mes, ano=ano).exists():

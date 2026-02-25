@@ -94,13 +94,13 @@ def _nota_equipamento_por_nome(nome_equip: str):
 # PATH HELPERS
 # =========================================================
 
-def _slugify_nome(peia, nome) -> str:
+def _slugify_nome(codigo_peia, nome) -> str:
     """
     Gera algo como: 'peia1234-projeto_tal'
     """
-    peia = (peia or "").strip()
+    codigo_peia = (codigo_peia or "").strip()
     nome = (nome or "").strip()
-    base = f"{peia}-{nome}" if peia else nome
+    base = f"{codigo_peia}-{nome}" if codigo_peia else nome
     base = base.lower()
     base = unicodedata.normalize("NFKD", base).encode("ASCII", "ignore").decode("ASCII")
     base = base.replace(" ", "_")
@@ -118,20 +118,20 @@ def _pasta_declaracoes_semestre(ano: int, semestre: int) -> str:
     return pasta
 
 
-def _nome_arquivo_declaracao(ano: int, semestre: int, peia: str, nome: str,
+def _nome_arquivo_declaracao(ano: int, semestre: int, codigo_peia: str, nome: str,
                              tipo: str, mes: int) -> str:
     """
     Ex.: peia1234-projeto_tal-rh-2025-01.docx
     tipo: 'rh', 'pesquisa', 'so'
     """
-    slug = _slugify_nome(peia, nome)
+    slug = _slugify_nome(codigo_peia, nome)
     return f"{slug}-{tipo}-{ano}-{mes:02d}.docx"
 
 
-def _caminho_docx_declaracao(ano: int, semestre: int, peia: str, nome: str,
+def _caminho_docx_declaracao(ano: int, semestre: int, codigo_peia: str, nome: str,
                              tipo: str, mes: int) -> str:
     pasta = _pasta_declaracoes_semestre(ano, semestre)
-    filename = _nome_arquivo_declaracao(ano, semestre, peia, nome, tipo, mes)
+    filename = _nome_arquivo_declaracao(ano, semestre, codigo_peia, nome, tipo, mes)
     return os.path.join(pasta, filename)
 
 
@@ -150,6 +150,7 @@ def _caminho_docx_equipamento(ano: int, semestre: int, mes: int) -> str:
 # =========================================================
 
 def gerar_docx_rh(declaracao) -> str:
+    print("entrou gerar_docx_rh")
     """
     Gera o DOCX de RH para uma declaração e salva em disco.
     Retorna o caminho completo do arquivo.
@@ -163,7 +164,7 @@ def gerar_docx_rh(declaracao) -> str:
     mes = primeiro.salario_mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
     projeto_nome = declaracao.projeto
-    peia = declaracao.codigo or ""
+    codigo_peia = declaracao.codigo or ""
     total_valor_cp = itens_qs.aggregate(total=Sum('valor_cp'))['total'] or 0
 
     caminho_docx = os.path.join(settings.BASE_DIR, 'contrapartida', 'static', 'base_rh.docx')
@@ -172,6 +173,7 @@ def gerar_docx_rh(declaracao) -> str:
     for p in doc.paragraphs:
         p.text = (
             p.text
+            .replace('{{codigo_peia}}', codigo_peia)
             .replace('{{mes_selecionado}}', mes_nome)
             .replace('{{ano_selecionado}}', str(ano))
             .replace('{{nome_projeto}}', projeto_nome)
@@ -238,7 +240,7 @@ def gerar_docx_rh(declaracao) -> str:
             tcPr.append(element)
 
     semestre = 1 if mes <= 6 else 2
-    caminho_saida = _caminho_docx_declaracao(ano, semestre, peia, projeto_nome, "rh", mes)
+    caminho_saida = _caminho_docx_declaracao(ano, semestre, codigo_peia, projeto_nome, "rh", mes)
     doc.save(caminho_saida)
     return caminho_saida
 
@@ -248,6 +250,7 @@ def gerar_docx_rh(declaracao) -> str:
 # =========================================================
 
 def gerar_docx_so(declaracao) -> str:
+    print("entrou gerar_docx_so")
     ano = declaracao.ano
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
@@ -265,10 +268,10 @@ def gerar_docx_so(declaracao) -> str:
 
     def apply_replacements_to_text(text):
         return (text
+                .replace('{{codigo_peia}}', codigo_peia)
                 .replace('{{mes_selecionado}}', mes_nome)
                 .replace('{{ano_selecionado}}', str(ano))
                 .replace('{{nome_projeto}}', projeto_nome)
-                .replace('{{codigo_peia}}', codigo_peia)
                 .replace('{{valor_total}}', br_currency(total_valor_cp))
                 .replace('{{valor_extenso}}', valor_por_extenso(total_valor_cp)))
 
@@ -283,6 +286,8 @@ def gerar_docx_so(declaracao) -> str:
                     if p.text:
                         p.text = apply_replacements_to_text(p.text)
 
+    
+
     semestre = 1 if mes <= 6 else 2
     caminho_saida = _caminho_docx_declaracao(ano, semestre, codigo_peia, projeto_nome, "so", mes)
     doc.save(caminho_saida)
@@ -294,6 +299,7 @@ def gerar_docx_so(declaracao) -> str:
 # =========================================================
 
 def gerar_docx_pesquisa(declaracao) -> str:
+    print("entrou gerar_docx_pesquisa")
     itens_qs = declaracao.itens.all()
     if not itens_qs.exists():
         return ""
@@ -302,7 +308,7 @@ def gerar_docx_pesquisa(declaracao) -> str:
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
     projeto_nome = declaracao.projeto
-    peia = declaracao.codigo or ""
+    codigo_peia = declaracao.codigo or ""
 
     total_valor_cp = itens_qs.aggregate(total=Sum('valor_cp'))['total'] or 0
 
@@ -316,6 +322,7 @@ def gerar_docx_pesquisa(declaracao) -> str:
         if p.text:
             p.text = (
                 p.text
+                .replace('{{codigo_peia}}', codigo_peia)
                 .replace('{{mes_selecionado}}', mes_nome)
                 .replace('{{ano_selecionado}}', str(ano))
                 .replace('{{nome_projeto}}', projeto_nome)
@@ -394,7 +401,7 @@ def gerar_docx_pesquisa(declaracao) -> str:
             tcPr.append(element)
 
     semestre = 1 if mes <= 6 else 2
-    caminho_saida = _caminho_docx_declaracao(ano, semestre, peia, projeto_nome, "pesquisa", mes)
+    caminho_saida = _caminho_docx_declaracao(ano, semestre, codigo_peia, projeto_nome, "pesquisa", mes)
     doc.save(caminho_saida)
     return caminho_saida
 
