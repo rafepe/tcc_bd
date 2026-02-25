@@ -150,7 +150,7 @@ def _caminho_docx_equipamento(ano: int, semestre: int, mes: int) -> str:
 # =========================================================
 
 def gerar_docx_rh(declaracao) -> str:
-    print("entrou gerar_docx_rh")
+    #print("entrou gerar_docx_rh")
     """
     Gera o DOCX de RH para uma declaração e salva em disco.
     Retorna o caminho completo do arquivo.
@@ -250,7 +250,7 @@ def gerar_docx_rh(declaracao) -> str:
 # =========================================================
 
 def gerar_docx_so(declaracao) -> str:
-    print("entrou gerar_docx_so")
+    #print("entrou gerar_docx_so")
     ano = declaracao.ano
     mes = declaracao.mes
     mes_nome = datetime(ano, mes, 1).strftime('%B').capitalize()
@@ -299,7 +299,7 @@ def gerar_docx_so(declaracao) -> str:
 # =========================================================
 
 def gerar_docx_pesquisa(declaracao) -> str:
-    print("entrou gerar_docx_pesquisa")
+    #print("entrou gerar_docx_pesquisa")
     itens_qs = declaracao.itens.all()
     if not itens_qs.exists():
         return ""

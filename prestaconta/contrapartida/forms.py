@@ -239,7 +239,6 @@ class BaseContrapartidaSOFormSet(BaseFormSet):
         #     raise forms.ValidationError('Projeto não especificado.')
         
         meses_usados = set()
-        print(self.projeto.id)
 
         for i, form in enumerate(self.forms):
 
