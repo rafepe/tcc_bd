@@ -116,30 +116,6 @@ class projeto_menu(SingleTableView):
     table_pagination = {"per_page": 10}
     template_name = 'projeto_menu.html'
 
-
-    # def get_queryset(self):
-    #     queryset = super().get_queryset()
-    #     f_nome = self.request.GET.get('nome', '').strip()
-    #     mes_fim = self.request.GET.get('mes', '').strip()
-    #     ano_fim = self.request.GET.get('ano','').strip()
-    #     if f_nome:
-    #         queryset = queryset.filter(nome__icontains=f_nome)
-    #     if mes_fim:
-    #         queryset = queryset.filter(data_fim__month=int(mes_fim))
-    #     if ano_fim:
-    #         queryset = queryset.filter(data_fim__year=int(ano_fim))         
-    #     return queryset
-
-
-    # def get_context_data(self, **kwargs):
-    #     context = super().get_context_data(**kwargs)
-    #     context["filtros"] = {
-    #         "nome": self.request.GET.get("nome", ""),
-    #         "mes": self.request.GET.get("mes", ""),
-    #         "ano": self.request.GET.get("ano", "")
-    #     }
-    #     return context
-
     def get_queryset(self):
         filtros={"peia": "peia",'projeto':'nome','peia':'peia'}
         filtros_data={"ano_fim":"data_fim__year","mes_fim":"data_fim__month"} 
@@ -2459,6 +2435,14 @@ def verifica_contracheque(request):
     context['pessoas'] = pessoas
     return render(request, 'verifica_contracheque.html', context)
 
+
+import re
+
+def sanitize_filename(name):
+    # Remove ou substitui caracteres inválidos no Windows
+    name = re.sub(r'[\\/*?:"<>|]', '_', name)
+    return name
+
 def download_cc_semestre(request):
     """
     Página que gera o ZIP de comprovantes por semestre.
@@ -2509,7 +2493,9 @@ def download_cc_semestre(request):
                 for file in files:
                     if file.endswith(".pdf"):
                         full_path = os.path.join(root, file)
+                        print(full_path)
                         arcname = os.path.relpath(full_path, pasta_semestre)
+                        arcname = sanitize_filename(arcname)
                         zipf.write(full_path, arcname)
 
         messages.success(request, "Arquivo ZIP gerado com sucesso!")

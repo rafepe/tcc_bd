@@ -1,4 +1,5 @@
 /venv/
+/venv_windows/
 prestaconta/contrapartida/__init__.py
 prestaconta/contrapartida/admin.py
 prestaconta/contrapartida/apps.py
@@ -8,6 +9,7 @@ prestaconta/nohup.out
 prestaconta/static/db.sqlite3
 /ignore/
 prestaconta/db.sqlite3
+*.sqlite3
 
 # Ignore arquivos de cache do Python
 __pycache__/
