@@ -2493,7 +2493,7 @@ def download_cc_semestre(request):
                 for file in files:
                     if file.endswith(".pdf"):
                         full_path = os.path.join(root, file)
-                        print(full_path)
+                        #print(full_path)
                         arcname = os.path.relpath(full_path, pasta_semestre)
                         arcname = sanitize_filename(arcname)
                         zipf.write(full_path, arcname)
